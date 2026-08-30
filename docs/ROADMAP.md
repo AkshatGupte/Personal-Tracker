@@ -14,10 +14,15 @@ one is functionally complete, unless explicitly told otherwise.
 - [ ] Basic UI: list tracks, view topics/tasks, mark complete
 
 ## Phase 2 — Progress Visibility
-- [ ] Weekly summary view (per-track task counts, streak status)
-- [ ] Monthly summary view
-- [ ] Progress bar components (per Track, per Topic)
+- [x] Weekly summary view (per-track task counts, streak status) — `/progress`
+- [ ] Monthly summary view — reuses `lib/rollup.ts`; needs only a
+      `monthBuckets` function beside `weekBuckets`
+- [x] Progress bar components (per Track, per Topic) — the topic stratum meter
+      and the completion ring, shipped with the redesign
 - [ ] Milestone detection (e.g. every 10/50/100 tasks) + simple celebratory UI
+      — detection already exists in `lib/terrain.ts` (`reached`, `next`);
+      what remains is the celebratory moment, which needs a "already seen"
+      signal that is not currently stored
 - [ ] Learning trajectory view — consistency and momentum over time, not a
       point-in-time count. Should answer: am I consistent, is my momentum
       improving, is progress trending up or declining, and is it sustained

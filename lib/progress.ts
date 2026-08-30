@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { addDays, dayKey, startOfDay } from "@/lib/day";
 import { EMPTY_STREAK, summariseStreak } from "@/lib/streak";
+import {
+  dailyBreakdown,
+  rollUp,
+  weekBuckets,
+  type PeriodDay,
+  type PeriodRollup,
+} from "@/lib/rollup";
 import { buildTerrain, TERRAIN_DAYS, type DayLog } from "@/lib/terrain";
 
 /** Oldest day still inside the terrain window. */
@@ -166,3 +173,73 @@ export async function getTrackDetail(id: string) {
     countsByDay: toCountsByDay(windowLogs),
   };
 }
+
+/** How many weeks the summary looks back over, including the current one. */
+export const SUMMARY_WEEKS = 8;
+
+export type TrackWeek = {
+  id: string;
+  name: string;
+  currentStreak: number;
+  /** This week only. */
+  completed: number;
+  activeDays: number;
+  /** True if the track has ever logged anything, at any time. */
+  everActive: boolean;
+};
+
+/**
+ * The weekly summary: one all-tracks series plus this week broken down per
+ * track. Reads the same CompletionLog rows everything else does, bucketed by
+ * the shared rollup layer rather than by any maths of its own.
+ */
+export async function getWeeklyProgress(now: Date = new Date()) {
+  const buckets = weekBuckets(SUMMARY_WEEKS, now);
+
+  const [tracks, logs] = await Promise.all([
+    prisma.track.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, name: true } }),
+    prisma.completionLog.findMany({
+      select: { trackId: true, date: true, tasksCompletedCount: true },
+    }),
+  ]);
+
+  const weeks = rollUp(
+    logs.map((l) => ({ date: l.date, tasksCompletedCount: l.tasksCompletedCount })),
+    buckets,
+    now,
+  );
+  const current = weeks[weeks.length - 1];
+  const currentDays = dailyBreakdown(
+    logs.map((l) => ({ date: l.date, tasksCompletedCount: l.tasksCompletedCount })),
+    buckets[buckets.length - 1],
+    now,
+  );
+
+  const byTrack = groupByTrack(logs);
+  const trackWeeks: TrackWeek[] = tracks.map((track) => {
+    const own = byTrack.get(track.id) ?? [];
+    const thisWeek = rollUp(own, [buckets[buckets.length - 1]], now)[0];
+    const active = own.filter((log) => log.tasksCompletedCount > 0).map((log) => log.date);
+
+    return {
+      id: track.id,
+      name: track.name,
+      currentStreak: streakOf(active).current,
+      completed: thisWeek.completed,
+      activeDays: thisWeek.activeDays,
+      everActive: active.length > 0,
+    };
+  });
+
+  return {
+    weeks,
+    current,
+    currentDays,
+    tracks: trackWeeks,
+    /** Nothing has ever been logged, anywhere. Distinct from a quiet week. */
+    hasAnyHistory: logs.length > 0,
+  };
+}
+
+export type WeeklyProgress = Awaited<ReturnType<typeof getWeeklyProgress>>;
+export type { PeriodDay, PeriodRollup };

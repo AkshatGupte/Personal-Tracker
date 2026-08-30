@@ -48,10 +48,16 @@
   --voyage-glow: rgb(34 52 140 / 0.04);
   --voyage-ground: rgb(34 52 140 / 0.014);
 
-  --lattice-sky: rgb(170 30 55 / 0.05);
-  --lattice-line: rgb(170 30 55 / 0.05);
-  --lattice-glow: rgb(170 30 55 / 0.035);
-  --lattice-ground: rgb(170 30 55 / 0.012);
+  /*
+    Rotated from hue 349 to hue 9 at the SAME saturation and lightness — the
+    channel spread (max 170, min 30) is unchanged, only which channel sits in
+    the middle. On a near-black ground a 350-degree red composites to magenta
+    around 320; starting warmer lands the result back in the reds.
+  */
+  --lattice-sky: rgb(170 51 30 / 0.055);
+  --lattice-line: rgb(170 51 30 / 0.06);
+  --lattice-glow: rgb(170 51 30 / 0.05);
+  --lattice-ground: rgb(170 51 30 / 0.014);
 
   --beacon-sky: rgb(6 130 155 / 0.055);
   --beacon-line: rgb(6 130 155 / 0.055);
@@ -92,10 +98,12 @@
     --voyage-glow: rgb(96 150 215 / 0.085);
     --voyage-ground: rgb(60 105 175 / 0.020);
 
-    --lattice-sky: rgb(205 55 80 / 0.11);
-    --lattice-line: rgb(235 130 150 / 0.070);
-    --lattice-glow: rgb(220 80 105 / 0.075);
-    --lattice-ground: rgb(205 55 80 / 0.018);
+    /* Hue 350 -> 9, same saturation (60%) and lightness (51%). Spokes read a
+       little stronger than rings, the way radial threads carry the load. */
+    --lattice-sky: rgb(205 78 55 / 0.13);
+    --lattice-line: rgb(235 146 130 / 0.080);
+    --lattice-glow: rgb(220 101 80 / 0.065);
+    --lattice-ground: rgb(205 78 55 / 0.022);
 
     --beacon-sky: rgb(20 190 215 / 0.11);
     --beacon-line: rgb(90 225 245 / 0.075);
@@ -135,10 +143,10 @@
   --voyage-glow: rgb(96 150 215 / 0.085);
   --voyage-ground: rgb(60 105 175 / 0.020);
 
-  --lattice-sky: rgb(205 55 80 / 0.11);
-  --lattice-line: rgb(235 130 150 / 0.070);
-  --lattice-glow: rgb(220 80 105 / 0.075);
-  --lattice-ground: rgb(205 55 80 / 0.018);
+  --lattice-sky: rgb(205 78 55 / 0.13);
+  --lattice-line: rgb(235 146 130 / 0.080);
+  --lattice-glow: rgb(220 101 80 / 0.065);
+  --lattice-ground: rgb(205 78 55 / 0.022);
 
   --beacon-sky: rgb(20 190 215 / 0.11);
   --beacon-line: rgb(90 225 245 / 0.075);
@@ -279,12 +287,29 @@
     repeating-radial-gradient(circle at 82% 4%, transparent 0 190px, var(--m-glow) 190px 191.5px, transparent 191.5px 380px);
 }
 
-/* Tension lines under load, anchored off-canvas so it reads as structure. */
+/*
+  A tension structure, anchored inside the frame.
+
+  The anchor used to sit off-canvas at 105% -10%, so only the far field reached
+  the screen: spokes that far from a hub are effectively parallel and rings that
+  large are effectively straight, which read as diagonal streaks rather than as
+  a web. The anchor now sits just inside the right edge and below the hero,
+  where the page margin is permanently empty — so the spokes and rings actually
+  cross, and the densest part of the structure never sits behind text.
+
+  Spacing is chosen so cells read as roughly square in the mid field: at radius
+  r the gap between spokes is r x 9deg, which matches the 68px ring pitch at
+  around 430px out. Nearer the anchor the threads converge into a node; further
+  out the lattice opens and fades.
+*/
 .atmosphere[data-motif="lattice"]::after {
   background:
-    radial-gradient(115% 95% at 97% -8%, var(--m-sky), transparent 60%),
-    repeating-conic-gradient(from 24deg at 105% -10%, transparent 0 11deg, var(--m-line) 11deg 11.25deg, transparent 11.25deg 22deg),
-    repeating-radial-gradient(circle at 105% -10%, transparent 0 112px, var(--m-glow) 112px 113.4px, transparent 113.4px 224px);
+    radial-gradient(105% 90% at 96% 58%, var(--m-sky), transparent 62%),
+    repeating-conic-gradient(from 18deg at 96% 58%, transparent 0 9deg, var(--m-line) 9deg 9.3deg, transparent 9.3deg 18deg),
+    repeating-radial-gradient(circle at 96% 58%, transparent 0 68px, var(--m-glow) 68px 69.4px, transparent 69.4px 136px);
+  /* Fades the convergence at the anchor so it never reads as a bullseye. */
+  -webkit-mask-image: radial-gradient(circle at 96% 58%, transparent 0 34px, #000 150px);
+  mask-image: radial-gradient(circle at 96% 58%, transparent 0 34px, #000 150px);
 }
 
 /* One light source: a luminous core with rings. The falloff is unique to it. */

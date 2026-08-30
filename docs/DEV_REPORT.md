@@ -6,6 +6,67 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-08-31 — The weekly progress view
+
+**What was built:**
+A new Progress page, reachable from the top navigation, which until now said
+"soon". It answers one question: what actually got done this week. It shows the
+week's total, which days of the week you were active, a per-track breakdown
+with each track's streak, and a list of the last eight weeks. Weeks run Monday
+to Sunday, the same as the grid on the other screens.
+
+**How it works (flow):**
+1. The page reads the daily completion records — the same ones the terrain and
+   the streak already use. Nothing new is stored.
+2. A new piece of code sorts those days into weeks. It works out, for each
+   week, how many tasks were finished and on how many separate days.
+3. Two numbers per week rather than one, on purpose: four tasks in one sitting
+   and four tasks across four days are not the same week, and only the second
+   number tells them apart.
+4. The current week counts only the days that have actually happened. On a
+   Monday it says "1 of 1 day", not "1 of 7".
+5. A week with nothing in it is shown as a real, empty week — it is not
+   skipped, and nothing is drawn to fill the space.
+
+**A deliberate restraint:**
+The first version had a small bar for each week beside the heading. It was
+removed for two reasons. The project's design rules say the visuals should be
+real drawings rather than bar charts; and a row of weekly bars is really a
+trend line, which is the *next* piece of work and one whose form has
+deliberately not been decided yet. Building it here by accident would have
+settled that question without meaning to. What is there instead is the current
+week shown as seven day squares, in the same visual language as the existing
+twelve-week grid.
+
+**What was checked:**
+- 21 tests of the week maths on its own: Monday and Sunday boundaries, the
+  midnight between them, weeks that straddle a month, empty weeks kept in
+  sequence, gaps preserved, several tracks active on the same day counting as
+  one day, and a year of weeks bucketing without drift
+- 19 browser checks: contrast at or above 4.5:1 on all four backgrounds in
+  both themes, keyboard reachable with a visible focus ring, the day strip
+  carrying a text description, no sideways scrolling at 390, 768 or 1280
+- The rendered figures were cross-checked against the database independently,
+  using SQL rather than the app's own code, on data containing gaps, empty
+  weeks, three tracks and a Sunday completion. Every week matched
+- The completion and streak tests from earlier work were re-run and still pass
+- Typecheck, lint and a production build pass; the console is clean; the test
+  data was removed afterwards
+
+**Technical concepts used:**
+- A reusable "period" layer — the same code will produce monthly summaries by
+  handing it months instead of weeks, so the monthly view is a small addition
+  rather than a second implementation
+- Half-open date ranges (start included, end excluded) — the standard way to
+  make sure no day is counted twice or dropped at a boundary
+- Server-rendered page reading live data on every request, like the others
+
+**Roadmap status:** Phase 2, "Weekly summary view" complete. Two other Phase 2
+items were found to be already built and are now ticked. Monthly, milestone
+celebration and trajectory remain.
+
+---
+
 ## 2026-08-30 — The survey redesign, and a quiet daily atmosphere
 
 **What was built:**

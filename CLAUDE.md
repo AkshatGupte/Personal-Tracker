@@ -105,7 +105,10 @@ size, case and tracking — **not** from weight.
 **The atmosphere — a secondary, background-only personalization layer:**
 - One of four motifs paints the page ground, resolved on the server from the
   local day: `voyage` and `lattice` and `beacon` rotate through weekdays,
-  `terrace` covers the weekend. `lib/motif.ts` is the only place this is decided.
+  `terrace` covers the weekend. `lib/motif.ts` is the only place this is
+  decided. **The rotation counts weeks Monday to Monday**, the same convention
+  as the heatmap and `lib/rollup.ts`, so Monday pairs with Thursday, Tuesday
+  with Friday, and Wednesday stands alone. All three appear in every week.
 - It is **abstract only** — geometry, light and one hue each. No characters,
   logos, crests, wordmarks, slogans or licensed artwork, ever.
 - **It is never named in the interface.** No labels, tooltips or captions.
@@ -113,6 +116,11 @@ size, case and tracking — **not** from weight.
   `--terrace-*` palettes) may only paint the ground. They may never colour
   data, and the four hues are chosen to sit clear of all three semantic
   colours in both themes.
+- **Judge a motif hue by what it composites to, not by its source value.** The
+  near-black ground is hue 240, so a warm hue is dragged toward magenta on the
+  way down. Measure the composited ground before deciding a hue is wrong.
+- Motif geometry is anchored where the page margin is permanently empty, so
+  the densest part of a structure never sits behind text.
 - Static. No motion. Halved on narrow screens.
 - Every text pair must still clear 4.5:1 on each motif's ground, in both
   themes. Verify, do not assume.

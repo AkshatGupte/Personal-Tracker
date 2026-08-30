@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
 
-// Home is the only built section. The rest are shown as planned, not as links.
-// See the scope rule in CLAUDE.md: never present unbuilt sections as working.
-const PLANNED = [
-  { label: "Progress", when: "Phase 2" },
-  { label: "Insights", when: "Phase 3" },
+const BUILT = [
+  { label: "Home", href: "/" },
+  { label: "Progress", href: "/progress" },
 ];
+
+// Shown as planned, never as a working link. See the scope rule in CLAUDE.md.
+const PLANNED = [{ label: "Insights", when: "Phase 3" }];
 
 /**
  * The masthead: a wordmark, a rule, and the sections. No pill, no panel.
@@ -19,7 +20,6 @@ const PLANNED = [
  */
 export default function TopNav() {
   const pathname = usePathname();
-  const onHome = pathname === "/";
 
   return (
     <nav className="mb-6 flex items-center justify-between gap-4 border-b border-border pb-3.5">
@@ -44,19 +44,24 @@ export default function TopNav() {
         CLAUDE.md: an unbuilt section is never presented as a working link.
       */}
       <ul className="flex min-w-0 items-center gap-4 overflow-x-auto font-mono text-[0.65rem] uppercase tracking-[0.15em]">
-        <li>
-          <Link
-            href="/"
-            aria-current={onHome ? "page" : undefined}
-            className={
-              onHome
-                ? "whitespace-nowrap border-b border-fg pb-0.5 text-fg"
-                : "whitespace-nowrap text-muted transition-colors hover:text-fg"
-            }
-          >
-            Home
-          </Link>
-        </li>
+        {BUILT.map((section) => {
+          const active = pathname === section.href;
+          return (
+            <li key={section.href}>
+              <Link
+                href={section.href}
+                aria-current={active ? "page" : undefined}
+                className={
+                  active
+                    ? "whitespace-nowrap border-b border-fg pb-0.5 text-fg"
+                    : "whitespace-nowrap text-muted transition-colors hover:text-fg"
+                }
+              >
+                {section.label}
+              </Link>
+            </li>
+          );
+        })}
         {PLANNED.map((section) => (
           <li key={section.label} className="hidden sm:block">
             <span

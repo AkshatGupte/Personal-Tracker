@@ -5,6 +5,93 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-08-31 — Motif rotation counts weeks from a Monday (correctness fix)**
+`weekIndex` divided days since the Unix epoch by 7. 1 Jan 1970 was a Thursday,
+so the index rolled over mid-week and the documented pairing — Monday with
+Thursday, Tuesday with Friday, Wednesday alone — never actually happened; the
+motif changed on Thursdays instead. Distribution was still even, so nothing was
+starved, but the behaviour contradicted the documentation and disagreed with
+the Monday weeks used by the heatmap and `lib/rollup.ts`. Same class of defect
+as the UTC day boundary fixed in Item 6: a week boundary inherited from an
+epoch rather than chosen. `lib/motif.ts` now counts from a fixed Monday via
+`startOfWeek`, with a guard for dates before the origin. Nine tests cover it.
+
+**2026-08-31 — A motif hue must be judged after compositing, not at source**
+Lattice was specified at hue 350 (crimson) and measured at hue 320 (magenta) on
+screen. The near-black ground is hue 240, and a low-alpha warm overlay is
+dragged toward it — 30 degrees for lattice, against 6 for voyage and 8 for
+terrace, because red sits furthest from the ground hue. Worse, 320 was the
+closest of all four composited motifs to `accent` purple at 255, so it read as
+a dirty version of the app's own accent rather than as its own colour.
+
+Fixed by rotating the source to hue 9 **at unchanged saturation and lightness**
+— the channel spread is identical, only the middle channel moved. Saturation
+was deliberately not raised. Light theme now composites to hue 15, a clear
+scarlet. Dark theme sits near-achromatic at 6% luminance where hue readings are
+unstable, so it was judged visually rather than numerically.
+
+**2026-08-31 — Lattice is anchored inside the frame, in the empty margin**
+The anchor sat off-canvas at `105% -10%`. Only the far field reached the
+screen, where spokes are effectively parallel and rings effectively straight,
+so it read as diagonal streaks. The spoke-and-ring intersection that *is* a web
+never entered the viewport. Measured as the weakest of the four motifs: mean
+pixel delta 5.01 against terrace 13.1, with only 24.2% of pixels changed by 5
+or more.
+
+The anchor now sits at `96% 58%` — inside the right page margin and below the
+hero, which the empty-space audit identified as permanently empty at desktop
+widths. Spokes at 9 degrees and rings at 68px make cells read as roughly square
+around 430px out. A mask fades the convergence so it never reads as a bullseye,
+and the node reads as an anchor point rather than a target. After the change:
+mean delta 8.59 and 53.7% of pixels at 5 or more — between voyage and terrace,
+no longer the weakest and not the loudest.
+
+This also answers the empty-space question without adding content: the motif
+was strengthened where the page is structurally empty, rather than filling that
+space with something to look at.
+
+**2026-08-31 — Weekly rollups are a period-generic layer, not a weekly one**
+`lib/rollup.ts` takes whatever buckets it is handed. `weekBuckets` is the only
+week-specific thing in it, so the monthly summary needs a `monthBuckets`
+function beside it and nothing else, and the trajectory view can read the same
+`PeriodRollup[]` rather than computing history a third way. Written this way
+deliberately: three features consume the same aggregation, and Phase 3's "pace
+comparison, this week vs last week" is a fourth.
+
+**Every period carries two figures, not one.** `completed` and `activeDays`.
+The same total finished in one sitting and spread across five days are not the
+same week, and only the second figure can tell them apart. This is also the
+distinction the future trajectory work needs for "sustained vs bursty", so it
+is recorded from the start rather than retrofitted.
+
+**Weeks run Monday to Sunday**, matching the heatmap grid. A summary that
+disagreed with the heatmap about where a week begins would be worse than no
+summary.
+
+**Buckets are half-open** (`start` inclusive, `endExclusive` exclusive) and
+consecutive buckets touch exactly, so no day can be double-counted or lost at a
+boundary. Verified for the Sunday/Monday midnight boundary specifically.
+
+**Future days are not zeros.** The current week counts only elapsed days, and a
+day that has not arrived is drawn as an outline rather than as an empty cell —
+it has not been missed. Rows dated in the future are ignored entirely.
+
+**Days are counted, not rows.** `CompletionLog` holds one row per track per
+day, so three tracks active on one Tuesday arrive as three rows. `totalsByDay`
+collapses them first; counting rows would report one day of work as three.
+
+**2026-08-31 — The weekly view uses the heatmap's cell language, not bars**
+The first draft put a bar per week beside the hero. Two things were wrong with
+it: CLAUDE.md states stat visuals are "real drawings … never bars", and a
+per-week bar strip is a trend reading, which would have pre-empted the
+trajectory representation that is deliberately still undecided. Replaced with a
+single-week day strip in the heatmap's own cell vocabulary — one period, so it
+cannot be read as direction over time, and a week here reads the same as a week
+in the twelve-week grid.
+
+The "by week" list is a table of totals for the same reason: it reports what
+each week held without drawing a line through them.
+
 **2026-08-30 — UI critique verified against the build; four of six points held**
 A critique was written from two empty-state screenshots. Measured against the
 running app rather than accepted or dismissed wholesale, as with the earlier
