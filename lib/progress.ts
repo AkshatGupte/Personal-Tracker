@@ -80,8 +80,15 @@ export async function getTrackDetail(id: string) {
     where: { id },
     include: {
       topics: {
-        orderBy: { createdAt: "asc" },
-        include: { tasks: { select: { status: true } } },
+        // Explicit position first; createdAt only breaks ties, so existing
+        // rows created before ordering existed still sort predictably.
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        include: {
+          tasks: {
+            orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+            select: { id: true, title: true, difficulty: true, status: true },
+          },
+        },
       },
     },
   });
@@ -98,6 +105,12 @@ export async function getTrackDetail(id: string) {
     isExpected: topic.isExpected,
     taskCount: topic.tasks.length,
     completedCount: topic.tasks.filter((task) => task.status === "completed").length,
+    tasks: topic.tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      difficulty: task.difficulty,
+      status: task.status,
+    })),
   }));
 
   const taskCount = topics.reduce((total, topic) => total + topic.taskCount, 0);

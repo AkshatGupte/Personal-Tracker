@@ -69,6 +69,7 @@ export default function TerrainProfile({
             y2={H - 0.5}
             stroke="var(--border)"
             strokeWidth="1"
+            strokeDasharray={terrain.hasData ? undefined : "4 6"}
             vectorEffect="non-scaling-stroke"
           />
 
@@ -151,9 +152,15 @@ export default function TerrainProfile({
           )}
         </svg>
 
-        {!terrain.hasData && !compact && (
-          <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-muted">
-            No elevation yet. Completed tasks raise the ground.
+        {!terrain.hasData && (
+          <p
+            className={
+              compact
+                ? "absolute inset-0 flex items-center justify-center text-[0.65rem] text-muted"
+                : "absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-muted"
+            }
+          >
+            {compact ? "No elevation yet" : "No elevation yet. Completed tasks raise the ground."}
           </p>
         )}
       </div>

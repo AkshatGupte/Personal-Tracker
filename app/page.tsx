@@ -25,7 +25,7 @@ export default async function Home() {
       */}
       <section className="mb-5" aria-labelledby="elevation-heading">
         <div className="card-lit overflow-hidden rounded-2xl border border-border bg-surface">
-          <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
+          <div className="grid grid-cols-1 gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
             <div>
               <h1
                 id="elevation-heading"
@@ -55,7 +55,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <div className="mb-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
         {/* Tracks: the work itself, each row a way in. */}
         <Card
           title="Tracks"

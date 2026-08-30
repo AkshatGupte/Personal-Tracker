@@ -5,6 +5,101 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-08-30 — Completion model settled (supersedes the open question below)**
+Approved before writing Item 6. Source of truth splits as follows:
+
+- `Task.status` + `Task.completedAt` own whether a single task is done, and when
+- The completion ratio is derived from `Task.status` on read, never stored
+- `CompletionLog` owns historical daily activity: streaks, heatmap, terrain
+- `Track.currentStreak` / `longestStreak` / `lastActivityDate` are a cache of
+  what `CompletionLog` already implies, and can always be rebuilt from it
+
+**Today's `CompletionLog` row is a recomputed rollup of `Task.completedAt`;
+earlier days are frozen.** On any completion or uncompletion, set or clear the
+task fields, then recompute only the current day's row. Never rewrite an
+earlier day.
+
+Consequences, all intended:
+- The ratio changes immediately, because it reads live task state
+- History is never rewritten, so a streak that was earned stays earned
+- Terrain does not decrease across days. It may adjust within the current day,
+  which is a correction rather than history
+- Uncompleting or deleting a task completed on an earlier day clears the task
+  but leaves that day's history intact
+
+**Recompute, never increment.** `increment: 1` double-counts on
+complete, uncomplete, complete, inflating elevation from a single task.
+Recomputing is idempotent, which also makes retries and double-clicks safe.
+Recompute the streak from `CompletionLog` rather than doing
+`currentStreak + 1`, which drifts on any retry.
+
+Note that `buildTerrain` does not enforce monotonicity: it is a plain
+cumulative sum and would render a decrease faithfully. Monotonicity is a
+property of this write policy, not of the drawing code.
+
+**2026-08-30 — Day boundaries move to local time, via one shared helper**
+All day maths is currently UTC (`lib/terrain.ts`, `lib/progress.ts`,
+`components/StreakHeatmap.tsx`). For a single local user that rolls the day at
+05:30 IST, so a task finished at 02:00 Tuesday counts as Monday and can break a
+strict streak unfairly. CLAUDE.md specifies local-first and a single local
+user, and the server is the user's own machine, so local time is unambiguous.
+Reads and writes must share one `startOfDay()` helper. If the app is ever
+deployed to Vercel the server returns to UTC and this needs revisiting.
+
+**2026-08-30 — `CompletionLog.date` must be normalised on write**
+`@@unique([trackId, date])` compares the full `DateTime`, so writing
+`new Date()` creates a new row per completion instead of upserting, silently
+breaking the documented one-row-per-track-per-day invariant. Reads would hide
+the damage, because `toCountsByDay` sums by day key. Every write goes through
+the shared day helper.
+
+**2026-08-30 — Broad visual critique deferred until real completion data exists**
+A twelve-point design criticism was verified against the working tree. Four
+points were real (compact terrain empty state, three simultaneously empty
+visualisations, one uppercase eyebrow per card, two sources of truth for
+completion). Three were false when measured: unused desktop space is 23% at
+1440x900 worst case and 13% with three tracks, typography is sound apart from a
+missing middle step in the scale, and cards are not themselves the problem.
+The rest are artefacts of having no completion data. Decision: fix only the
+compact terrain empty state now, and revisit visual identity after the
+completion engine exists, because most of the criticism is measuring an empty
+room rather than a badly designed one.
+
+**2026-08-30 — `CompletionLog` authority is an OPEN question for Item 6**
+Not yet decided, recorded so it is not missed. The terrain reads
+`CompletionLog`; the completion ratio reads `Task.status`. Nothing reconciles
+them, and `buildTerrain` is cumulative so elevation only ever rises. If a task
+can be un-completed, the ratio falls while the terrain does not. Item 6 must
+decide whether `CompletionLog` is authoritative or derived from
+`Task.completedAt` before writing the engine.
+
+**2026-08-30 — Explicit `position` on Topic and Task**
+Both were ordered by `createdAt` only. Added `position Int @default(0)` to each,
+with composite indexes `(trackId, position)` and `(topicId, position)`. New rows
+append as max+1. Reads sort by `position` then `createdAt`, so rows created
+before the column existed still order predictably. Nothing reorders rows yet;
+the field exists so ordering is not retrofitted once curricula are generated.
+Prerequisites and dependency relations were deliberately not added.
+
+**2026-08-30 — A `"use server"` module may only export async functions**
+`DIFFICULTIES` was first declared in `lib/actions/tasks.ts`. It crossed the
+server/client boundary as a non-array and crashed the track page with
+"DIFFICULTIES.map is not a function". Constants now live in
+`lib/difficulty.ts`. Type-only exports from an action module remain fine
+because they are erased at compile time.
+
+**2026-08-30 — Task form is not built on InlineCreateForm**
+A task carries a title and an optional difficulty. Pushing a select through the
+single-field primitive would have added props no other caller uses, so
+`NewTaskForm` is separate. `InlineCreateForm` still serves tracks and topics.
+
+**2026-08-30 — Grid children need an explicit base column**
+Both pages used `grid` with columns defined only at `lg`. Grid items default to
+`min-width: auto`, so at narrow widths content forced the track wider than the
+viewport and the page scrolled sideways: 400px against a 390px viewport, and
+327px against 320px on the home page before Tasks existed. Adding
+`grid-cols-1` at the base fixes both and changes nothing at desktop.
+
 **2026-08-30 — Terrain is the progress metaphor, and it is data-driven**
 Elevation is cumulative completed tasks read from `CompletionLog`. Pace is not
 a separate metric: strata sit at fixed elevations, so a steep climb crosses

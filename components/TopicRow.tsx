@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import NewTaskForm from "@/components/NewTaskForm";
+import TaskRow, { type TaskRowData } from "@/components/TaskRow";
 import { deleteTopic, renameTopic } from "@/lib/actions/topics";
 
 export type TopicRowData = {
@@ -9,6 +11,7 @@ export type TopicRowData = {
   taskCount: number;
   completedCount: number;
   isExpected: boolean;
+  tasks: TaskRowData[];
 };
 
 const actionButton =
@@ -23,6 +26,9 @@ export default function TopicRow({
 }) {
   const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
   const [error, setError] = useState<string | null>(null);
+  // Open by default: adding tasks is the main thing to do here, and hiding it
+  // behind a click would put friction on the primary action.
+  const [open, setOpen] = useState(true);
   const [pending, startTransition] = useTransition();
 
   const onRename = (formData: FormData) => {
@@ -116,38 +122,67 @@ export default function TopicRow({
   const allDone = topic.taskCount > 0 && topic.completedCount === topic.taskCount;
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
-      <div className="min-w-0">
-        <p className="flex items-center gap-2 truncate font-semibold">
-          {topic.name}
-          {topic.isExpected && (
-            <span className="rounded-lg border border-border px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-muted">
-              curriculum
+    <li className="px-5 py-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((wasOpen) => !wasOpen)}
+            aria-expanded={open}
+            aria-controls={`tasks-${topic.id}`}
+            className="shrink-0 rounded-lg px-1 text-xs text-muted transition-colors hover:text-fg"
+          >
+            <span aria-hidden="true">{open ? "\u25BE" : "\u25B8"}</span>
+            <span className="sr-only">
+              {open ? `Hide tasks in ${topic.name}` : `Show tasks in ${topic.name}`}
             </span>
-          )}
-        </p>
-        <p className="tabular mt-0.5 text-xs text-muted">
-          {topic.taskCount === 0 ? (
-            "No tasks yet"
-          ) : (
-            <>
-              <span className={allDone ? "font-semibold text-positive" : "text-fg"}>
-                {topic.completedCount}
-              </span>
-              {" of "}
-              {topic.taskCount} task{topic.taskCount === 1 ? "" : "s"} done
-            </>
-          )}
-        </p>
+          </button>
+          <div className="min-w-0">
+            <p className="flex min-w-0 items-center gap-2 truncate font-semibold">
+              {topic.name}
+              {topic.isExpected && (
+                <span className="rounded-lg border border-border px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-muted">
+                  curriculum
+                </span>
+              )}
+            </p>
+            <p className="tabular mt-0.5 text-xs text-muted">
+              {topic.taskCount === 0 ? (
+                "No tasks yet"
+              ) : (
+                <>
+                  <span className={allDone ? "font-semibold text-positive" : "text-fg"}>
+                    {topic.completedCount}
+                  </span>
+                  {" of "}
+                  {topic.taskCount} task{topic.taskCount === 1 ? "" : "s"} done
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button type="button" onClick={() => setMode("rename")} className={actionButton}>
+            Rename
+          </button>
+          <button type="button" onClick={() => setMode("confirm")} className={actionButton}>
+            Delete
+          </button>
+        </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <button type="button" onClick={() => setMode("rename")} className={actionButton}>
-          Rename
-        </button>
-        <button type="button" onClick={() => setMode("confirm")} className={actionButton}>
-          Delete
-        </button>
-      </div>
+
+      {open && (
+        <div id={`tasks-${topic.id}`} className="mt-3 border-l border-border pl-4">
+          {topic.tasks.length > 0 && (
+            <ul className="mb-2 divide-y divide-border">
+              {topic.tasks.map((task) => (
+                <TaskRow key={task.id} task={task} trackId={trackId} />
+              ))}
+            </ul>
+          )}
+          <NewTaskForm topicId={topic.id} trackId={trackId} />
+        </div>
+      )}
     </li>
   );
 }

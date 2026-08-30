@@ -25,9 +25,19 @@ export async function createTopic(
   const parsed = parseName(formData.get("name"));
   if (!parsed.ok) return { error: parsed.error };
 
+  // Appended to the end of the track. Position is assigned explicitly so a
+  // later reorder or a generated curriculum has something real to sort by.
+  const last = await prisma.topic.findFirst({
+    where: { trackId },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+
   // isExpected stays false: topics added by hand are not curriculum entries.
   // The LLM-suggested curriculum sets that flag in Phase 3.
-  await prisma.topic.create({ data: { trackId, name: parsed.name } });
+  await prisma.topic.create({
+    data: { trackId, name: parsed.name, position: (last?.position ?? -1) + 1 },
+  });
   revalidatePath(`/tracks/${trackId}`);
   revalidatePath("/");
   return {};

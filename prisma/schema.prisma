@@ -38,12 +38,18 @@ model Topic {
   /// True if this came from the suggested curriculum, false if user-added.
   isExpected Boolean @default(false)
 
+  /// Explicit order within the track. A curriculum is a sequence, and creation
+  /// order does not survive reordering or regeneration, so ordering is stored
+  /// rather than inferred from createdAt.
+  position Int @default(0)
+
   createdAt DateTime @default(now())
 
   track Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
   tasks Task[]
 
   @@index([trackId])
+  @@index([trackId, position])
 }
 
 /// An individual completable item within a Topic, e.g. "Solve: Two Sum".
@@ -61,11 +67,15 @@ model Task {
   /// Null until the task is completed.
   completedAt DateTime?
 
+  /// Explicit order within the topic. Same reasoning as Topic.position.
+  position Int @default(0)
+
   createdAt DateTime @default(now())
 
   topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
+  @@index([topicId, position])
   @@index([status])
 }
 

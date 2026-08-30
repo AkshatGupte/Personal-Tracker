@@ -8,7 +8,7 @@ one is functionally complete, unless explicitly told otherwise.
 - [x] Prisma schema from `docs/SCHEMA.md` (Track, Topic, Task, CompletionLog)
 - [x] CRUD: create/edit/delete Track
 - [x] CRUD: add Topic under Track
-- [ ] CRUD: add Task under Topic
+- [x] CRUD: add Task under Topic
 - [ ] Mark Task complete → updates CompletionLog + streak logic
 - [ ] Strict streak logic (reset on missed day)
 - [ ] Basic UI: list tracks, view topics/tasks, mark complete

@@ -52,7 +52,7 @@ export default async function TrackPage({
       {/* Overview and terrain together: the track and how far it has risen. */}
       <section className="mb-5" aria-labelledby="track-heading">
         <div className="card-lit overflow-hidden rounded-2xl border border-border bg-surface">
-          <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
+          <div className="grid grid-cols-1 gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
             <div>
               <h1 id="track-heading" className="text-3xl font-extrabold tracking-tight">
                 {track.name}
@@ -99,7 +99,7 @@ export default async function TrackPage({
         </div>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
         <Card title="Topics" delay={0}>
           <InlineCreateForm
             action={addTopic}
