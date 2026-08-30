@@ -17,7 +17,7 @@ export type TrackRowData = {
 };
 
 const actionButton =
-  "rounded-lg px-2 py-1 text-xs font-semibold text-muted transition-colors hover:text-fg";
+  "rounded-[3px] px-1.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg";
 
 export default function TrackRow({ track }: { track: TrackRowData }) {
   const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
@@ -43,7 +43,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
 
   if (mode === "rename") {
     return (
-      <li className="px-5 py-4">
+      <li className="py-4">
         <form action={onRename} className="flex flex-col gap-2">
           <div className="flex gap-2">
             <input
@@ -52,12 +52,12 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
               autoFocus
               maxLength={80}
               aria-label="Track name"
-              className="min-w-0 flex-1 rounded-lg border border-border bg-elevated px-3 py-1.5 text-sm focus:border-accent"
+              className="min-w-0 flex-1 rounded-[3px] border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
             />
             <button
               type="submit"
               disabled={pending}
-              className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-contrast disabled:opacity-60"
+              className="shrink-0 rounded-[3px] bg-accent px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-accent-contrast disabled:opacity-60"
             >
               Save
             </button>
@@ -73,7 +73,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
             </button>
           </div>
           {error && (
-            <p role="alert" className="text-sm text-muted">
+            <p role="alert" className="font-mono text-[0.7rem] text-muted">
               {error}
             </p>
           )}
@@ -90,7 +90,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
     ].filter(Boolean) as string[];
 
     return (
-      <li className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+      <li className="flex flex-wrap items-center justify-between gap-3 py-4">
         <p className="text-sm">
           Delete <span className="font-semibold">{track.name}</span>
           {alsoRemoved.length > 0 && <> and its {alsoRemoved.join(" and ")}</>}? This
@@ -101,7 +101,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
             type="button"
             onClick={onDelete}
             disabled={pending}
-            className="rounded-lg px-2 py-1 text-xs font-semibold text-streak disabled:opacity-60"
+            className="rounded-[3px] px-1.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-streak disabled:opacity-60"
           >
             {pending ? "Deleting…" : "Delete"}
           </button>
@@ -114,17 +114,17 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
   }
 
   return (
-    <li className="group grid grid-cols-1 items-center gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_10rem_auto]">
+    <li className="grid grid-cols-1 items-center gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_10rem_auto]">
       <div className="min-w-0">
-        <h3 className="truncate font-semibold">
+        <h3 className="truncate font-display text-2xl leading-tight tracking-tight">
           <Link
             href={`/tracks/${track.id}`}
-            className="rounded-lg transition-colors hover:text-accent"
+            className="rounded-[3px] transition-colors hover:text-accent"
           >
             {track.name}
           </Link>
         </h3>
-        <p className="tabular mt-0.5 text-xs text-muted">
+        <p className="mt-1 font-mono text-[0.6rem] uppercase tracking-[0.12em] tabular-nums text-muted">
           {track.taskCount === 0 ? (
             `${track.topicCount} topic${track.topicCount === 1 ? "" : "s"}, no tasks yet`
           ) : (

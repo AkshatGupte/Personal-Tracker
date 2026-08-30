@@ -1,12 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { buildTerrain, dayKey, TERRAIN_DAYS, type DayLog } from "@/lib/terrain";
+import { addDays, dayKey, startOfDay } from "@/lib/day";
+import { EMPTY_STREAK, summariseStreak } from "@/lib/streak";
+import { buildTerrain, TERRAIN_DAYS, type DayLog } from "@/lib/terrain";
 
 /** Oldest day still inside the terrain window. */
 function windowStart(): Date {
-  const start = new Date();
-  start.setUTCHours(0, 0, 0, 0);
-  start.setUTCDate(start.getUTCDate() - (TERRAIN_DAYS - 1));
-  return start;
+  return addDays(startOfDay(), -(TERRAIN_DAYS - 1));
 }
 
 /** Sums daily counts into the map the heatmap reads. */
@@ -17,6 +16,32 @@ function toCountsByDay(logs: DayLog[]): Record<string, number> {
     counts[key] = (counts[key] ?? 0) + log.tasksCompletedCount;
   }
   return counts;
+}
+
+/**
+ * Streaks are recomputed from CompletionLog on every read, rather than read
+ * out of Track.currentStreak.
+ *
+ * A strict streak has to break through inactivity, and inactivity by
+ * definition writes nothing — so a user who stops for a week triggers no code
+ * that could reset the cached number. Deriving it here means the displayed
+ * streak is correct the moment it lapses, without a render doing writes. The
+ * cached columns are still kept current by the write path, and this is what
+ * they would say if rebuilt.
+ */
+function streakOf(activeDays: Date[]) {
+  return activeDays.length === 0 ? EMPTY_STREAK : summariseStreak(activeDays);
+}
+
+/** One row per track per day, so a track's whole history is a small read. */
+function groupByTrack(logs: { trackId: string; date: Date; tasksCompletedCount: number }[]) {
+  const byTrack = new Map<string, DayLog[]>();
+  for (const log of logs) {
+    const list = byTrack.get(log.trackId) ?? [];
+    list.push({ date: log.date, tasksCompletedCount: log.tasksCompletedCount });
+    byTrack.set(log.trackId, list);
+  }
+  return byTrack;
 }
 
 /**
@@ -34,31 +59,33 @@ export async function getHomeProgress() {
         topics: { select: { tasks: { select: { status: true } } } },
       },
     }),
+    // The whole history, not just the terrain window: a streak can be longer
+    // than 12 weeks, and truncating the read would silently cap it.
     prisma.completionLog.findMany({
-      where: { date: { gte: since } },
       select: { trackId: true, date: true, tasksCompletedCount: true },
     }),
     prisma.task.count(),
     prisma.task.count({ where: { status: "completed" } }),
   ]);
 
-  const byTrack = new Map<string, DayLog[]>();
-  for (const log of logs) {
-    const list = byTrack.get(log.trackId) ?? [];
-    list.push({ date: log.date, tasksCompletedCount: log.tasksCompletedCount });
-    byTrack.set(log.trackId, list);
-  }
+  const windowLogs = logs.filter((log) => log.date >= since);
+  const allByTrack = groupByTrack(logs);
+  const windowByTrack = groupByTrack(windowLogs);
 
   const rows = tracks.map((track) => {
     const tasks = track.topics.flatMap((topic) => topic.tasks);
+    const active = (allByTrack.get(track.id) ?? [])
+      .filter((log) => log.tasksCompletedCount > 0)
+      .map((log) => log.date);
+
     return {
       id: track.id,
       name: track.name,
-      currentStreak: track.currentStreak,
+      currentStreak: streakOf(active).current,
       topicCount: track._count.topics,
       taskCount: tasks.length,
       completedCount: tasks.filter((task) => task.status === "completed").length,
-      terrain: buildTerrain(byTrack.get(track.id) ?? []),
+      terrain: buildTerrain(windowByTrack.get(track.id) ?? []),
     };
   });
 
@@ -66,8 +93,10 @@ export async function getHomeProgress() {
     rows,
     totalTasks,
     completedTasks,
-    terrain: buildTerrain(logs.map((l) => ({ date: l.date, tasksCompletedCount: l.tasksCompletedCount }))),
-    countsByDay: toCountsByDay(logs),
+    terrain: buildTerrain(
+      windowLogs.map((l) => ({ date: l.date, tasksCompletedCount: l.tasksCompletedCount })),
+    ),
+    countsByDay: toCountsByDay(windowLogs),
     bestStreak: rows.reduce((best, row) => Math.max(best, row.currentStreak), 0),
   };
 }
@@ -95,9 +124,14 @@ export async function getTrackDetail(id: string) {
   if (!track) return null;
 
   const logs = await prisma.completionLog.findMany({
-    where: { trackId: id, date: { gte: since } },
+    where: { trackId: id },
     select: { date: true, tasksCompletedCount: true },
   });
+
+  const windowLogs = logs.filter((log) => log.date >= since);
+  const streak = streakOf(
+    logs.filter((log) => log.tasksCompletedCount > 0).map((log) => log.date),
+  );
 
   const topics = track.topics.map((topic) => ({
     id: topic.id,
@@ -113,19 +147,22 @@ export async function getTrackDetail(id: string) {
     })),
   }));
 
+  // The completion ratio is derived from live task state, never from history:
+  // it answers "how much of this track is done now", which is a different
+  // question from "what was finished on each day".
   const taskCount = topics.reduce((total, topic) => total + topic.taskCount, 0);
   const completedCount = topics.reduce((total, topic) => total + topic.completedCount, 0);
 
   return {
     id: track.id,
     name: track.name,
-    currentStreak: track.currentStreak,
-    longestStreak: track.longestStreak,
+    currentStreak: streak.current,
+    longestStreak: streak.longest,
     createdAt: track.createdAt,
     topics,
     taskCount,
     completedCount,
-    terrain: buildTerrain(logs),
-    countsByDay: toCountsByDay(logs),
+    terrain: buildTerrain(windowLogs),
+    countsByDay: toCountsByDay(windowLogs),
   };
 }

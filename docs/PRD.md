@@ -63,6 +63,24 @@ multi-step decision-making, no background agents, no model-initiated actions.
 - No structural changes needed to ship this later — it's a prompt-layer
   addition on top of the existing insight engine
 
+## Post-MVP Capabilities (in scope, form not yet decided)
+
+Recorded here so they are not mistaken for out-of-scope. Both are real
+product capabilities; neither has its representation chosen, and neither
+should be built ahead of its phase. See `docs/ROADMAP.md`.
+
+- **Learning trajectory / consistency over time** (Phase 2, last item):
+  a representation of whether the user is consistent, whether momentum is
+  improving or declining, and whether progress is sustained or bursty. Goes
+  beyond the streak counter and completion percentage — those, along with the
+  heatmap and terrain elevation, are inputs to it rather than the answer.
+- **Track structure exploration** (Phase 5): a richer representation of
+  Track → Topic → Task showing what has been learned, what remains, and the
+  progression through it. The form — tree, dependency graph, mind map,
+  progression path, radial, terrain-based or otherwise — is deliberately left
+  open until the real learning experience and data model have been evaluated.
+  Prerequisite/dependency relations follow that decision, if needed at all.
+
 ## Explicit Non-Goals
 
 - Multi-user support / accounts / auth

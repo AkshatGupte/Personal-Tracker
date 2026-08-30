@@ -42,9 +42,9 @@ export default function ThemeToggle() {
       // Rendered before the theme is known, so the label stays generic until
       // it resolves — avoids announcing the wrong state to screen readers.
       aria-label={theme ? `Switch to ${theme === "dark" ? "light" : "dark"} theme` : "Switch theme"}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-elevated text-muted transition-colors hover:text-fg"
+      className="inline-flex h-7 w-7 items-center justify-center rounded-[3px] border border-border text-muted transition-colors hover:border-fg hover:text-fg"
     >
-      <span aria-hidden="true" className="text-sm leading-none">
+      <span aria-hidden="true" className="text-xs leading-none">
         {theme === "dark" ? "☀" : "☾"}
       </span>
     </button>

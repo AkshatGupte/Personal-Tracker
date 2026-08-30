@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { ActionResult } from "@/lib/actions/tracks";
+import { recomputeToday } from "@/lib/completion";
 
 const MAX_NAME = 80;
 
@@ -59,9 +60,25 @@ export async function renameTopic(
 /**
  * Deletes a topic. Its tasks go with it, because the schema cascades, so the
  * caller is expected to confirm first and name what is lost.
+ *
+ * Today's rollup is rebuilt afterwards: if any of those tasks were completed
+ * today they no longer exist, so today's count must not still include them.
+ * Earlier days stay as they were.
  */
 export async function deleteTopic(id: string, trackId: string): Promise<ActionResult> {
-  await prisma.topic.delete({ where: { id } });
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    const topic = await tx.topic.findUnique({
+      where: { id },
+      select: { trackId: true },
+    });
+    if (!topic) return;
+
+    await tx.topic.delete({ where: { id } });
+    await recomputeToday(tx, topic.trackId, now);
+  });
+
   revalidatePath(`/tracks/${trackId}`);
   revalidatePath("/");
   return {};

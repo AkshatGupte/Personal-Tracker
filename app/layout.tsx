@@ -1,11 +1,31 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
+import AtmosphereField from "@/components/AtmosphereField";
 import "./globals.css";
 
+// Three roles, three families. Weights are held to what each role actually
+// uses, because the hierarchy is built from family, size, case and tracking
+// rather than from weight.
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+// Ships a single weight, so a heading cannot be bolded even by accident.
+const instrument = Instrument_Serif({
+  variable: "--font-instrument",
+  subsets: ["latin"],
+  weight: ["400"],
+  display: "swap",
+});
+
+// Every number in the app sits in this, which guarantees tabular figures.
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
   display: "swap",
 });
 
@@ -24,17 +44,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={jakarta.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${jakarta.variable} ${instrument.variable} ${plexMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
       <body className="min-h-dvh bg-bg font-sans text-fg antialiased">
-        {/*
-          A faint ruled ground. The drifting gradient blobs that used to sit
-          here were decoration unrelated to any data, so they were retired;
-          the terrain profile now carries the light.
-        */}
-        <div aria-hidden="true" className="pattern-grid pointer-events-none fixed inset-0 -z-10" />
+        <AtmosphereField />
         {children}
       </body>
     </html>

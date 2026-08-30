@@ -18,7 +18,7 @@ export default function ProgressRing({
   const filled = circumference * (percent / 100);
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
       <div className="relative">
         <svg
           width="168"
@@ -46,6 +46,11 @@ export default function ProgressRing({
           */}
           {percent > 0 && (
             <circle
+              /*
+                Keyed by the value so finishing a task re-runs the draw: the
+                ring visibly advances to its new length instead of snapping.
+              */
+              key={percent}
               cx="84"
               cy="84"
               r={radius}
@@ -56,21 +61,23 @@ export default function ProgressRing({
               strokeDasharray={`${filled} ${circumference}`}
               style={{
                 ["--ring-circumference" as string]: circumference,
-                filter: "drop-shadow(0 0 6px var(--card-edge))",
                 animation: "ring-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) both",
               }}
             />
           )}
         </svg>
         <div aria-hidden="true" className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="tabular text-4xl font-extrabold leading-none">{percent}%</span>
-          <span className="mt-1 text-xs text-muted">complete</span>
+          <span className="font-mono text-4xl font-medium leading-none tracking-tight tabular-nums">
+            {percent}%
+          </span>
+          <span className="mt-1.5 font-mono text-[0.6rem] uppercase tracking-[0.15em] text-muted">
+            complete
+          </span>
         </div>
       </div>
 
-      <p aria-hidden="true" className="tabular text-sm text-muted">
-        <span className="font-semibold text-fg">{completed}</span> of{" "}
-        <span className="font-semibold text-fg">{total}</span> tasks done
+      <p aria-hidden="true" className="font-mono text-[0.65rem] uppercase leading-relaxed tracking-[0.14em] tabular-nums text-muted">
+        <span className="text-fg">{completed}</span> of <span className="text-fg">{total}</span> tasks
       </p>
     </div>
   );

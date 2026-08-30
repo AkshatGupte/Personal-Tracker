@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import Card from "@/components/Card";
 import InlineCreateForm from "@/components/InlineCreateForm";
+import Panel from "@/components/Panel";
 import ProgressRing from "@/components/ProgressRing";
 import StreakHeatmap from "@/components/StreakHeatmap";
 import TerrainProfile from "@/components/TerrainProfile";
@@ -23,6 +23,25 @@ export async function generateMetadata({
   return { title: track ? `${track.name} · Rendred` : "Rendred" };
 }
 
+/** One measurement in the hero column: mono label, mono numeral. */
+function Stat({ label, value, tone }: { label: string; value: number; tone?: "ember" }) {
+  return (
+    <div>
+      <dt className="font-mono text-[0.6rem] uppercase tracking-[0.17em] text-muted">
+        {label}
+      </dt>
+      <dd
+        className={`mt-1.5 font-mono text-3xl font-medium leading-none tracking-tight tabular-nums ${
+          // Ember marks real achievement, so a zero streak stays muted.
+          tone === "ember" ? (value > 0 ? "text-streak" : "text-muted") : "text-fg"
+        }`}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 export default async function TrackPage({
   params,
 }: {
@@ -40,67 +59,69 @@ export default async function TrackPage({
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <TopNav />
 
-      <nav aria-label="Breadcrumb" className="mb-4">
+      <nav aria-label="Breadcrumb" className="mb-5">
         <Link
           href="/"
-          className="rounded-lg text-sm text-muted transition-colors hover:text-fg"
+          className="rounded-[3px] font-mono text-[0.6rem] uppercase tracking-[0.15em] text-muted transition-colors hover:text-fg"
         >
           &larr; All tracks
         </Link>
       </nav>
 
-      {/* Overview and terrain together: the track and how far it has risen. */}
-      <section className="mb-5" aria-labelledby="track-heading">
-        <div className="card-lit overflow-hidden rounded-2xl border border-border bg-surface">
-          <div className="grid grid-cols-1 gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-center">
-            <div>
-              <h1 id="track-heading" className="text-3xl font-extrabold tracking-tight">
-                {track.name}
-              </h1>
+      {/* The track and how far its ground has risen. */}
+      <section
+        className="grid grid-cols-1 items-stretch gap-4 border-b border-border pb-6 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] lg:gap-8"
+        aria-labelledby="track-heading"
+      >
+        <div className="flex flex-col justify-center gap-6 py-2">
+          <h1
+            id="track-heading"
+            className="font-display text-4xl leading-[1.05] tracking-tight text-balance"
+          >
+            {track.name}
+          </h1>
 
-              <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-4">
-                <div>
-                  <dt className="text-[0.7rem] uppercase tracking-[0.18em] text-muted">
-                    Elevation
-                  </dt>
-                  <dd className="tabular mt-1 text-2xl font-extrabold">{track.terrain.peak}</dd>
-                </div>
-                <div>
-                  <dt className="text-[0.7rem] uppercase tracking-[0.18em] text-muted">
-                    Streak
-                  </dt>
-                  {/* Ember marks real achievement, so a zero streak stays muted. */}
-                  <dd
-                    className={`tabular mt-1 text-2xl font-extrabold ${
-                      track.currentStreak > 0 ? "text-streak" : "text-muted"
-                    }`}
-                  >
-                    {track.currentStreak}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[0.7rem] uppercase tracking-[0.18em] text-muted">
-                    Longest
-                  </dt>
-                  <dd className="tabular mt-1 text-2xl font-extrabold">
-                    {track.longestStreak}
-                  </dd>
-                </div>
-              </dl>
-            </div>
+          <dl className="flex flex-wrap gap-x-8 gap-y-4">
+            <Stat label="Elevation" value={track.terrain.peak} />
+            <Stat label="Streak" value={track.currentStreak} tone="ember" />
+            <Stat label="Longest" value={track.longestStreak} />
+          </dl>
 
-            <TerrainProfile
-              id={track.id}
-              terrain={track.terrain}
-              scope={track.name}
-              height="h-40 sm:h-48"
-            />
-          </div>
+          {/*
+            The statement sits beside the number it explains rather than
+            floating in the middle of the empty terrain, which read as stray
+            text. The terrain itself stays a plain dashed baseline.
+          */}
+          {!track.terrain.hasData && (
+            <p className="max-w-[34ch] text-sm leading-relaxed text-muted">
+              No elevation yet. Completing a task raises the ground.
+            </p>
+          )}
+        </div>
+
+        <div className="bleed-r min-h-[9rem] lg:min-h-[13rem]">
+          <TerrainProfile
+            id={track.id}
+            terrain={track.terrain}
+            scope={track.name}
+            height="h-36 sm:h-44 lg:h-full"
+            quiet
+          />
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
-        <Card title="Topics" delay={0}>
+      <div className="divide-y divide-border">
+        <Panel
+          label="Topics"
+          sublabel={`${track.topics.length} in track`}
+          action={
+            <span className="font-mono text-[0.6rem] uppercase tabular-nums tracking-[0.12em] text-muted">
+              {track.taskCount === 0
+                ? "no tasks yet"
+                : `${track.completedCount} / ${track.taskCount} done`}
+            </span>
+          }
+        >
           <InlineCreateForm
             action={addTopic}
             label="Topic name"
@@ -108,34 +129,32 @@ export default async function TrackPage({
           />
 
           {track.topics.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted">
+            <p className="py-8 text-sm text-muted">
               No topics yet. A Topic is one area inside this track, like Arrays inside
               DSA.
             </p>
           ) : (
-            <ul className="-mx-5 mt-4 divide-y divide-border border-t border-border">
+            <ul className="mt-2 divide-y divide-border border-t border-border">
               {track.topics.map((topic) => (
                 <TopicRow key={topic.id} topic={topic} trackId={track.id} />
               ))}
             </ul>
           )}
-        </Card>
+        </Panel>
 
-        <div className="flex flex-col gap-5">
-          <Card title="Completion" delay={1}>
-            <div className="py-2">
-              <ProgressRing
-                completed={track.completedCount}
-                total={track.taskCount}
-                label={`${track.name} completion`}
-              />
-            </div>
-          </Card>
+        <Panel label="Completion" sublabel="live task state">
+          <div className="py-2">
+            <ProgressRing
+              completed={track.completedCount}
+              total={track.taskCount}
+              label={`${track.name} completion`}
+            />
+          </div>
+        </Panel>
 
-          <Card title="Consistency" delay={2}>
-            <StreakHeatmap countsByDay={track.countsByDay} scope={track.name} />
-          </Card>
-        </div>
+        <Panel label="Consistency" sublabel="12 weeks">
+          <StreakHeatmap countsByDay={track.countsByDay} scope={track.name} />
+        </Panel>
       </div>
     </div>
   );

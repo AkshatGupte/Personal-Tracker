@@ -6,6 +6,167 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-08-30 — The survey redesign, and a quiet daily atmosphere
+
+**What was built:**
+Rendred no longer looks like a dashboard. It looks like a survey sheet: your
+terrain runs edge to edge across the top of the page as the ground everything
+else stands on, sections are separated by thin ruled lines instead of rounded
+boxes, and the numbers are set in a typewriter-style face so they read as
+measurements. There is also a new, deliberately quiet touch — the faint pattern
+and tint behind the page changes with the day of the week, drawn from your own
+interests. It is never labelled and never named; you will know why Wednesday
+looks different, and nobody else needs to.
+
+**How it works (flow):**
+1. The page is rendered on the server, which checks what day it is locally and
+   picks one of four background "atmospheres" — three that rotate across
+   weekdays, one for the weekend.
+2. That choice sets a handful of background-only colour variables. They paint
+   a faint tint, a ruled grid and one piece of geometry behind everything.
+3. The rest of the page uses a completely separate set of colours — the ones
+   that carry meaning. Purple is progress, amber is your streak, green is
+   completion.
+4. Because the two sets never mix, changing the day can never change what a
+   colour means. The terrain, the ring and the tick look identical on every
+   day of the week. This was checked, not assumed.
+
+**What changed visually:**
+- **Typography.** Three faces instead of one: a serif for track names, a
+  monospace for every number and label, and the existing sans for body text
+  and tasks. Hierarchy now comes from which face is used, at what size, in
+  what case — not from making things bold.
+- **No more cards.** Rounded corners now mean one thing only: you can click it.
+  Buttons, inputs and the completion tick are rounded; panels and sections are
+  not. They are separated by a hairline and by space.
+- **Full-bleed terrain.** It runs off the right edge of the page, with
+  milestone values printed in the left margin at the exact height they were
+  crossed, like contour lines on a map.
+- **Less motion.** Animations that reported nothing were removed: cards sliding
+  in, cards lifting on hover, the heatmap fading in cell by cell, and a dot that
+  appeared a second after load. What survives is the moment a task is completed
+  and the drawing of the data itself.
+
+**What did NOT change:**
+Nothing about how the app actually works. The completion engine, the streak
+rules, the database and every server action are untouched. The full Item 6 test
+suite was re-run against the redesign and still passes.
+
+**What was checked:**
+- Typecheck, lint and a production build all pass
+- The Item 6 engine suites re-run in full: 15 + 21 + 3 checks, all passing,
+  including three browser tabs completing at the same moment
+- 21 redesign checks: the completion tick still reachable by keyboard with a
+  visible focus ring and a 32px target, contrast at or above 4.5:1 on all four
+  atmospheres in both themes, nothing animating under reduced motion, and no
+  sideways scrolling at 390px or 768px
+- Screenshots reviewed in both themes, desktop and phone. Four problems were
+  found this way and fixed: the terrain over-extending past the window, the
+  atmosphere being far too strong at full page size, the scale labels colliding
+  with the landform, and a panel label drifting to the bottom of the page
+- The browser console is clean, the database passes its integrity sweep, and
+  the test data was removed afterwards
+
+**Technical concepts used:**
+- `next/font/google` — loads the two new typefaces with the app, no new package
+- CSS custom properties in two separate layers — one for meaning, one for
+  atmosphere, so the second cannot leak into the first
+- Container-relative full-bleed maths — lets the terrain escape the page
+  column without over-shooting the window
+- A pure server-side function for the day-to-atmosphere choice, so the server
+  and the browser can never disagree about it
+
+**Roadmap status:** no roadmap item. This is the visual direction approved on
+2026-08-30 and recorded in `CLAUDE.md` and `docs/DECISIONS.md`.
+
+---
+
+## 2026-08-30 — Marking tasks complete, and the streak engine behind it
+
+**What was built:**
+Every task now has a tick box. Click it and the task is done: the ring on the
+right advances, the elevation number rises, the streak counts up, and today
+lights up on the twelve-week grid. Click it again and it goes back to pending.
+This is the piece that makes the rest of the app mean anything — until now
+nothing in the app ever wrote a day of activity, so every chart sat at zero for
+a real user.
+
+**How it works (flow):**
+1. You click the tick on a task → the tick fills in straight away, before the
+   server has answered, so the click feels immediate.
+2. The server marks that one task as done and stamps the time on it.
+3. It then rebuilds *today's* daily record for that track by counting the
+   tasks whose completion time falls in today — it does not add one to a
+   running total. Counting again from scratch is what makes a double-click,
+   a retry, or a complete-undo-complete round trip harmless: the answer is
+   always the same.
+4. It recalculates the streak by walking back through the daily records: how
+   many days in a row end at today (or yesterday, since today is not over),
+   and what the longest such run has ever been.
+5. Steps 2 to 4 happen in a single transaction — a unit of work the database
+   either applies completely or not at all — so history can never end up
+   disagreeing with the tasks it came from.
+6. The page re-reads from the database, and the ring, elevation, streak and
+   grid all update together.
+
+**The rules it follows:**
+- **Strict streaks, no forgiveness.** Miss a day and the count goes to zero.
+  There are no freezes and no grace periods, and the code has no place to add
+  one. Today does not count as missed until it is over, so a streak whose last
+  activity was yesterday is still alive.
+- **Streaks are per track.** Practising Spanish does not protect a DSA streak.
+- **History is written once.** Only today's record can change. A day you
+  already earned stays earned, even if you later delete or un-tick the task
+  that earned it.
+- **The "3 of 8 done" figure always reads the tasks themselves**, so it drops
+  the instant you un-tick something, while the history behind the terrain does
+  not rewrite itself.
+- **A lapsed streak shows as lapsed without you having to do anything.**
+  Stopping for a week does not send anything to the server, so there is nothing
+  to trigger a reset; the streak is therefore worked out fresh each time the
+  page is read.
+- **Days are your local days.** Everything used to roll over at 5:30am India
+  time, which could break a streak unfairly. All day boundaries now come from
+  one shared piece of code.
+
+**What was checked:**
+- 13 tests of the streak rules on their own: a missed day resets, a gap breaks
+  the run, the longest run survives a lapse, month boundaries and a run longer
+  than the twelve-week chart all count correctly
+- 36 checks driven through a real browser against the production build:
+  completing, un-completing, three completions in one day sharing one record,
+  complete-undo-complete not double counting, three rapid clicks on one task,
+  three browser tabs completing at the same moment, two tracks not affecting
+  each other, deleting a task completed today, un-completing a task finished
+  days ago, and the home screen totals
+- Keyboard only: the tick is reachable by Tab, shows a focus ring, and toggles
+  with both Space and Enter
+- Reduced motion: nothing is left animating, and the tick is fully drawn
+  rather than frozen mid-animation
+- Both themes, and a 390px phone width with no sideways scrolling
+- The browser console is clean, and the database passes an integrity sweep:
+  no duplicate day records, every date stored at local midnight, no completed
+  task missing its timestamp, no orphaned rows
+- Typecheck, lint and a production build all pass. Test data was removed
+  afterwards
+
+**Technical concepts used:**
+- Prisma transaction (a group of database writes that all succeed or all fail
+  together) — keeps the task, the daily record and the streak in step
+- Upsert (update the row if it exists, otherwise create it) — one daily record
+  per track per day, enforced by the database itself
+- React `useOptimistic` — shows the tick immediately and quietly corrects
+  itself if the server disagrees
+- `aria-pressed` on a toggle button — tells a screen reader whether the task
+  is done, without changing what the button is called
+
+**Roadmap status:** Phase 1, "Mark Task complete → updates CompletionLog +
+streak logic" and "Strict streak logic (reset on missed day)" are complete.
+The remaining Phase 1 item is the basic-UI checkbox, whose last missing piece
+(the mark-complete surface) landed here.
+
+---
+
 ## 2026-08-30 — Create, rename and delete Tracks
 
 **What was built:**

@@ -33,11 +33,12 @@ or databases without discussing it first. Keep the dependency footprint small.
 
 ## Visual Design Direction
 
-**Reference:** a dark, high-contrast learning dashboard — a top navigation
-bar, a greeting hero, and a row of glowing stat cards (a circular progress
-ring, a streak heatmap, a call to action). Depth comes from ambient gradient
-glow, a faint grid/dot pattern, and soft accent light on card edges. It must
-never read as flat black with flat purple text.
+**Reference:** a survey sheet, not a dashboard. Cartographic and editorial —
+hairline rules, a label gutter, generous negative space, and the terrain
+running full-bleed as the ground the interface stands on. Depth comes from
+layered grounds, the rule system and the terrain's own light. It must never
+read as flat black with flat purple text, and it must never read as a row of
+rounded cards.
 
 **Themes:** ship both from one semantic token set. Dark is black/purple and is
 the primary look; light is blue/white. Components reference tokens only —
@@ -61,20 +62,36 @@ to the system preference.
 Every text/background pair must clear **4.5:1**, verified in both themes. An
 earlier palette draft failed in eight places — do not assume, measure.
 
-**Typography:** one family, Plus Jakarta Sans.
-- Headings 600–800, tight tracking; hero heading is large and may accent a
-  single word in `accent`
-- Section labels: small, uppercase, `tracking-[0.18em]`
-- Numbers, percentages, streak counts, dates: `tabular-nums`
-- `body` carries `word-spacing: 0.06em` — this font's space glyph is unusually
-  narrow (0.188em). Do not remove it.
+**Typography:** three families, one job each. Hierarchy comes from family,
+size, case and tracking — **not** from weight.
+
+| Role | Family | Treatment |
+|---|---|---|
+| Measurement — elevation, streak, percentage | IBM Plex Mono 400/500 | large, tight, `tabular-nums` by construction |
+| Track names, hero headings | Instrument Serif 400 | one weight exists; it cannot be bolded |
+| Topic names, tasks, body, controls | Plus Jakarta Sans 400/500/600 | the single weight-based step in the ladder |
+| Labels, metadata, actions, tags | IBM Plex Mono 400 | uppercase, `tracking-[0.14em]`–`[0.17em]`, `muted` |
+
+- Every number in the app sits in the mono. Never set a figure in the sans.
+- `body` carries `word-spacing: 0.06em` — Plus Jakarta Sans' space glyph is
+  unusually narrow (0.188em). Do not remove it.
+- All three load through `next/font/google`. No new dependency.
+
+**Shape language — radius means interactive:**
+- Controls (buttons, inputs, the completion tick) carry `3px`. Panels,
+  sections and data surfaces carry none.
+- Sections are separated by hairline rules and space, never by a box. There is
+  no card component; `Panel` is a labelled band with a gutter.
+- No shadows, no lit card edges, no hover lift.
 
 **Depth and pattern — required, this is what stops it looking basic:**
 - A faint ruled grid over the page ground, stronger in dark
-- Cards sit on `surface` with a soft accent-tinted top edge (`.card-lit`)
+- A left gutter carries mono section labels; it collapses to an eyebrow below `lg`
+- The terrain runs full-bleed to the window edge (`.bleed-r`)
 - Stat visuals are real drawings (SVG terrain, ring, heatmap grid), never bars
-- Light comes from the terrain gradient, not from decorative glow. The drifting
-  ambient blobs were retired: they carried no data. Do not reintroduce them.
+- Light comes from the terrain gradient and the atmosphere, never from
+  decorative glow. The drifting ambient blobs were retired: they carried no
+  data. Do not reintroduce them.
 
 **The terrain metaphor — the product's signature, and strictly data-driven:**
 - Elevation is cumulative completed tasks, read from `CompletionLog`
@@ -85,6 +102,21 @@ earlier palette draft failed in eight places — do not assume, measure.
 - Keep it where it means something. Do not scatter terrain decoration
 - Ember (`streak`) marks streaks and milestones only. A zero streak stays muted
 
+**The atmosphere — a secondary, background-only personalization layer:**
+- One of four motifs paints the page ground, resolved on the server from the
+  local day: `voyage` and `lattice` and `beacon` rotate through weekdays,
+  `terrace` covers the weekend. `lib/motif.ts` is the only place this is decided.
+- It is **abstract only** — geometry, light and one hue each. No characters,
+  logos, crests, wordmarks, slogans or licensed artwork, ever.
+- **It is never named in the interface.** No labels, tooltips or captions.
+- Motif tokens (`--m-*`, and the `--voyage-*` / `--lattice-*` / `--beacon-*` /
+  `--terrace-*` palettes) may only paint the ground. They may never colour
+  data, and the four hues are chosen to sit clear of all three semantic
+  colours in both themes.
+- Static. No motion. Halved on narrow screens.
+- Every text pair must still clear 4.5:1 on each motif's ground, in both
+  themes. Verify, do not assume.
+
 **Three separate progress signals — do not conflate them:**
 1. Volume: terrain elevation, `accent`
 2. Consistency: streak count and heatmap, `streak`
@@ -92,12 +124,14 @@ earlier palette draft failed in eight places — do not assume, measure.
 
 No XP, levels, points or badges. The PRD does not define them.
 
-**Motion:** purposeful, and always `prefers-reduced-motion` aware.
-- The progress ring draws itself in on load
-- Heatmap cells fade in on a short stagger
-- Cards lift slightly on hover; the ambient glow drifts continuously
-- Marking a task complete gets one clear moment — the ring advances and the
-  number ticks up
+**Motion:** every animation must name the state change it reports.
+- Marking a task complete gets one clear moment — the tick draws, the ring
+  advances, the number ticks up
+- The ridge and the ring draw themselves as the data is drawn, and replay when
+  the value changes
+- Nothing else animates. The card stagger, the hover lift and the heatmap cell
+  stagger were retired: they reported nothing.
+- Always `prefers-reduced-motion` aware.
 
 **Process:** state the design plan for a screen before coding it. After
 building or changing any screen, run `playwright-visual-qa` and **look at the

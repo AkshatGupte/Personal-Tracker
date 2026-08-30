@@ -14,6 +14,10 @@ const STRATA = 7;
  *
  * With no completions this renders a flat baseline and says so. It never draws
  * a curve that did not happen.
+ *
+ * The atmosphere behind the page never reaches in here: ridge, strata, fill and
+ * milestones are drawn in `accent` and `streak` in every motif, because they
+ * are data. Only the sky behind them changes with the day.
  */
 export default function TerrainProfile({
   id,
@@ -21,6 +25,7 @@ export default function TerrainProfile({
   scope,
   height = "h-44",
   compact = false,
+  quiet = false,
 }: {
   /**
    * Unique per instance. The gradient and clip path are referenced by id, so
@@ -33,6 +38,13 @@ export default function TerrainProfile({
   height?: string;
   /** Row-sized: drops strata and the caption, keeps ridge and milestones. */
   compact?: boolean;
+  /**
+   * Suppresses the empty-state sentence, for placements where the surrounding
+   * layout already states it. The dashed baseline still says "no ground yet"
+   * on its own; repeating the words beside the number that means the same
+   * thing reads as stray text rather than as an annotation.
+   */
+  quiet?: boolean;
 }) {
   const ridge = ridgePath(terrain.points, W, H);
   const area = `${ridge} L ${W} ${H} L 0 ${H} Z`;
@@ -42,8 +54,8 @@ export default function TerrainProfile({
   const clipId = `terrain-clip-${id}`;
 
   return (
-    <figure className="m-0">
-      <div className={`relative w-full ${height}`}>
+    <figure className="m-0 flex h-full flex-col">
+      <div className={`relative w-full flex-1 ${height}`}>
         <svg
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
@@ -103,8 +115,15 @@ export default function TerrainProfile({
               {/* Milestones sit where they were actually crossed. */}
               {terrain.reached.map((milestone) => (
                 <g key={milestone.value}>
+                  {/*
+                    The contour runs the full width so the value set in the
+                    margin and the point it was crossed read as one elevation.
+                    In a row-sized profile there is no margin to label, so the
+                    line is dropped and only the crossing point is marked.
+                  */}
+                  {!compact && (
                   <line
-                    x1={milestone.x * W}
+                    x1="0"
                     y1={H - milestone.y * H}
                     x2={W}
                     y2={H - milestone.y * H}
@@ -114,6 +133,7 @@ export default function TerrainProfile({
                     strokeOpacity="0.75"
                     vectorEffect="non-scaling-stroke"
                   />
+                  )}
                   <circle
                     cx={milestone.x * W}
                     cy={H - milestone.y * H}
@@ -141,47 +161,60 @@ export default function TerrainProfile({
 
               {/* Today. */}
               <circle
-                cx={W}
+                cx={W - 5}
                 cy={summitY}
                 r="4"
                 fill="var(--accent)"
                 vectorEffect="non-scaling-stroke"
-                style={{ animation: "terrain-fill 400ms ease-out 1s both" }}
               />
             </>
           )}
         </svg>
 
-        {!terrain.hasData && (
+        {!compact &&
+          terrain.reached.map((milestone) => (
+            <span
+              key={milestone.value}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 -translate-y-1/2 font-mono text-[0.6rem] uppercase tracking-[0.14em] tabular-nums text-streak"
+              style={{ top: `${(1 - milestone.y) * 100}%` }}
+            >
+              {milestone.value}
+            </span>
+          ))}
+
+        {!terrain.hasData && !quiet && (
           <p
             className={
               compact
-                ? "absolute inset-0 flex items-center justify-center text-[0.65rem] text-muted"
-                : "absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-muted"
+                ? "absolute inset-0 flex items-center justify-center font-mono text-[0.55rem] uppercase tracking-[0.14em] text-muted"
+                : "absolute inset-0 flex items-center justify-center px-4 text-center font-mono text-[0.65rem] uppercase tracking-[0.14em] text-muted"
             }
           >
-            {compact ? "No elevation yet" : "No elevation yet. Completed tasks raise the ground."}
+            {compact ? "No elevation yet" : "No elevation yet \u00b7 completed tasks raise the ground"}
           </p>
         )}
       </div>
 
+      {!compact && terrain.hasData && (
+        <div
+          aria-hidden="true"
+          className="mt-1.5 flex justify-between pr-4 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-muted sm:pr-6"
+        >
+          <span>12 weeks</span>
+          {terrain.next && <span className="tabular-nums">next {terrain.next}</span>}
+        </div>
+      )}
+
       {/*
-        Milestone legend as text, so reached milestones are readable without
-        interpreting the drawing or hovering anything.
+        Milestones as marginalia: each reached value is set at the elevation it
+        was actually crossed, so the number and the place agree. Still plain
+        text, so nothing here requires reading the drawing or hovering it.
       */}
       {!compact && terrain.reached.length > 0 && (
-        <figcaption className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-          <span className="tabular">
-            <span className="font-semibold text-streak">
-              {terrain.reached[terrain.reached.length - 1].value}
-            </span>{" "}
-            task milestone reached
-          </span>
-          {terrain.next && (
-            <span className="tabular">
-              next at <span className="font-semibold text-fg">{terrain.next}</span>
-            </span>
-          )}
+        <figcaption className="sr-only">
+          {terrain.reached.map((m) => `${m.value} tasks reached.`).join(" ")}
+          {terrain.next ? ` Next milestone at ${terrain.next}.` : ""}
         </figcaption>
       )}
     </figure>

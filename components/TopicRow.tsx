@@ -15,7 +15,7 @@ export type TopicRowData = {
 };
 
 const actionButton =
-  "rounded-lg px-2 py-1 text-xs font-semibold text-muted transition-colors hover:text-fg";
+  "rounded-[3px] px-1.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg";
 
 export default function TopicRow({
   topic,
@@ -59,12 +59,12 @@ export default function TopicRow({
               autoFocus
               maxLength={80}
               aria-label="Topic name"
-              className="min-w-0 flex-1 rounded-lg border border-border bg-elevated px-3 py-1.5 text-sm focus:border-accent"
+              className="min-w-0 flex-1 rounded-[3px] border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
             />
             <button
               type="submit"
               disabled={pending}
-              className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-contrast disabled:opacity-60"
+              className="shrink-0 rounded-[3px] bg-accent px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-accent-contrast disabled:opacity-60"
             >
               Save
             </button>
@@ -80,7 +80,7 @@ export default function TopicRow({
             </button>
           </div>
           {error && (
-            <p role="alert" className="text-sm text-muted">
+            <p role="alert" className="font-mono text-[0.7rem] text-muted">
               {error}
             </p>
           )}
@@ -91,7 +91,7 @@ export default function TopicRow({
 
   if (mode === "confirm") {
     return (
-      <li className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+      <li className="flex flex-wrap items-center justify-between gap-3 py-3.5">
         <p className="text-sm">
           Delete <span className="font-semibold">{topic.name}</span>
           {topic.taskCount > 0 && (
@@ -107,7 +107,7 @@ export default function TopicRow({
             type="button"
             onClick={onDelete}
             disabled={pending}
-            className="rounded-lg px-2 py-1 text-xs font-semibold text-streak disabled:opacity-60"
+            className="rounded-[3px] px-1.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-streak disabled:opacity-60"
           >
             {pending ? "Deleting…" : "Delete"}
           </button>
@@ -120,9 +120,10 @@ export default function TopicRow({
   }
 
   const allDone = topic.taskCount > 0 && topic.completedCount === topic.taskCount;
+  const ratio = topic.taskCount === 0 ? 0 : topic.completedCount / topic.taskCount;
 
   return (
-    <li className="px-5 py-3.5">
+    <li className="py-3.5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -130,46 +131,60 @@ export default function TopicRow({
             onClick={() => setOpen((wasOpen) => !wasOpen)}
             aria-expanded={open}
             aria-controls={`tasks-${topic.id}`}
-            className="shrink-0 rounded-lg px-1 text-xs text-muted transition-colors hover:text-fg"
+            className="shrink-0 rounded-[3px] px-1 text-[0.6rem] text-muted transition-colors hover:text-fg"
           >
             <span aria-hidden="true">{open ? "\u25BE" : "\u25B8"}</span>
             <span className="sr-only">
               {open ? `Hide tasks in ${topic.name}` : `Show tasks in ${topic.name}`}
             </span>
           </button>
-          <div className="min-w-0">
-            <p className="flex min-w-0 items-center gap-2 truncate font-semibold">
-              {topic.name}
-              {topic.isExpected && (
-                <span className="rounded-lg border border-border px-1.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-muted">
-                  curriculum
+          <p className="flex min-w-0 items-baseline gap-2 truncate font-semibold">
+            {topic.name}
+            {topic.isExpected && (
+              <span className="font-mono text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+                curriculum
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <p className="font-mono text-[0.65rem] tabular-nums tracking-[0.1em] text-muted">
+            {topic.taskCount === 0 ? (
+              "no tasks"
+            ) : (
+              <>
+                <span className={allDone ? "text-positive" : "text-fg"}>
+                  {topic.completedCount}
                 </span>
-              )}
-            </p>
-            <p className="tabular mt-0.5 text-xs text-muted">
-              {topic.taskCount === 0 ? (
-                "No tasks yet"
-              ) : (
-                <>
-                  <span className={allDone ? "font-semibold text-positive" : "text-fg"}>
-                    {topic.completedCount}
-                  </span>
-                  {" of "}
-                  {topic.taskCount} task{topic.taskCount === 1 ? "" : "s"} done
-                </>
-              )}
-            </p>
+                {" / "}
+                {topic.taskCount} done
+              </>
+            )}
+          </p>
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={() => setMode("rename")} className={actionButton}>
+              Rename
+            </button>
+            <button type="button" onClick={() => setMode("confirm")} className={actionButton}>
+              Delete
+            </button>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <button type="button" onClick={() => setMode("rename")} className={actionButton}>
-            Rename
-          </button>
-          <button type="button" onClick={() => setMode("confirm")} className={actionButton}>
-            Delete
-          </button>
-        </div>
       </div>
+
+      {/*
+        Progress as a stratum: the same hairline language as the terrain, so
+        the chart and the list share one grammar. Accent means volume here as
+        everywhere; a finished topic switches to positive, which means done.
+      */}
+      {topic.taskCount > 0 && (
+        <div className="relative mt-3 h-0.5 bg-border" aria-hidden="true">
+          <div
+            className={`absolute inset-y-0 left-0 ${allDone ? "bg-positive" : "bg-accent"}`}
+            style={{ width: `${Math.round(ratio * 100)}%` }}
+          />
+        </div>
+      )}
 
       {open && (
         <div id={`tasks-${topic.id}`} className="mt-3 border-l border-border pl-4">

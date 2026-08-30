@@ -46,18 +46,18 @@ export default function InlineCreateForm({
           placeholder={placeholder}
           aria-label={label}
           aria-invalid={state.error ? true : undefined}
-          className="min-w-0 flex-1 rounded-lg border border-border bg-elevated px-3 py-2 text-sm placeholder:text-muted focus:border-accent"
+          className="min-w-0 flex-1 rounded-[3px] border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted focus:border-accent"
         />
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-contrast transition-transform active:scale-[0.98] disabled:opacity-60"
+          className="shrink-0 rounded-[3px] bg-accent px-3.5 py-2 font-mono text-[0.65rem] uppercase tracking-[0.14em] text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           {pending ? "Adding…" : submitLabel}
         </button>
       </div>
       {state.error && (
-        <p role="alert" className="text-sm text-muted">
+        <p role="alert" className="font-mono text-[0.7rem] text-muted">
           {state.error}
         </p>
       )}

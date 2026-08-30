@@ -5,6 +5,216 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-08-30 — UI critique verified against the build; four of six points held**
+A critique was written from two empty-state screenshots. Measured against the
+running app rather than accepted or dismissed wholesale, as with the earlier
+twelve-point criticism.
+
+**Real, and fixed:**
+- `0 / 0` fractions carried no unit. Now `21 / 35 done`, or `no tasks yet`
+  when a track has none, on both panel headers and per topic.
+- The consistency heatmap labelled four of seven rows. All seven are labelled
+  now; alternating them kept the column calm but meant "which row is Thursday"
+  could only be answered by counting.
+- The terrain's empty-state sentence floated in the middle of the empty
+  drawing, disconnected from the number it explained. Worse than reported: on
+  the home screen the same message appeared **three times** — hero prose,
+  terrain caption, and once per empty track row. The terrain now takes a
+  `quiet` prop in hero placements and renders only the dashed baseline; the
+  statement sits beside the number, and the track page gained the sentence it
+  never had. Compact row profiles keep their words, since nothing else there
+  says it.
+- **Not in the critique, but found while checking it:** the redesign had
+  dropped the "soon" affordance on Progress and Insights, leaving unbuilt
+  sections looking like dead links. That violates the scope rule in CLAUDE.md.
+  Restored, and the nav is now one step above section labels in the type
+  ladder rather than matching them.
+
+**False when measured:**
+- *Contrast on nav and small-caps labels.* Everything measures 6.95:1 or
+  better against the composited ground, against a 4.5:1 floor. The real issue
+  underneath was **size and rank**, not contrast: nav sat at the same 9.6px as
+  gutter labels. Nav moved to 10.4px; the labels stay.
+- *The heatmap will break on mobile.* It already sits in an `overflow-x-auto`
+  container and fits at 390px (358px content in a 358px box) with no page
+  overflow.
+
+**Rejected, with reason:**
+- *"Nothing shows terrain; the core differentiator is carried by copy."* The
+  terrain is the full-bleed hero on both screens. The critique read two
+  empty-state screenshots, where CLAUDE.md deliberately specifies a flat
+  dashed baseline and a plain statement rather than a fabricated curve. With
+  data it is the dominant element on the page. The inference was reasonable
+  from those screens; the conclusion is wrong.
+- *The ring and heatmap are "generic dashboard widgets".* Both are named in
+  CLAUDE.md and both read real data. Reinventing a chart type to avoid looking
+  conventional is not a good enough reason to make completion harder to read.
+
+**Tested, holds:** topic/task nesting was checked with five topics and 35
+tasks. The hierarchy reads. The weakest link is topic-to-topic separation,
+which currently rests on the progress stratum under each topic name, and the
+add-task form repeating once per open topic gets noisy at five. Neither is
+broken; both are worth watching once a real curriculum exists.
+
+**2026-08-30 — Visual direction: survey sheet, approved from a specimen**
+Approved after four rounds against a throwaway specimen artifact, not from
+prose. Supersedes the "dark neon dashboard" direction below and the card
+language that came with it. CLAUDE.md has been rewritten to match; trust that
+file over any earlier entry here.
+
+The direction sharpens what already existed rather than replacing it: the
+terrain was always the signature, and it was sitting inside a rounded widget
+surrounded by generic dashboard chrome. It now runs full-bleed as the ground.
+
+**Radius means interactive.** Controls carry 3px; panels, sections and data
+surfaces carry none. This is the rule that replaced "panels 1rem, controls
+0.5rem", and it is a test anyone can apply. `card-lit`, the drop shadow, the
+hover lift and `components/Card.tsx` are retired; `Panel` is a labelled band
+with a gutter, not a box. This reverses the 2026-08-30 "Depth is a requirement"
+entry below — the *intent* of that entry stands (it must not look flat and
+cheap) but it is now met by layered grounds, the rule system and the terrain's
+light rather than by shadowed rounded boxes.
+
+**Three type families, because hierarchy may not lean on weight.** This
+reverses "one family, Plus Jakarta Sans". Instrument Serif ships a single
+weight and so cannot be bolded; IBM Plex Mono carries every number in the app
+and guarantees tabular figures; Jakarta keeps body and controls. Six
+distinguishable levels, only one of which is a weight change. Both new faces
+load through `next/font/google` — no new dependency, roughly 40–55KB of woff2.
+
+**2026-08-30 — The atmosphere: a personalization layer that may not touch data**
+A visual layer keyed to the local day, from the user's own interests. Abstract
+only — geometry, light and one hue each, never a character, logo, crest,
+wordmark, slogan or licensed artwork. That constraint is not only legal: a
+crest is exactly what would make it read as merchandise rather than as taste.
+**It is never named in the interface.**
+
+Architecturally it is a separate token layer that is structurally incapable of
+carrying meaning. `--m-*` tokens paint only the page ground; `accent`, `streak`
+and `positive` keep their meanings in every motif, so the three-signal rule
+survives intact and the contrast matrix does not multiply — only the composited
+ground needs re-checking, which is 8 measurements rather than 8 x every pair.
+Verified: the ridge stroke, the completion tick and all three semantic tokens
+are byte-identical across all four motifs.
+
+Three hues are permanently spoken for — accent (purple in dark, blue in light),
+streak (amber), positive (green) — so the motifs take indigo, crimson, cyan and
+pale sky. Beacon was first drafted jade and was changed: it sat close enough to
+`positive` to be misread as completion. The ring geometry carries that motif's
+influence; the hue did not need to.
+
+Resolution is pure and server-side (`lib/motif.ts`), so there is no hydration
+mismatch and nothing is stored. This is **not** Phase 4 personalization, which
+is stored preferences shaping LLM tone; it shares only the word.
+
+**2026-08-30 — Atmosphere had to be re-tuned once it was on a real page**
+The specimen judged it in 215px frames. At full page width the same alpha values
+read as a wash over the whole screen, and the repeating geometry turned into
+dense hatching. Alphas were roughly halved and the geometry spacing nearly
+doubled. Worth remembering: a background field calibrated in a small frame will
+always be too strong at page scale.
+
+**2026-08-30 — Motion audited down to what reports a state change**
+Kept: the completion tick, the ring advancing, the ridge drawing as the data is
+drawn. Retired: the card entrance stagger, the card hover lift, the heatmap
+cell stagger, and a summit dot that faded in a second after load. Each of those
+animated on load without reporting anything. Note the honest limit: the ridge
+and ring draw on mount as well as on change, because a true change-only
+animation would need state carried across navigations, which is not worth the
+machinery.
+
+**2026-08-30 — Full-bleed offsets must be measured from the container**
+`margin-right: calc(50% - 50vw)` resolves the percentage against whichever
+column the element sits in, not the page container, so the terrain over-extended
+and pushed today's summit off-screen. `.bleed-r` now measures from the 64rem
+container with a `max()` floor at the page gutter, so it degrades to exactly the
+padding once the viewport is narrower than the container.
+
+**2026-08-30 — Two future capabilities admitted to scope, representation left open**
+Scope verification, no code written. Neither capability was captured anywhere:
+one existed only as a negative ("no topic graphs, trees or mind maps") with no
+future home, which reads as a permanent no rather than a deferral.
+
+1. **Learning trajectory / consistency over time** — Phase 2, last item. The
+   existing weekly and monthly summaries are point-in-time rollups, and Phase
+   3's "pace comparison" is LLM-generated *text*, not a representation. Neither
+   answers "is my momentum improving, or am I drifting". The streak counter,
+   heatmap and terrain elevation are inputs to this, not the answer.
+2. **Track structure exploration** (Track → Topic → Task) — new Phase 5.
+
+**The representation is deliberately undecided for both, and that is the
+decision.** Tree, dependency graph, mind map, progression path, radial and
+terrain-based are all still candidates; picking one now would commit the data
+model before the learning experience has been evaluated. A future session may
+not resolve this by default — the choice needs real data and a design pass.
+
+Two constraints that follow, so a later session does not trip on them:
+- Trajectory must not be folded into the three existing signals. CLAUDE.md
+  keeps volume (terrain, accent), consistency (streak, ember) and completion
+  (positive) separate; trajectory is a *derived reading* of history, and
+  giving it its own borrowed colour or bolting it onto the terrain would
+  conflate two of them. It needs its own treatment or a deliberate extension
+  of that rule.
+- Prerequisites and dependency relations stay unbuilt, and stay a consequence
+  of the representation decision rather than a prerequisite for it. Adding the
+  schema first would quietly pick the graph.
+
+Phases were not renumbered: CLAUDE.md refers to Phase 3 and Phase 4 by number.
+Structure exploration is Phase 5 because it depends on Phase 3 — a generated
+curriculum is what gives a Track enough structure to be worth exploring.
+Recorded in `docs/ROADMAP.md`, `docs/PRD.md` (post-MVP section, so the
+"is it in the PRD?" scope gate in CLAUDE.md does not later refuse them) and
+the 2026-08-30 handoff's deferral list.
+
+**2026-08-30 — The displayed streak is recomputed on read, not read from the cache**
+A strict streak breaks through inactivity, and inactivity writes nothing, so no
+code path exists to reset the cached `currentStreak` when a user simply stops.
+Rendering does not write (a render doing writes is its own problem), so the
+read path derives the streak from `CompletionLog` and displays that. The cached
+columns are still written on every completion and are what a rebuild would
+produce; they are a cache, and the read no longer trusts them. Consequence: a
+cached value can lag if history is edited outside the app, and it catches up on
+the next write. Verified: a lapsed streak reads 0 with no write occurring.
+
+**2026-08-30 — `longestStreak` is a pure recompute, not a high-water mark**
+`max(stored, computed)` was rejected. It would make the column impossible to
+rebuild from `CompletionLog`, which contradicts calling it a cache. The only
+case where a recompute lowers it is uncompleting work finished today, which is
+a same-day correction rather than lost history — earlier days are frozen and
+cannot be shortened.
+
+**2026-08-30 — A day with no completions has no `CompletionLog` row**
+When today's rollup recomputes to zero the row is deleted rather than written
+as `tasksCompletedCount: 0`. A zero row is indistinguishable from real activity
+when reading "which days were active", and would keep a streak alive on a day
+nothing was finished.
+
+**2026-08-30 — Deleting a task or topic recomputes today's rollup**
+Today's row is defined as a rollup of live task state, so a task completed
+today and then deleted must leave it. Earlier days are untouched: history
+records what was done at the time, and deleting the task now does not undo the
+day it was finished. The same holds for uncompleting something finished on an
+earlier day — the task clears, the history stays.
+
+**2026-08-30 — Streak history is read whole, not through the terrain window**
+Terrain shows 12 weeks; a streak can be longer. Reading only the window would
+silently cap `longestStreak` at 84. `CompletionLog` holds at most one row per
+track per day, so a full read stays small for a single local user.
+
+**2026-08-30 — Completion is a toggle button, not a checkbox input**
+`aria-pressed` carries the state and the accessible name stays constant, which
+is what a screen reader wants from a toggle; it also needs no surrounding form.
+The tick updates optimistically and falls back to `Task.status` when the page
+revalidates, so a rejected write corrects itself rather than leaving a false
+tick. Uncompletion is supported, because a mis-click otherwise has no remedy.
+
+**2026-08-30 — A stale `.next` cache can fail the build with a webpack crash**
+`npm run build` died with `TypeError: Cannot read properties of undefined
+(reading 'length')` in webpack's `WasmHash`, with no reference to any project
+file. It is the incremental cache, not the code: `rm -rf .next` then rebuild
+passes, and the committed baseline builds clean. Worth trying first before
+hunting a phantom code problem.
+
 **2026-08-30 — Completion model settled (supersedes the open question below)**
 Approved before writing Item 6. Source of truth splits as follows:
 

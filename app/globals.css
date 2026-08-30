@@ -7,8 +7,13 @@
   hex and never a `dark:` variant. Every text and ground pair is verified at
   4.5:1 or better in both themes.
 
-  Radius rule (one system, documented): panels 1rem, controls 0.5rem,
-  pills fully rounded. Nothing else.
+  Radius rule (one system, documented): radius means interactive. Controls —
+  buttons, inputs, the completion tick — carry 3px. Panels, sections and data
+  surfaces carry none; they are separated by hairline rules and space instead.
+
+  Motif tokens (--m-*) are a separate layer from the semantic ones. They may
+  only paint the page ground. `accent`, `streak` and `positive` keep their
+  meanings in every motif, and no motif may tint data.
 */
 
 /* Light (blue / white). */
@@ -32,6 +37,31 @@
   --grid-line: rgb(20 22 31 / 0.045);
   --card-edge: rgb(37 99 235 / 0.14);
   --terrain-line: rgb(37 99 235 / 0.16);
+
+  /*
+    Atmosphere, light. Hues sit clear of all three semantic colours: accent
+    (blue here), streak (amber) and positive (green). Voyage runs deeper and
+    cooler than terrace so the two blues stay apart.
+  */
+  --voyage-sky: rgb(34 52 140 / 0.055);
+  --voyage-line: rgb(34 52 140 / 0.055);
+  --voyage-glow: rgb(34 52 140 / 0.04);
+  --voyage-ground: rgb(34 52 140 / 0.014);
+
+  --lattice-sky: rgb(170 30 55 / 0.05);
+  --lattice-line: rgb(170 30 55 / 0.05);
+  --lattice-glow: rgb(170 30 55 / 0.035);
+  --lattice-ground: rgb(170 30 55 / 0.012);
+
+  --beacon-sky: rgb(6 130 155 / 0.055);
+  --beacon-line: rgb(6 130 155 / 0.055);
+  --beacon-glow: rgb(6 130 155 / 0.045);
+  --beacon-ground: rgb(6 130 155 / 0.013);
+
+  --terrace-sky: rgb(60 140 205 / 0.06);
+  --terrace-line: rgb(60 140 205 / 0.032);
+  --terrace-glow: rgb(60 140 205 / 0.008);
+  --terrace-ground: rgb(60 140 205 / 0.013);
 }
 
 /* Dark (black / purple) is the primary look. */
@@ -55,6 +85,27 @@
     --grid-line: rgb(196 181 253 / 0.055);
     --card-edge: rgb(167 139 250 / 0.28);
     --terrain-line: rgb(196 181 253 / 0.14);
+
+    /* Atmosphere, dark. Stronger than light, since the ground absorbs more. */
+    --voyage-sky: rgb(60 105 175 / 0.13);
+    --voyage-line: rgb(150 195 240 / 0.075);
+    --voyage-glow: rgb(96 150 215 / 0.085);
+    --voyage-ground: rgb(60 105 175 / 0.020);
+
+    --lattice-sky: rgb(205 55 80 / 0.11);
+    --lattice-line: rgb(235 130 150 / 0.070);
+    --lattice-glow: rgb(220 80 105 / 0.075);
+    --lattice-ground: rgb(205 55 80 / 0.018);
+
+    --beacon-sky: rgb(20 190 215 / 0.11);
+    --beacon-line: rgb(90 225 245 / 0.075);
+    --beacon-glow: rgb(70 215 240 / 0.105);
+    --beacon-ground: rgb(20 190 215 / 0.018);
+
+    --terrace-sky: rgb(120 180 230 / 0.13);
+    --terrace-line: rgb(150 200 240 / 0.045);
+    --terrace-glow: rgb(120 180 230 / 0.016);
+    --terrace-ground: rgb(120 180 230 / 0.020);
   }
 }
 
@@ -77,6 +128,27 @@
   --grid-line: rgb(196 181 253 / 0.055);
   --card-edge: rgb(167 139 250 / 0.28);
   --terrain-line: rgb(196 181 253 / 0.14);
+
+  /* Atmosphere, dark. Stronger than light, since the ground absorbs more. */
+  --voyage-sky: rgb(60 105 175 / 0.13);
+  --voyage-line: rgb(150 195 240 / 0.075);
+  --voyage-glow: rgb(96 150 215 / 0.085);
+  --voyage-ground: rgb(60 105 175 / 0.020);
+
+  --lattice-sky: rgb(205 55 80 / 0.11);
+  --lattice-line: rgb(235 130 150 / 0.070);
+  --lattice-glow: rgb(220 80 105 / 0.075);
+  --lattice-ground: rgb(205 55 80 / 0.018);
+
+  --beacon-sky: rgb(20 190 215 / 0.11);
+  --beacon-line: rgb(90 225 245 / 0.075);
+  --beacon-glow: rgb(70 215 240 / 0.105);
+  --beacon-ground: rgb(20 190 215 / 0.018);
+
+  --terrace-sky: rgb(120 180 230 / 0.13);
+  --terrace-line: rgb(150 200 240 / 0.045);
+  --terrace-glow: rgb(120 180 230 / 0.016);
+  --terrace-ground: rgb(120 180 230 / 0.020);
 }
 
 /*
@@ -97,7 +169,14 @@
   --color-streak: var(--streak);
   --color-positive: var(--positive);
 
+  /*
+    Three roles, so hierarchy comes from family, size, case and tracking
+    rather than from weight. The display face ships one weight and cannot be
+    bolded; measurements always sit in the mono, which guarantees tabular.
+  */
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument), "Iowan Old Style", Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   --shadow-card: var(--shadow);
 }
 
@@ -125,7 +204,7 @@
   [tabindex]:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
-    border-radius: 0.5rem;
+    border-radius: 3px;
   }
 
   /* Counts and dates must not jitter as their values change. */
@@ -134,19 +213,121 @@
   }
 }
 
-/* A faint ruled grid over the page ground. Depth without noise. */
-.pattern-grid {
+/*
+  The atmosphere: the page ground, and the only place motif tokens are used.
+
+  Every layer here is static and decorative-by-permission — it carries the day
+  of the week, not learning data. The retired drifting glow stays retired. No
+  layer may be introduced that reduces text contrast, and none may borrow a
+  semantic colour.
+*/
+.atmosphere {
+  --m-sky: transparent;
+  --m-line: transparent;
+  --m-glow: transparent;
+  --m-ground: transparent;
+  background-color: var(--m-ground);
+}
+
+/* The ruled ground, kept: it is the survey sheet the terrain is drawn on. */
+.atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background-image:
     linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   background-size: 44px 44px;
 }
 
-/* Panels catch a little accent light along the top edge. */
-.card-lit {
-  box-shadow:
-    inset 0 1px 0 0 var(--card-edge),
-    var(--shadow);
+.atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.atmosphere[data-motif="voyage"] {
+  --m-sky: var(--voyage-sky);
+  --m-line: var(--voyage-line);
+  --m-glow: var(--voyage-glow);
+  --m-ground: var(--voyage-ground);
+}
+.atmosphere[data-motif="lattice"] {
+  --m-sky: var(--lattice-sky);
+  --m-line: var(--lattice-line);
+  --m-glow: var(--lattice-glow);
+  --m-ground: var(--lattice-ground);
+}
+.atmosphere[data-motif="beacon"] {
+  --m-sky: var(--beacon-sky);
+  --m-line: var(--beacon-line);
+  --m-glow: var(--beacon-glow);
+  --m-ground: var(--beacon-ground);
+}
+.atmosphere[data-motif="terrace"] {
+  --m-sky: var(--terrace-sky);
+  --m-line: var(--terrace-line);
+  --m-glow: var(--terrace-glow);
+  --m-ground: var(--terrace-ground);
+}
+
+/* Rhumb lines radiating from one bearing, the way a sea chart is ruled. */
+.atmosphere[data-motif="voyage"]::after {
+  background:
+    radial-gradient(125% 85% at 82% 4%, var(--m-sky), transparent 64%),
+    repeating-conic-gradient(from 8deg at 82% 4%, transparent 0 7.5deg, var(--m-line) 7.5deg 7.75deg, transparent 7.75deg 15deg),
+    repeating-radial-gradient(circle at 82% 4%, transparent 0 190px, var(--m-glow) 190px 191.5px, transparent 191.5px 380px);
+}
+
+/* Tension lines under load, anchored off-canvas so it reads as structure. */
+.atmosphere[data-motif="lattice"]::after {
+  background:
+    radial-gradient(115% 95% at 97% -8%, var(--m-sky), transparent 60%),
+    repeating-conic-gradient(from 24deg at 105% -10%, transparent 0 11deg, var(--m-line) 11deg 11.25deg, transparent 11.25deg 22deg),
+    repeating-radial-gradient(circle at 105% -10%, transparent 0 112px, var(--m-glow) 112px 113.4px, transparent 113.4px 224px);
+}
+
+/* One light source: a luminous core with rings. The falloff is unique to it. */
+.atmosphere[data-motif="beacon"]::after {
+  background:
+    radial-gradient(38% 46% at 11% 3%, var(--m-glow), transparent 70%),
+    radial-gradient(95% 78% at 11% 3%, var(--m-sky), transparent 62%),
+    repeating-radial-gradient(circle at 11% 3%, transparent 0 96px, var(--m-line) 96px 97.4px, transparent 97.4px 192px);
+}
+
+/* Mown banding replaces the square grid under a pale sky. */
+.atmosphere[data-motif="terrace"]::before {
+  opacity: 0;
+}
+.atmosphere[data-motif="terrace"]::after {
+  background:
+    linear-gradient(to bottom, var(--m-sky), transparent 58%),
+    repeating-linear-gradient(90deg, var(--m-line) 0 1px, transparent 1px 104px),
+    repeating-linear-gradient(90deg, var(--m-glow) 0 104px, transparent 104px 208px);
+}
+
+/* Narrow screens are read closer, so the texture reads louder. Halve it. */
+@media (max-width: 640px) {
+  .atmosphere::after {
+    opacity: 0.5;
+  }
+}
+
+/* Section rules. Hairlines and space do the work cards used to do. */
+.rule-t {
+  border-top: 1px solid var(--border);
+}
+
+/*
+  Full-bleed to the right window edge from inside the padded 64rem column.
+
+  The offset is measured from the container, not from the element: a percentage
+  here would resolve against whatever column the element happens to sit in, and
+  over-extend it. max() keeps it at exactly the page gutter once the viewport
+  is narrower than the container, where there is no bleed left to take.
+*/
+.bleed-r {
+  margin-right: calc(-1 * max(1rem, (100vw - 64rem) / 2 + 1.5rem));
 }
 
 /* The ridge traces itself once, the way a route is drawn onto a map. */
@@ -171,17 +352,15 @@
   }
 }
 
-@keyframes cell-in {
+/* The tick on a completed task: one short moment, no bounce. */
+@keyframes check-in {
   from {
-    opacity: 0;
-    transform: scale(0.6);
+    stroke-dasharray: 16;
+    stroke-dashoffset: 16;
   }
-}
-
-@keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+  to {
+    stroke-dasharray: 16;
+    stroke-dashoffset: 0;
   }
 }
 

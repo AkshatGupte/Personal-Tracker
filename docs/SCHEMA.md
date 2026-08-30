@@ -121,6 +121,25 @@ validated in application code.
   `CompletionLog` row for that track. A scheduled/on-load check compares
   `lastActivityDate` to today — if more than 1 day has passed with no log,
   `currentStreak` resets to 0.
+- **Who owns what (implemented in Item 6):** `Task.status` and
+  `Task.completedAt` own current task state, and the completion ratio is
+  derived from them on read, never stored. `CompletionLog` owns daily history.
+  `Track.currentStreak` / `longestStreak` / `lastActivityDate` are a cache of
+  what `CompletionLog` implies and can always be rebuilt from it.
+- **Today's row is a rollup, earlier rows are frozen:** on completion,
+  uncompletion or deletion, today's `CompletionLog` row is recomputed from the
+  tasks whose `completedAt` falls in today. Earlier days are never rewritten,
+  so a streak that was earned stays earned. Counts are recomputed, never
+  incremented, which makes repeat clicks and retries harmless.
+- **A day with no completions has no row.** Zero-count rows are deleted rather
+  than stored, so a row always means real activity.
+- **`date` is always local midnight.** `@@unique([trackId, date])` compares the
+  whole `DateTime`, so every write normalises through the shared `startOfDay()`
+  helper in `lib/day.ts`; reads use the same helper. Day boundaries are local,
+  not UTC — see `docs/DECISIONS.md`.
+- **The displayed streak is recomputed from `CompletionLog` on read.**
+  Inactivity writes nothing, so a lapse cannot be caught by a write; deriving
+  it on read is what makes the strict reset actually appear.
 - **Coverage gap detection:** compare the set of `Topic.name` where
   `isExpected = true` and no completed `Task` exists, against the full
   expected list. This is plain code — no LLM call needed for the comparison

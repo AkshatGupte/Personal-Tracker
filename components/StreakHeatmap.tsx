@@ -1,3 +1,5 @@
+import { addDays, dayKey, startOfDay } from "@/lib/day";
+
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const WEEKS = 12;
 
@@ -17,23 +19,22 @@ export default function StreakHeatmap({
   countsByDay: Record<string, number>;
   scope: string;
 }) {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  // Local days, from the same helper the completion writes use, so a cell and
+  // the CompletionLog row behind it always mean the same calendar day.
+  const today = startOfDay();
 
   // Monday-first grid: walk back to this week's Monday, then back 11 more
   // weeks so the newest column is the current one.
-  const dayOfWeek = (today.getUTCDay() + 6) % 7;
-  const start = new Date(today);
-  start.setUTCDate(today.getUTCDate() - dayOfWeek - (WEEKS - 1) * 7);
+  const dayOfWeek = (today.getDay() + 6) % 7;
+  const start = addDays(today, -dayOfWeek - (WEEKS - 1) * 7);
 
   const values = Object.values(countsByDay);
   const max = Math.max(1, ...values);
 
   const columns = Array.from({ length: WEEKS }, (_, week) =>
     Array.from({ length: 7 }, (_, day) => {
-      const date = new Date(start);
-      date.setUTCDate(start.getUTCDate() + week * 7 + day);
-      const key = date.toISOString().slice(0, 10);
+      const date = addDays(start, week * 7 + day);
+      const key = dayKey(date);
       return { key, count: countsByDay[key] ?? 0, future: date > today };
     }),
   );
@@ -60,14 +61,18 @@ export default function StreakHeatmap({
       <div className="overflow-x-auto">
         <div className="flex gap-2" role="img" aria-label={summary}>
           <div className="grid shrink-0 grid-rows-7 gap-1 pt-px">
-            {DAY_LABELS.map((label, i) => (
+            {/*
+              Every row is labelled. Alternating them kept the column calmer
+              but left four of seven rows unnamed, so "which row is Thursday"
+              could only be answered by counting.
+            */}
+            {DAY_LABELS.map((label) => (
               <span
                 key={label}
                 aria-hidden="true"
-                className="flex h-3.5 items-center text-[0.6rem] leading-none text-muted"
+                className="flex h-3 items-center font-mono text-[0.5rem] uppercase leading-none tracking-[0.06em] text-muted"
               >
-                {/* Alternate rows only, so the column stays calm. */}
-                {i % 2 === 0 ? label : ""}
+                {label}
               </span>
             ))}
           </div>
@@ -75,16 +80,16 @@ export default function StreakHeatmap({
           <div className="flex gap-1">
             {columns.map((week, w) => (
               <div key={w} className="grid grid-rows-7 gap-1">
-                {week.map((cell, d) => (
+                {week.map((cell) => (
                   <span
                     key={cell.key}
                     aria-hidden="true"
-                    className="h-3.5 w-3.5 rounded-[3px]"
+                    className="h-3 w-3 rounded-[2px]"
+                    // No entrance animation: eighty-four cells fading in
+                    // reported nothing. They are simply there.
                     style={{
                       ...cellStyle(cell.future ? 0 : level(cell.count)),
                       visibility: cell.future ? "hidden" : "visible",
-                      animation: "cell-in 0.4s ease-out both",
-                      animationDelay: `${(w * 7 + d) * 4}ms`,
                     }}
                   />
                 ))}
@@ -94,13 +99,13 @@ export default function StreakHeatmap({
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 text-[0.65rem] text-muted">
+      <div className="flex items-center gap-1.5 font-mono text-[0.55rem] uppercase tracking-[0.12em] text-muted">
         <span>Less</span>
         {[0, 1, 2, 3, 4].map((lvl) => (
           <span
             key={lvl}
             aria-hidden="true"
-            className="h-3 w-3 rounded-[3px]"
+            className="h-2.5 w-2.5 rounded-[2px]"
             style={cellStyle(lvl)}
           />
         ))}
@@ -111,11 +116,11 @@ export default function StreakHeatmap({
         The same per-day detail the grid encodes, as text. Screen readers and
         keyboard users get it without hovering a cell.
       */}
-      <details className="text-xs text-muted">
-        <summary className="cursor-pointer rounded-lg py-1 hover:text-fg">
+      <details className="font-mono text-[0.6rem] text-muted">
+        <summary className="cursor-pointer rounded-[3px] py-1 uppercase tracking-[0.14em] hover:text-fg">
           Day by day
         </summary>
-        <ul className="tabular mt-2 grid gap-1 sm:grid-cols-2">
+        <ul className="mt-2 grid gap-1 tabular-nums sm:grid-cols-2">
           {columns
             .flat()
             .filter((cell) => !cell.future && cell.count > 0)

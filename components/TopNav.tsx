@@ -11,48 +11,70 @@ const PLANNED = [
   { label: "Insights", when: "Phase 3" },
 ];
 
+/**
+ * The masthead: a wordmark, a rule, and the sections. No pill, no panel.
+ *
+ * The bearing mark is the one piece of the page that takes its colour from the
+ * atmosphere layer rather than from a semantic token — it is a mark, not data.
+ */
 export default function TopNav() {
   const pathname = usePathname();
   const onHome = pathname === "/";
 
   return (
-    <nav className="card-lit mb-6 flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2.5 sm:gap-3 sm:px-4">
-      <Link
-        href="/"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-base font-extrabold text-accent-contrast"
-      >
-        <span aria-hidden="true">R</span>
-        <span className="sr-only">Rendred home</span>
+    <nav className="mb-6 flex items-center justify-between gap-4 border-b border-border pb-3.5">
+      <Link href="/" className="flex min-w-0 items-center gap-2.5 text-fg">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="h-4 w-4 shrink-0 text-[color:var(--m-mark,var(--muted))]"
+        >
+          <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" strokeWidth="1" />
+          <path d="M12 3.5 L12 20.5 M3.5 12 L20.5 12" stroke="currentColor" strokeWidth="1" opacity=".45" />
+          <path d="M12 6.5 L14.6 12 L12 17.5 L9.4 12 Z" fill="currentColor" />
+        </svg>
+        <span className="font-display text-xl leading-none tracking-tight">Rendred</span>
+        <span className="sr-only">home</span>
       </Link>
 
-      <ul className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+      {/*
+        Navigation sits one step above section labels in the ladder, so it is
+        set slightly larger than the 0.6rem gutter labels rather than matching
+        them. Planned sections keep an explicit "soon", per the scope rule in
+        CLAUDE.md: an unbuilt section is never presented as a working link.
+      */}
+      <ul className="flex min-w-0 items-center gap-4 overflow-x-auto font-mono text-[0.65rem] uppercase tracking-[0.15em]">
         <li>
           <Link
             href="/"
             aria-current={onHome ? "page" : undefined}
-            className={`inline-block whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
-              onHome ? "bg-elevated text-fg" : "text-muted hover:text-fg"
-            }`}
+            className={
+              onHome
+                ? "whitespace-nowrap border-b border-fg pb-0.5 text-fg"
+                : "whitespace-nowrap text-muted transition-colors hover:text-fg"
+            }
           >
             Home
           </Link>
         </li>
         {PLANNED.map((section) => (
-          <li key={section.label}>
+          <li key={section.label} className="hidden sm:block">
             <span
+              aria-disabled="true"
               title={`Planned for ${section.when}`}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-muted/70"
+              className="flex items-baseline gap-1.5 whitespace-nowrap text-muted"
             >
               {section.label}
-              <span className="rounded-lg bg-elevated px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider">
-                soon
-              </span>
+              {/* Size separates it, not opacity: dimming would push this
+                  below the contrast floor the rest of the page holds. */}
+              <span className="text-[0.55rem] tracking-[0.1em] text-muted">soon</span>
             </span>
           </li>
         ))}
+        <li className="flex items-center">
+          <ThemeToggle />
+        </li>
       </ul>
-
-      <ThemeToggle />
     </nav>
   );
 }

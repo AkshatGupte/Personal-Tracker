@@ -6,7 +6,11 @@
  * produces an explicitly empty terrain rather than a fabricated curve.
  *
  * Pure functions, no rendering, so the mapping can be reasoned about on its own.
+ * Day boundaries come from lib/day, so the window here lines up exactly with
+ * the days streaks and CompletionLog rows are keyed by.
  */
+
+import { addDays, dayKey, startOfDay } from "@/lib/day";
 
 export const TERRAIN_DAYS = 84; // 12 weeks
 export const MILESTONES = [10, 50, 100, 250, 500] as const;
@@ -44,11 +48,6 @@ export type Terrain = {
   hasData: boolean;
 };
 
-/** UTC day key, so the same instant always lands in the same bucket. */
-export function dayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 /**
  * Collapses logs into one total per day and fills gaps with zero, so a stall
  * reads as flat ground rather than disappearing from the series.
@@ -64,14 +63,11 @@ export function buildSeries(
     totals.set(key, (totals.get(key) ?? 0) + log.tasksCompletedCount);
   }
 
-  const end = new Date(today);
-  end.setUTCHours(0, 0, 0, 0);
+  const end = startOfDay(today);
 
   const series: { dayKey: string; count: number }[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(end);
-    d.setUTCDate(end.getUTCDate() - i);
-    const key = dayKey(d);
+    const key = dayKey(addDays(end, -i));
     series.push({ dayKey: key, count: totals.get(key) ?? 0 });
   }
   return series;
