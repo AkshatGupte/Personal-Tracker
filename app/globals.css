@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+/*
+  Design tokens for Rendred. See "Visual Design Direction" in CLAUDE.md.
+
+  One semantic set, two themes. Components reference tokens only, never a raw
+  hex and never a `dark:` variant. Every text and ground pair is verified at
+  4.5:1 or better in both themes.
+
+  Radius rule (one system, documented): panels 1rem, controls 0.5rem,
+  pills fully rounded. Nothing else.
+*/
+
+/* Light (blue / white). */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #f7f8fc;
+  --elevated: #ffffff;
+  --border: #e4e7f0;
+  --fg: #14161f;
+  --muted: #5f6478;
+  --accent: #2563eb;
+  --accent-soft: #60a5fa;
+  --accent-contrast: #ffffff;
+  /* Ember, deepened for light ground: #E3A857 measures 2.10:1 here. */
+  --streak: #9a6212;
+  --positive: #047857;
+  --focus: #2563eb;
+  --shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px rgb(16 24 40 / 0.06);
+
+  --grid-line: rgb(20 22 31 / 0.045);
+  --card-edge: rgb(37 99 235 / 0.14);
+  --terrain-line: rgb(37 99 235 / 0.16);
+}
+
+/* Dark (black / purple) is the primary look. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0a0a12;
+    --surface: #14141f;
+    --elevated: #1c1b2a;
+    --border: #2a2840;
+    --fg: #edebf5;
+    --muted: #9c96b0;
+    --accent: #a78bfa;
+    --accent-soft: #c4b5fd;
+    --accent-contrast: #16121f;
+    --streak: #e3a857;
+    --positive: #4ade80;
+    --focus: #c4b5fd;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px rgb(0 0 0 / 0.45);
+
+    --grid-line: rgb(196 181 253 / 0.055);
+    --card-edge: rgb(167 139 250 / 0.28);
+    --terrain-line: rgb(196 181 253 / 0.14);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0a12;
+  --surface: #14141f;
+  --elevated: #1c1b2a;
+  --border: #2a2840;
+  --fg: #edebf5;
+  --muted: #9c96b0;
+  --accent: #a78bfa;
+  --accent-soft: #c4b5fd;
+  --accent-contrast: #16121f;
+  --streak: #e3a857;
+  --positive: #4ade80;
+  --focus: #c4b5fd;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px rgb(0 0 0 / 0.45);
+
+  --grid-line: rgb(196 181 253 / 0.055);
+  --card-edge: rgb(167 139 250 / 0.28);
+  --terrain-line: rgb(196 181 253 / 0.14);
+}
+
+/*
+  `inline` is required: these reference other custom properties, and a plain
+  `@theme` token containing var() becomes invalid at computed-value time and
+  silently kills every utility built from it.
+*/
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-streak: var(--streak);
+  --color-positive: var(--positive);
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --shadow-card: var(--shadow);
+}
+
+@layer base {
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    /*
+      Plus Jakarta Sans has an unusually narrow space glyph, 0.188em against
+      ~0.27em for most sans faces, which makes running text read as though the
+      words are joined. Nudge it back to a normal gap.
+    */
+    word-spacing: 0.06em;
+  }
+
+  /*
+    Every interactive control gets the same visible focus ring. Applied once
+    here rather than per component so nothing can ship without one.
+  */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+
+  /* Counts and dates must not jitter as their values change. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* A faint ruled grid over the page ground. Depth without noise. */
+.pattern-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Panels catch a little accent light along the top edge. */
+.card-lit {
+  box-shadow:
+    inset 0 1px 0 0 var(--card-edge),
+    var(--shadow);
+}
+
+/* The ridge traces itself once, the way a route is drawn onto a map. */
+@keyframes ridge-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes terrain-fill {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ring-draw {
+  from {
+    stroke-dashoffset: var(--ring-circumference);
+  }
+}
+
+@keyframes cell-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    /*
+      Delays must be cancelled too. Staggered entrances start at opacity 0, so
+      leaving the delay in place would keep content invisible until it elapsed,
+      the opposite of what reduce-motion is asking for.
+    */
+    animation-delay: -1ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

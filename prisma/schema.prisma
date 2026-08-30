@@ -1,0 +1,86 @@
+// Schema for Rendred. Ground truth is docs/SCHEMA.md — keep the two in sync.
+// Phase 1 covers Track, Topic, Task and CompletionLog. InsightLog (Phase 3)
+// and UserPreferences (Phase 4) are deliberately not modelled yet.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// A top-level learning goal, e.g. "DSA" or "Spanish".
+model Track {
+  id   String @id @default(cuid())
+  name String
+
+  // Strict streak: a missed day resets currentStreak to 0. No forgiveness.
+  currentStreak Int @default(0)
+  longestStreak Int @default(0)
+
+  // Null until the first task is completed on this track.
+  lastActivityDate DateTime?
+
+  createdAt DateTime @default(now())
+
+  topics         Topic[]
+  completionLogs CompletionLog[]
+}
+
+/// A sub-category within a Track, e.g. "Arrays" or "Graphs".
+model Topic {
+  id      String @id @default(cuid())
+  trackId String
+  name    String
+
+  /// True if this came from the suggested curriculum, false if user-added.
+  isExpected Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  track Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([trackId])
+}
+
+/// An individual completable item within a Topic, e.g. "Solve: Two Sum".
+model Task {
+  id      String @id @default(cuid())
+  topicId String
+  title   String
+
+  /// Optional: "easy" | "medium" | "hard".
+  difficulty String?
+
+  /// "pending" | "completed". SQLite has no enum type, so this is a string.
+  status String @default("pending")
+
+  /// Null until the task is completed.
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([status])
+}
+
+/// One row per track per day, so streaks and weekly/monthly rollups can be
+/// read directly instead of recounting every task each time.
+model CompletionLog {
+  id      String   @id @default(cuid())
+  trackId String
+  date    DateTime
+
+  tasksCompletedCount Int @default(0)
+
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  /// Enforces the "one entry per track per day" rule from docs/SCHEMA.md.
+  @@unique([trackId, date])
+  @@index([trackId])
+}
