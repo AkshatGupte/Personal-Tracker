@@ -43,7 +43,7 @@ export default async function ProgressPage() {
           <div>
             <h1
               id="week-heading"
-              className="font-mono text-[0.6rem] uppercase tracking-[0.17em] text-muted"
+              className="motif-mark font-mono text-[0.6rem] uppercase tracking-[0.17em] text-muted"
             >
               This week
             </h1>

@@ -1,3 +1,4 @@
+import LatticeWeb from "@/components/LatticeWeb";
 import { motifForDate } from "@/lib/motif";
 
 /**
@@ -9,11 +10,12 @@ import { motifForDate } from "@/lib/motif";
  * semantic colour. Nothing in the interface names which motif is showing.
  */
 export default function AtmosphereField() {
+  const motif = motifForDate();
+
   return (
-    <div
-      aria-hidden="true"
-      data-motif={motifForDate()}
-      className="atmosphere pointer-events-none fixed inset-0 -z-10"
-    />
+    <div aria-hidden="true" className="atmosphere pointer-events-none fixed inset-0 -z-10">
+      {/* Only lattice draws real threads; the rest are gradient fields. */}
+      {motif === "lattice" && <LatticeWeb />}
+    </div>
   );
 }

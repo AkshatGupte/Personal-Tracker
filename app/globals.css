@@ -3,9 +3,11 @@
 /*
   Design tokens for Rendred. See "Visual Design Direction" in CLAUDE.md.
 
-  One semantic set, two themes. Components reference tokens only, never a raw
-  hex and never a `dark:` variant. Every text and ground pair is verified at
-  4.5:1 or better in both themes.
+  One semantic set, one theme. The light/dark duality was removed: the day's
+  atmosphere is the only variation the interface carries, and maintaining a
+  second palette meant every motif was capped by whichever theme had less
+  contrast headroom — always the light one. Components reference tokens only,
+  never a raw hex. Every text and ground pair is verified at 4.5:1 or better.
 
   Radius rule (one system, documented): radius means interactive. Controls —
   buttons, inputs, the completion tick — carry 3px. Panels, sections and data
@@ -16,108 +18,8 @@
   meanings in every motif, and no motif may tint data.
 */
 
-/* Light (blue / white). */
+/* The single palette: black ground, purple accent. */
 :root {
-  color-scheme: light;
-  --bg: #ffffff;
-  --surface: #f7f8fc;
-  --elevated: #ffffff;
-  --border: #e4e7f0;
-  --fg: #14161f;
-  --muted: #5f6478;
-  --accent: #2563eb;
-  --accent-soft: #60a5fa;
-  --accent-contrast: #ffffff;
-  /* Ember, deepened for light ground: #E3A857 measures 2.10:1 here. */
-  --streak: #9a6212;
-  --positive: #047857;
-  --focus: #2563eb;
-  --shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px rgb(16 24 40 / 0.06);
-
-  --grid-line: rgb(20 22 31 / 0.045);
-  --card-edge: rgb(37 99 235 / 0.14);
-  --terrain-line: rgb(37 99 235 / 0.16);
-
-  /*
-    Atmosphere, light. Hues sit clear of all three semantic colours: accent
-    (blue here), streak (amber) and positive (green). Voyage runs deeper and
-    cooler than terrace so the two blues stay apart.
-  */
-  --voyage-sky: rgb(34 52 140 / 0.055);
-  --voyage-line: rgb(34 52 140 / 0.055);
-  --voyage-glow: rgb(34 52 140 / 0.04);
-  --voyage-ground: rgb(34 52 140 / 0.014);
-
-  /*
-    Rotated from hue 349 to hue 9 at the SAME saturation and lightness — the
-    channel spread (max 170, min 30) is unchanged, only which channel sits in
-    the middle. On a near-black ground a 350-degree red composites to magenta
-    around 320; starting warmer lands the result back in the reds.
-  */
-  --lattice-sky: rgb(170 51 30 / 0.055);
-  --lattice-line: rgb(170 51 30 / 0.06);
-  --lattice-glow: rgb(170 51 30 / 0.05);
-  --lattice-ground: rgb(170 51 30 / 0.014);
-
-  --beacon-sky: rgb(6 130 155 / 0.055);
-  --beacon-line: rgb(6 130 155 / 0.055);
-  --beacon-glow: rgb(6 130 155 / 0.045);
-  --beacon-ground: rgb(6 130 155 / 0.013);
-
-  --terrace-sky: rgb(60 140 205 / 0.06);
-  --terrace-line: rgb(60 140 205 / 0.032);
-  --terrace-glow: rgb(60 140 205 / 0.008);
-  --terrace-ground: rgb(60 140 205 / 0.013);
-}
-
-/* Dark (black / purple) is the primary look. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #0a0a12;
-    --surface: #14141f;
-    --elevated: #1c1b2a;
-    --border: #2a2840;
-    --fg: #edebf5;
-    --muted: #9c96b0;
-    --accent: #a78bfa;
-    --accent-soft: #c4b5fd;
-    --accent-contrast: #16121f;
-    --streak: #e3a857;
-    --positive: #4ade80;
-    --focus: #c4b5fd;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px rgb(0 0 0 / 0.45);
-
-    --grid-line: rgb(196 181 253 / 0.055);
-    --card-edge: rgb(167 139 250 / 0.28);
-    --terrain-line: rgb(196 181 253 / 0.14);
-
-    /* Atmosphere, dark. Stronger than light, since the ground absorbs more. */
-    --voyage-sky: rgb(60 105 175 / 0.13);
-    --voyage-line: rgb(150 195 240 / 0.075);
-    --voyage-glow: rgb(96 150 215 / 0.085);
-    --voyage-ground: rgb(60 105 175 / 0.020);
-
-    /* Hue 350 -> 9, same saturation (60%) and lightness (51%). Spokes read a
-       little stronger than rings, the way radial threads carry the load. */
-    --lattice-sky: rgb(205 78 55 / 0.13);
-    --lattice-line: rgb(235 146 130 / 0.080);
-    --lattice-glow: rgb(220 101 80 / 0.065);
-    --lattice-ground: rgb(205 78 55 / 0.022);
-
-    --beacon-sky: rgb(20 190 215 / 0.11);
-    --beacon-line: rgb(90 225 245 / 0.075);
-    --beacon-glow: rgb(70 215 240 / 0.105);
-    --beacon-ground: rgb(20 190 215 / 0.018);
-
-    --terrace-sky: rgb(120 180 230 / 0.13);
-    --terrace-line: rgb(150 200 240 / 0.045);
-    --terrace-glow: rgb(120 180 230 / 0.016);
-    --terrace-ground: rgb(120 180 230 / 0.020);
-  }
-}
-
-:root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #0a0a12;
   --surface: #14141f;
@@ -143,10 +45,23 @@
   --voyage-glow: rgb(96 150 215 / 0.085);
   --voyage-ground: rgb(60 105 175 / 0.020);
 
-  --lattice-sky: rgb(205 78 55 / 0.13);
-  --lattice-line: rgb(235 146 130 / 0.080);
-  --lattice-glow: rgb(220 101 80 / 0.065);
-  --lattice-ground: rgb(205 78 55 / 0.022);
+  /*
+    Neon multiverse: magenta above, electric blue below, the lattice drawn in
+    white and split into cyan and magenta ghosts. Hotter and more saturated
+    than the classic-suit red/blue it replaces.
+  */
+  --lattice-sky: rgb(236 40 140 / 0.22);
+  --lattice-sky-2: rgb(40 90 235 / 0.22);
+  --lattice-line: rgb(255 150 200 / 0.080);
+  --lattice-glow: rgb(255 120 60 / 0.065);
+  --lattice-ground: rgb(180 50 150 / 0.022);
+  --lattice-web: rgb(255 255 255);
+  --lattice-web-c1: rgb(80 240 255);
+  --lattice-web-c2: rgb(255 60 190);
+  --lattice-field-a: rgb(236 40 140 / 0.17);
+  --lattice-field-b: rgb(40 90 235 / 0.17);
+  --lattice-web-opacity: 0.40;
+  --lattice-web-fade: 0.15;
 
   --beacon-sky: rgb(20 190 215 / 0.11);
   --beacon-line: rgb(90 225 245 / 0.075);
@@ -158,6 +73,8 @@
   --terrace-glow: rgb(120 180 230 / 0.016);
   --terrace-ground: rgb(120 180 230 / 0.020);
 }
+
+
 
 /*
   `inline` is required: these reference other custom properties, and a plain
@@ -230,6 +147,8 @@
   semantic colour.
 */
 .atmosphere {
+  /* Space outside the 64rem container: the only place a motif may be loud. */
+  --gutter: max(0px, calc((100vw - 64rem) / 2));
   --m-sky: transparent;
   --m-line: transparent;
   --m-glow: transparent;
@@ -254,25 +173,47 @@
   inset: 0;
 }
 
-.atmosphere[data-motif="voyage"] {
+[data-motif="voyage"] .atmosphere {
   --m-sky: var(--voyage-sky);
   --m-line: var(--voyage-line);
   --m-glow: var(--voyage-glow);
   --m-ground: var(--voyage-ground);
 }
-.atmosphere[data-motif="lattice"] {
+/*
+  Lattice paints the entire ground red-to-blue, not only the gutter. An earlier
+  version masked the colour to the margin for contrast safety, which left most
+  of the page looking untouched. A flat full-page field is in fact the safe
+  shape: it lifts the ground evenly, so the headroom can be spent once and
+  measured, rather than spent on bright pixels that land under text.
+*/
+[data-motif="lattice"] .atmosphere {
+  background-image: linear-gradient(
+    170deg,
+    var(--m-field-a) 0%,
+    transparent 46%,
+    transparent 54%,
+    var(--m-field-b) 100%
+  );
   --m-sky: var(--lattice-sky);
+  --m-sky-2: var(--lattice-sky-2);
+  --m-field-a: var(--lattice-field-a);
+  --m-field-b: var(--lattice-field-b);
   --m-line: var(--lattice-line);
   --m-glow: var(--lattice-glow);
   --m-ground: var(--lattice-ground);
+  --m-web: var(--lattice-web);
+  --m-web-c1: var(--lattice-web-c1);
+  --m-web-c2: var(--lattice-web-c2);
+  --m-web-opacity: var(--lattice-web-opacity);
+  --m-web-fade: var(--lattice-web-fade);
 }
-.atmosphere[data-motif="beacon"] {
+[data-motif="beacon"] .atmosphere {
   --m-sky: var(--beacon-sky);
   --m-line: var(--beacon-line);
   --m-glow: var(--beacon-glow);
   --m-ground: var(--beacon-ground);
 }
-.atmosphere[data-motif="terrace"] {
+[data-motif="terrace"] .atmosphere {
   --m-sky: var(--terrace-sky);
   --m-line: var(--terrace-line);
   --m-glow: var(--terrace-glow);
@@ -280,7 +221,7 @@
 }
 
 /* Rhumb lines radiating from one bearing, the way a sea chart is ruled. */
-.atmosphere[data-motif="voyage"]::after {
+[data-motif="voyage"] .atmosphere::after {
   background:
     radial-gradient(125% 85% at 82% 4%, var(--m-sky), transparent 64%),
     repeating-conic-gradient(from 8deg at 82% 4%, transparent 0 7.5deg, var(--m-line) 7.5deg 7.75deg, transparent 7.75deg 15deg),
@@ -288,32 +229,93 @@
 }
 
 /*
-  A tension structure, anchored inside the frame.
-
-  The anchor used to sit off-canvas at 105% -10%, so only the far field reached
-  the screen: spokes that far from a hub are effectively parallel and rings that
-  large are effectively straight, which read as diagonal streaks rather than as
-  a web. The anchor now sits just inside the right edge and below the hero,
-  where the page margin is permanently empty — so the spokes and rings actually
-  cross, and the densest part of the structure never sits behind text.
-
-  Spacing is chosen so cells read as roughly square in the mid field: at radius
-  r the gap between spokes is r x 9deg, which matches the 68px ring pitch at
-  around 430px out. Nearer the anchor the threads converge into a node; further
-  out the lattice opens and fades.
+  Lattice is the one motif whose structure is drawn rather than washed: the
+  threads live in components/LatticeWeb.tsx. A repeating gradient can only make
+  a field, and the earlier off-canvas version proved it — spokes that far from
+  a hub are parallel and rings that large are flat, so it read as streaks. What
+  stays here is the colour: a warm wash anchored on the right, where the web is.
 */
-.atmosphere[data-motif="lattice"]::after {
-  background:
-    radial-gradient(105% 90% at 96% 58%, var(--m-sky), transparent 62%),
-    repeating-conic-gradient(from 18deg at 96% 58%, transparent 0 9deg, var(--m-line) 9deg 9.3deg, transparent 9.3deg 18deg),
-    repeating-radial-gradient(circle at 96% 58%, transparent 0 68px, var(--m-glow) 68px 69.4px, transparent 69.4px 136px);
-  /* Fades the convergence at the anchor so it never reads as a bullseye. */
-  -webkit-mask-image: radial-gradient(circle at 96% 58%, transparent 0 34px, #000 150px);
-  mask-image: radial-gradient(circle at 96% 58%, transparent 0 34px, #000 150px);
+[data-motif="lattice"] .atmosphere::after {
+  /*
+    Red above, blue below — the two hues read as one field rather than as two
+    glows. Masked to the gutter like the threads are, so the colour can be
+    strong where the web lives and is nearly gone by the reading column.
+  */
+  background: linear-gradient(
+    to bottom,
+    var(--m-sky) 0%,
+    transparent 44%,
+    transparent 56%,
+    var(--m-sky-2) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to left,
+    #000 0,
+    #000 max(0px, calc(var(--gutter) - 40px)),
+    rgb(0 0 0 / 0.18) var(--gutter),
+    rgb(0 0 0 / 0.07) 58%,
+    transparent 84%
+  );
+  mask-image: linear-gradient(
+    to left,
+    #000 0,
+    #000 max(0px, calc(var(--gutter) - 40px)),
+    rgb(0 0 0 / 0.18) var(--gutter),
+    rgb(0 0 0 / 0.07) 58%,
+    transparent 84%
+  );
+}
+
+/*
+  The web sits against the right edge and fades out before the reading column,
+  so it is dense in the permanently empty margin and gone under text. Height is
+  pinned to the viewport; `slice` keeps the threads at a constant scale rather
+  than stretching them.
+*/
+.lattice-web {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: var(--m-web-opacity, 0.3);
+
+  /*
+    Present everywhere, heaviest in the two page gutters. The dip across the
+    middle is not decoration, it is the contrast budget: white threads over body
+    text are what push the ground past the floor. Keyed to the gutter rather
+    than to a percentage, so on a narrow viewport — where there is no margin —
+    the whole web simply runs at the safe strength instead of putting full
+    weight over text.
+  */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 max(0px, calc(var(--gutter) - 48px)),
+    rgb(0 0 0 / var(--m-web-fade, 0.2)) var(--gutter),
+    rgb(0 0 0 / var(--m-web-fade, 0.2)) calc(100% - var(--gutter)),
+    #000 calc(100% - max(0px, calc(var(--gutter) - 48px))),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 max(0px, calc(var(--gutter) - 48px)),
+    rgb(0 0 0 / var(--m-web-fade, 0.2)) var(--gutter),
+    rgb(0 0 0 / var(--m-web-fade, 0.2)) calc(100% - var(--gutter)),
+    #000 calc(100% - max(0px, calc(var(--gutter) - 48px))),
+    #000 100%
+  );
+}
+
+@media (max-width: 640px) {
+  /* Narrow screens are read closer, so the texture reads louder. */
+  .lattice-web {
+    opacity: calc(var(--m-web-opacity, 0.3) * 0.55);
+  }
 }
 
 /* One light source: a luminous core with rings. The falloff is unique to it. */
-.atmosphere[data-motif="beacon"]::after {
+[data-motif="beacon"] .atmosphere::after {
   background:
     radial-gradient(38% 46% at 11% 3%, var(--m-glow), transparent 70%),
     radial-gradient(95% 78% at 11% 3%, var(--m-sky), transparent 62%),
@@ -321,10 +323,10 @@
 }
 
 /* Mown banding replaces the square grid under a pale sky. */
-.atmosphere[data-motif="terrace"]::before {
+[data-motif="terrace"] .atmosphere::before {
   opacity: 0;
 }
-.atmosphere[data-motif="terrace"]::after {
+[data-motif="terrace"] .atmosphere::after {
   background:
     linear-gradient(to bottom, var(--m-sky), transparent 58%),
     repeating-linear-gradient(90deg, var(--m-line) 0 1px, transparent 1px 104px),
@@ -336,6 +338,43 @@
   .atmosphere::after {
     opacity: 0.5;
   }
+}
+
+/*
+  Motif-scoped treatments.
+
+  A motif may decorate non-data elements — a heading, a label marker — but the
+  rule that matters is unchanged: it may never colour data. `accent`, `streak`
+  and `positive` keep their meanings on every day of the week.
+*/
+
+/*
+  The title-card split. The reference's banner is misregistered in cyan and
+  magenta; this puts the same misregistration on the display type rather than
+  building a comic panel around it, so the editorial layout survives intact.
+  Offsets are fractional and static.
+*/
+[data-motif="lattice"] .font-display {
+  /*
+    The --m-* tokens are scoped to the atmosphere element, so they resolve to
+    nothing out here and the whole declaration would be dropped. The palette
+    tokens live on :root, which is what a treatment outside the background
+    layer has to reach for.
+  */
+  text-shadow:
+    -0.028em -0.012em 0 var(--lattice-web-c1),
+    0.028em 0.012em 0 var(--lattice-web-c2);
+}
+
+/*
+  Section labels carry a small marker on lattice days. Decorative only — it is
+  inserted from CSS, so it never reaches the accessible name of the heading.
+*/
+[data-motif="lattice"] .motif-mark::before {
+  content: "\1F578\FE0F";
+  margin-right: 0.55em;
+  font-size: 1.05em;
+  vertical-align: -0.05em;
 }
 
 /* Section rules. Hairlines and space do the work cards used to do. */

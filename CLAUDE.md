@@ -40,27 +40,29 @@ layered grounds, the rule system and the terrain's own light. It must never
 read as flat black with flat purple text, and it must never read as a row of
 rounded cards.
 
-**Themes:** ship both from one semantic token set. Dark is black/purple and is
-the primary look; light is blue/white. Components reference tokens only —
-never a raw hex, never a `dark:` variant. The toggle persists and falls back
-to the system preference.
+**Theme:** one, not two. Black/purple, always. The light theme and its toggle
+were removed: the day's atmosphere is the only variation the interface carries,
+and holding a second palette meant every motif was capped by whichever theme
+had less contrast headroom — always the light one. Components reference tokens
+only, never a raw hex, never a `dark:` variant.
 
 **Palette (tokens, not raw hex, in components):**
 
-| Token | Light | Dark | Use |
-|---|---|---|---|
-| `bg` | `#FFFFFF` | `#0A0A12` | page ground |
-| `surface` | `#F7F8FC` | `#14141F` | cards, panels |
-| `elevated` | `#FFFFFF` | `#1C1B2A` | inputs, popovers, nav pill |
-| `border` | `#E4E7F0` | `#2A2840` | hairlines, card edges |
-| `fg` | `#14161F` | `#EDEBF5` | primary text |
-| `muted` | `#5F6478` | `#9C96B0` | secondary text |
-| `accent` | `#2563EB` | `#A78BFA` | progress, active, primary action |
-| `streak` | `#9A6212` | `#E3A857` | streaks, milestones, ember |
-| `positive` | `#047857` | `#4ADE80` | completion |
+| Token | Value | Use |
+|---|---|---|
+| `bg` | `#0A0A12` | page ground |
+| `surface` | `#14141F` | panels |
+| `elevated` | `#1C1B2A` | inputs, popovers |
+| `border` | `#2A2840` | hairlines |
+| `fg` | `#EDEBF5` | primary text |
+| `muted` | `#9C96B0` | secondary text |
+| `accent` | `#A78BFA` | progress, active, primary action |
+| `streak` | `#E3A857` | streaks, milestones, ember |
+| `positive` | `#4ADE80` | completion |
 
-Every text/background pair must clear **4.5:1**, verified in both themes. An
-earlier palette draft failed in eight places — do not assume, measure.
+Every text/background pair must clear **4.5:1**, and that budget is now shared
+with the atmosphere: a motif tints the ground the text sits on, so the check is
+against the *composited* ground, not against `bg`. Do not assume, measure.
 
 **Typography:** three families, one job each. Hierarchy comes from family,
 size, case and tracking — **not** from weight.
@@ -85,7 +87,7 @@ size, case and tracking — **not** from weight.
 - No shadows, no lit card edges, no hover lift.
 
 **Depth and pattern — required, this is what stops it looking basic:**
-- A faint ruled grid over the page ground, stronger in dark
+- A faint ruled grid over the page ground
 - A left gutter carries mono section labels; it collapses to an eyebrow below `lg`
 - The terrain runs full-bleed to the window edge (`.bleed-r`)
 - Stat visuals are real drawings (SVG terrain, ring, heatmap grid), never bars
@@ -112,18 +114,29 @@ size, case and tracking — **not** from weight.
 - It is **abstract only** — geometry, light and one hue each. No characters,
   logos, crests, wordmarks, slogans or licensed artwork, ever.
 - **It is never named in the interface.** No labels, tooltips or captions.
-- Motif tokens (`--m-*`, and the `--voyage-*` / `--lattice-*` / `--beacon-*` /
-  `--terrace-*` palettes) may only paint the ground. They may never colour
-  data, and the four hues are chosen to sit clear of all three semantic
-  colours in both themes.
+- The day's motif is stamped on `<html>` as `data-motif`, so a motif may also
+  carry a decorative treatment on **non-data** elements — a display heading, a
+  section-label marker. The hard rule is unchanged and is the one that matters:
+  **a motif may never colour data.** `accent`, `streak` and `positive` keep
+  their meanings on every day of the week, verified per motif.
+- Motif tokens (`--m-*`) are scoped to the atmosphere element. A treatment
+  outside that layer must read the `--voyage-*` / `--lattice-*` / `--beacon-*` /
+  `--terrace-*` palettes on `:root` instead — `--m-*` resolves to nothing out
+  there and the whole declaration is silently dropped.
 - **Judge a motif hue by what it composites to, not by its source value.** The
   near-black ground is hue 240, so a warm hue is dragged toward magenta on the
   way down. Measure the composited ground before deciding a hue is wrong.
 - Motif geometry is anchored where the page margin is permanently empty, so
   the densest part of a structure never sits behind text.
 - Static. No motion. Halved on narrow screens.
-- Every text pair must still clear 4.5:1 on each motif's ground, in both
-  themes. Verify, do not assume.
+- Every text pair must still clear 4.5:1 on each motif's composited ground.
+  Verify, do not assume.
+- `lattice` is the exception to "gradient field": a fractured hex lattice drawn
+  as SVG in `components/LatticeWeb.tsx`, covering the whole viewport and running
+  lighter across the reading column than in the page gutters. That dip is the
+  contrast budget, not a decorative choice. It is drawn three times at
+  sub-pixel offsets for a static chromatic split; the same misregistration is
+  applied to display headings on lattice days.
 
 **Three separate progress signals — do not conflate them:**
 1. Volume: terrain elevation, `accent`
@@ -143,8 +156,10 @@ No XP, levels, points or badges. The PRD does not define them.
 
 **Process:** state the design plan for a screen before coding it. After
 building or changing any screen, run `playwright-visual-qa` and **look at the
-screenshots in both themes** before marking it done. Confirm it reads as
-layered and lit, not flat.
+screenshots on more than one motif** before marking it done — the motifs are
+the only variation the interface carries now, and each one composites a
+different ground under the same text. Confirm it reads as layered and lit,
+not flat.
 
 **Scope discipline:** the reference shows XP, levels, achievements and a
 "Next Up" recommendation. None of those are in `docs/PRD.md` — and

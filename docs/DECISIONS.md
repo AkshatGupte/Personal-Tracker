@@ -5,6 +5,65 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-08-31 — Lattice becomes a neon multiverse lattice; motifs may now decorate**
+Reworked against a Spider-Verse-styled reference. Three changes, and one rule
+change underneath them.
+
+- **Geometry**: the organic spider web is replaced by a fractured hex lattice —
+  a broken honeycomb with a few larger nested apertures and long struts. Angular
+  rather than organic, which reads as structure under tension instead of as an
+  insect's web.
+- **Palette**: neon multiverse. Magenta above, electric blue below, white
+  edges, replacing the classic-suit red/blue.
+- **Chromatic split**: the lattice is drawn three times at sub-pixel offsets —
+  cyan low, magenta high, true colour on top. Static; nothing animates. The
+  same misregistration is applied to display headings, which is how the
+  reference's title-card banner reads without building a comic panel around it.
+
+**The rule change:** `data-motif` moved from the atmosphere div to `<html>`, so
+a motif can decorate non-data elements — headings, section-label markers. The
+constraint that actually protects the product is untouched and still verified
+per motif: **a motif may never colour data.** Section labels also take a small
+marker on lattice days, inserted via CSS `content` so it never reaches an
+accessible name.
+
+**A trap worth recording:** `--m-*` tokens are scoped to the atmosphere element.
+The heading treatment first used `var(--m-web-c1)` and silently did nothing —
+an unresolved custom property makes the whole declaration invalid at
+computed-value time. Treatments outside the background layer must read the
+`--lattice-*` palette on `:root`. Caught because the test asserted on computed
+`text-shadow` rather than on a screenshot.
+
+Measured after the change: worst ground in the reading column 4.73:1 against
+the 4.5 floor; treatments confirmed absent on the other three motifs.
+
+**2026-08-31 — The light theme and its toggle were removed**
+One palette now: black and purple. The day's atmosphere is the only variation
+the interface carries, so a second full palette was maintenance for a choice
+nobody was making. It was also actively holding the design back: every motif
+had to satisfy whichever theme had less contrast headroom, and that was always
+light — measured, the base ground alone gives 6.04:1 in dark against 4.66:1 in
+light, so light set the ceiling on how vivid any motif could be. Removing it
+roughly doubled the available budget.
+
+Gone: `components/ThemeToggle.tsx`, the pre-paint theme script in the layout,
+the `prefers-color-scheme` block and the `[data-theme]` blocks. `:root` carries
+the values directly and declares `color-scheme: dark`.
+
+**2026-08-31 — The lattice web covers the whole viewport, not one margin**
+The first full version anchored the web off the right edge and masked it to the
+page gutter, which was contrast-safe and wrong: most of the page looked
+untouched. The geometry now anchors outside every edge and corner, and the mask
+is keyed to the gutter rather than to a percentage — full weight in the two
+margins, roughly a seventh of that across the reading column. Keying it to the
+gutter matters at narrow widths: below the container size there is no margin,
+so the whole web simply runs at the safe strength instead of putting full
+weight over text.
+
+Measured at 1440 wide: worst ground in the reading column 4.67:1 against the
+4.5 floor; in the gutters, where no text sits, the threads run far stronger.
+Four rounds of tuning to get there — 0.25 fade read 3.28:1, 0.20 read 4.36:1.
+
 **2026-08-31 — Motif rotation counts weeks from a Monday (correctness fix)**
 `weekIndex` divided days since the Unix epoch by 7. 1 Jan 1970 was a Thursday,
 so the index rolled over mid-week and the documented pairing — Monday with

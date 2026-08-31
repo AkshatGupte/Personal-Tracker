@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import ThemeToggle from "@/components/ThemeToggle";
 
 const BUILT = [
   { label: "Home", href: "/" },
@@ -76,9 +75,6 @@ export default function TopNav() {
             </span>
           </li>
         ))}
-        <li className="flex items-center">
-          <ThemeToggle />
-        </li>
       </ul>
     </nav>
   );

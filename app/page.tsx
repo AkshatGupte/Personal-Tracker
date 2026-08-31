@@ -31,7 +31,7 @@ export default async function Home() {
           <div>
             <h1
               id="elevation-heading"
-              className="font-mono text-[0.6rem] uppercase tracking-[0.17em] text-muted"
+              className="motif-mark font-mono text-[0.6rem] uppercase tracking-[0.17em] text-muted"
             >
               Elevation
             </h1>

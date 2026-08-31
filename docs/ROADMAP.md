@@ -11,7 +11,7 @@ one is functionally complete, unless explicitly told otherwise.
 - [x] CRUD: add Task under Topic
 - [x] Mark Task complete → updates CompletionLog + streak logic
 - [x] Strict streak logic (reset on missed day)
-- [ ] Basic UI: list tracks, view topics/tasks, mark complete
+- [x] Basic UI: list tracks, view topics/tasks, mark complete
 
 ## Phase 2 — Progress Visibility
 - [x] Weekly summary view (per-track task counts, streak status) — `/progress`

@@ -30,7 +30,7 @@ export default function Panel({
       {(label || action) && (
         <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:justify-start lg:gap-1.5 lg:pt-0.5">
           {label && (
-            <h2 className="font-mono text-[0.6rem] uppercase leading-relaxed tracking-[0.17em] text-muted">
+            <h2 className="motif-mark font-mono text-[0.6rem] uppercase leading-relaxed tracking-[0.17em] text-muted">
               {label}
               {sublabel && (
                 <span className="mt-0.5 block text-[0.58rem] tracking-[0.1em] opacity-70">

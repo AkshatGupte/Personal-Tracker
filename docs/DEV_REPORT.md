@@ -6,6 +6,88 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-08-31 — One theme instead of two
+
+**What was built:**
+The light/dark switch is gone. The app now has a single look — the black
+ground with purple accents — and the only thing that varies is the day's
+background atmosphere. There is nothing left to toggle, so the toggle button
+was removed from the header.
+
+**How it works (flow):**
+1. Previously the page loaded, ran a small script before anything was drawn to
+   decide light or dark, and then every colour had to be defined twice.
+2. Now the colours are simply declared once and used. The script, the second
+   set of colours, and the toggle button are all deleted.
+3. The page tells the browser it is a dark page, so scrollbars and form
+   controls match instead of appearing as bright white boxes.
+
+**Why it was worth doing:**
+Text has to stay readable against whatever colour sits behind it, and there is
+a measurable minimum for that. Holding two themes meant every background
+atmosphere had to be readable in *both*, so the weaker of the two set the
+limit — and that was always the light theme. Measured, the plain background
+gives a comfortable 6.04 against a required 4.5 in dark, but only 4.66 in
+light. Dropping the light theme roughly doubled the room available, which is
+what let the atmospheres become as vivid as they now are.
+
+**Technical concepts used:**
+- CSS custom properties (named colour values reused across the app) — reduced
+  from two sets to one
+- Contrast ratio measurement (a standard score for how readable text is
+  against its background) — used to justify the removal rather than assume it
+
+**Roadmap status:** no roadmap item — a design-system change supporting
+Phase 2's visuals. Recorded in `docs/DECISIONS.md`.
+
+---
+
+## 2026-08-31 — The lattice day, rebuilt
+
+**What was built:**
+One of the four daily background atmospheres — the one called "lattice" — was
+completely redrawn. It used to be a soft red-and-blue spider web. It is now a
+fractured neon honeycomb in magenta and electric blue that spans the whole
+window, with a deliberate colour-fringing effect like a slightly misprinted
+comic. On lattice days, large headings pick up that same fringing.
+
+**How it works (flow):**
+1. When a page is requested, the app checks what day it is and picks that
+   day's atmosphere. This is decided once, on the server, so it cannot flicker
+   or disagree with itself.
+2. The three other atmospheres are painted with plain colour gradients. A
+   gradient can only make a soft glow, and a lattice needs actual lines with
+   ends, gaps and broken cells — so this one is drawn as a real shape instead.
+3. The shape is drawn three times, each shifted by a fraction of a pixel and
+   tinted differently, which is what produces the fringed, misprinted look.
+   Nothing moves; it is completely still.
+4. The lattice is drawn at full strength in the empty margins on either side of
+   the page, and roughly a seventh of that strength behind the text itself.
+   That dip is not a style choice — it is what keeps the words readable.
+5. On narrow screens there are no margins, so the whole thing simply runs at
+   the gentler strength rather than sitting at full weight over the text.
+
+**The rule that changed:**
+Until now an atmosphere could only paint the page background. It may now also
+decorate things that are *not* data — a heading, a small marker beside a
+section label. The rule that actually protects the app is untouched and is
+re-checked for every atmosphere: **an atmosphere may never colour data.**
+Purple always means progress, amber always means streak, green always means
+completed — on every day of the week, no exceptions.
+
+**Technical concepts used:**
+- SVG (a way of describing shapes as instructions rather than as a picture, so
+  they stay sharp at any size) — used to draw the lattice
+- A mask (a rule saying how strongly to show something in each area) tied to
+  the page's side margins — used to keep the lattice off the reading column
+- Contrast measurement — the reading column was measured at 4.73 against the
+  4.5 minimum after the change
+
+**Roadmap status:** no roadmap item — refinement of the daily atmosphere layer
+shipped with the survey redesign. Recorded in `docs/DECISIONS.md`.
+
+---
+
 ## 2026-08-31 — The weekly progress view
 
 **What was built:**

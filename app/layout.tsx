@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
 import AtmosphereField from "@/components/AtmosphereField";
+import { motifForDate } from "@/lib/motif";
 import "./globals.css";
 
 // Three roles, three families. Weights are held to what each role actually
@@ -34,24 +35,20 @@ export const metadata: Metadata = {
   description: "Track what you are learning, and see whether it is well-rounded.",
 };
 
-// Applies the saved theme before first paint, so switching themes does not
-// flash the wrong colours on load. Runs ahead of React by design.
-const themeInit = `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})()`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
+    // The day's motif is stamped on the document, not just on the background
+    // layer, so a motif can carry a decorative treatment on non-data elements
+    // as well as paint the ground. It still may never colour data.
     <html
       lang="en"
+      data-motif={motifForDate()}
       className={`${jakarta.variable} ${instrument.variable} ${plexMono.variable}`}
-      suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
-      </head>
       <body className="min-h-dvh bg-bg font-sans text-fg antialiased">
         <AtmosphereField />
         {children}
