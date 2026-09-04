@@ -73,6 +73,31 @@ export async function launch({ headless = true } = {}) {
 
   const browser = await connect(wsUrl);
 
+  /*
+    The browser must die with this process, however this process dies.
+
+    `close()` alone is not enough: any suite that throws — a failed assertion, a
+    selector that did not match — skips it and leaves a headless Chromium
+    orphaned with PPID 1, holding a few hundred MB. Six of them accumulated over
+    one session before this was noticed, at which point the machine was 1.3GB
+    down and the dev server was thrashing.
+  */
+  const reap = () => {
+    try {
+      proc.kill("SIGKILL");
+    } catch {}
+  };
+  const onFatal = (error) => {
+    reap();
+    console.error(error);
+    process.exit(1);
+  };
+  process.once("exit", reap);
+  process.once("SIGINT", () => { reap(); process.exit(130); });
+  process.once("SIGTERM", () => { reap(); process.exit(143); });
+  process.once("uncaughtException", onFatal);
+  process.once("unhandledRejection", onFatal);
+
   return {
     async page(width = 1280, height = 720) {
       const { targetId } = await browser.send("Target.createTarget", { url: "about:blank" });
@@ -84,7 +109,10 @@ export async function launch({ headless = true } = {}) {
         await browser.send("Browser.close");
       } catch {}
       browser.socket.close();
-      proc.kill("SIGKILL");
+      reap();
+      process.off("exit", reap);
+      process.off("uncaughtException", onFatal);
+      process.off("unhandledRejection", onFatal);
     },
   };
 }

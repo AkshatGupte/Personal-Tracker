@@ -55,6 +55,28 @@ override which binary it uses.
 
    `rm -rf .next` after stopping everything, and start one server.
 
+## The effect lab
+
+`/lab` renders `VenomLightning` and `GlitchShatter` in isolation, at the sizes
+they are used at, with buttons to fire them on demand. Development only — it
+`notFound()`s in any other environment.
+
+Capturing a transient is harder than it looks. Both effects remove themselves
+from the DOM on a timer, and pausing a CSS animation does **not** stop that
+timer, so a screenshot taken a moment later catches nothing. Freeze them by
+seeking instead:
+
+```js
+for (const a of document.getAnimations()) {
+  const n = a.animationName;
+  if (n === "sv-bolt" || n === "sv-shard") { a.pause(); a.currentTime = n === "sv-bolt" ? 30 : 95; }
+}
+```
+
+A bolt spends most of its 200ms dark, so a fixed `sleep` lands on an off-frame
+more often than an on-frame. Do not pause everything — freezing the route
+transition mid-fade dims the whole page and ruins the shot.
+
 ## Logic tests
 
 ```

@@ -6,6 +6,52 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-04 — Blue lightning and a shatter glitch
+
+**What was built:**
+Two new effects. A branching blue-white lightning arc that flickers across the
+elevation number when it climbs and off the ADD button when you press it, and a
+"shatter" — the thing you touched briefly fractures into mismatched coloured
+triangles and snaps back — which is now what confirms a check-in or a newly
+created track. There is also a hidden `/lab` page that shows both on their own,
+so their timing and colours can be judged without hunting for them in the app.
+
+**How it works (flow):**
+1. **Lightning.** A jagged path is generated in code — straight segments with
+   sharp turns, never smooth curves — with two to four smaller forks branching
+   off it, each getting shorter and thinner as it goes. A brighter core sits on
+   a wider blurred copy of itself, which is what makes it look electric.
+2. It flickers on and off three times in about 70 milliseconds and then fades,
+   because real electricity is instant and irregular. A smooth repeating pulse
+   would look like a neon sign.
+3. Every strike is drawn fresh, so no two are the same shape.
+4. **Shatter.** Nine or so triangles are laid over the thing that changed, each
+   cut from a solid colour, each nudged a few pixels and a few degrees out of
+   line — then they snap back into place and fade, in about a third of a second.
+
+**Technical concepts used:**
+- **Only the two properties browsers can move cheaply** — position and opacity.
+  Nothing changes size or layout, so the page never has to be re-measured while
+  an effect plays.
+- **Nothing fires on bad news.** Undoing a check-in gets no shatter; elevation
+  going *down* gets no lightning. And on the track page the bolt only appears
+  when the check-in was about elevation, so one tap never sets off five things
+  at once.
+- **Turned off entirely for reduced motion**, rather than frozen. The background
+  atmosphere stays frozen because it is a place; a flash of lightning held still
+  would just be a permanent scribble.
+- **Two things in the brief were not followed, deliberately** — a proposed
+  animation library was left out because the effects are a timer and a CSS rule
+  and the project has a standing rule against adding one, and green shards were
+  swapped for the palette's own colours because this theme has no green. Both
+  flagged rather than silently changed.
+
+**Roadmap status:** no roadmap item — a visual feature pass on the Spider-Verse
+direction recorded in `CLAUDE.md`. Phase 2 still has one item open, the learning
+trajectory view, waiting on real check-in data.
+
+---
+
 ## 2026-09-04 — Stabilization pass: four fixes, no new features
 
 **What was built:**

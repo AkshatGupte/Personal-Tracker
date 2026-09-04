@@ -3,6 +3,7 @@
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { useCheckInBeat } from "@/components/CheckInBeat";
 import CheckInReport from "@/components/CheckInReport";
+import GlitchShatter from "@/components/spiderverse/GlitchShatter";
 import { deleteTask, setCheckIn, updateTask } from "@/lib/actions/tasks";
 import { DIFFICULTIES } from "@/lib/difficulty";
 import type { CheckInOutcome } from "@/lib/streak";
@@ -111,6 +112,16 @@ export default function TaskRow({
     null,
   );
   const reportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /*
+    The shatter is the confirmation, so it waits for the server like the report
+    line does and fires on the same response.
+
+    It does not fire on an undo. The effect says "that landed", and playing it
+    when a check-in is taken back would celebrate the opposite of what happened
+    — the same reason the report line goes muted for a withdrawal and the beat
+    refuses to tint a fall.
+  */
+  const [shatter, setShatter] = useState(0);
   const { beat, publish } = useCheckInBeat();
   const live = report && report.seq === (beat?.seq ?? 0) ? report.outcome : null;
 
@@ -138,6 +149,7 @@ export default function TaskRow({
       setError(result.error ?? null);
 
       if (result.outcome) {
+        if (result.outcome.kind !== "withdrawn") setShatter((n) => n + 1);
         setReport({ seq: publish(result.outcome), outcome: result.outcome });
         reportTimer.current = setTimeout(
           () => setReport(null),
@@ -245,8 +257,11 @@ export default function TaskRow({
   }
 
   return (
-    <li className="py-2">
-      <div className="flex items-center justify-between gap-3">
+    <li className="relative py-2">
+      {/* Over the row that was clicked, so the confirmation belongs to the thing
+          that changed rather than to the page. */}
+      <GlitchShatter fire={shatter} count={8} />
+      <div className="relative flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           {/*
             A toggle button rather than a checkbox input: the accessible name

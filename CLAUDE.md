@@ -47,7 +47,11 @@ Full context: see `docs/PRD.md`.
 - **Animation:** CSS and SVG only. There is no animation library and adding one
   needs a discussion first. `GlitchText` was deliberately written without
   Framer Motion — its glitch frames are discrete style writes, which a library
-  does not help with.
+  does not help with. `VenomLightning` and `GlitchShatter` were later specified
+  *with* Framer Motion for "orchestrating trigger timing" and were still built
+  without it: both are a counter prop, a `setTimeout` and a CSS keyframe, which
+  is what orchestration means here. Revisit only if something genuinely needs
+  interruptible or sequenced timelines.
 
 Do not introduce new frameworks, state management libraries, CSS frameworks,
 or databases without discussing it first. Keep the dependency footprint small.
@@ -218,6 +222,24 @@ nothing is stored.
   filter to a whole route subtree** — it is per-pixel over everything, and with
   `animation-fill-mode: both` its start state applies during any delay before
   the animation runs, leaving the entire page ghosted and unreadable.
+
+**Two signature effects, both transients, both for moments of change only:**
+- `VenomLightning` — a branching bio-electric arc. Jagged `L` segments only,
+  never curves; a spine that throws tapering forks; three hard flicker frames in
+  ~70ms then a fade. Fires on a counter prop. Used on the elevation figure when
+  volume rises and on the ADD button press. **Never loop it** — a smooth repeat
+  reads as a neon sign, which is the opposite of a discharge.
+- `GlitchShatter` — the film's fracture: 6-12 clip-path triangles in the plate
+  colours, knocked out of register and snapped back over 220-360ms. This is the
+  app's "that landed" confirmation, on check-in and on creating a track. It is
+  **not** a replacement for `GlitchText`, which stays for resting text accents;
+  the two are different devices and both are wanted.
+- Neither may go on an idle element, and neither fires on a *negative* change —
+  no shatter on an undo, no bolt on elevation falling. Both render nothing at
+  all under reduced motion, because a transient frozen at its neutral pose is
+  just a permanent scribble over the interface.
+- `/lab` renders both in isolation for tuning. Development only; it `notFound()`s
+  elsewhere.
 
 **Motion:** every animation must name the state change it reports.
 - The check-in is the one interaction allowed to feel like an event: the tick's

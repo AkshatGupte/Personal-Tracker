@@ -1,4 +1,5 @@
 import InlineCreateForm from "@/components/InlineCreateForm";
+import ElevationValue from "@/components/ElevationValue";
 import { GlitchText } from "@/components/spiderverse/GlitchText";
 import { WebDivider, WebLoader } from "@/components/spiderverse/SpiderWeb";
 import Panel from "@/components/Panel";
@@ -38,21 +39,20 @@ export default async function Home() {
               <GlitchText text="Elevation" intensity="subtle" trigger="auto" baseColor="var(--muted)" />
             </h1>
             {/*
-              Keyed by the value, so the flash fires on the *change* and never on
-              the resting state — a check-in that raises the ground is marked,
-              and a plain revalidation is not.
+              The flash still fires on the *change* and never on the resting
+              state — a check-in that raises the ground is marked, a plain
+              revalidation is not — but the key that does it now sits inside
+              `ElevationValue`, on the numeral itself. It has to: the component
+              compares the value against the previous render to decide whether
+              to throw a bolt, and a key out here would remount it and wipe that
+              memory on every change.
+
+              The measurement still glitches at the quietest intensity, rare and
+              short enough that the figure stays readable — a number you cannot
+              read at a glance has stopped being a measurement.
             */}
-            <p
-              key={terrain.peak}
-              className="sv-value-flash mt-2 font-mono text-5xl font-medium leading-none tracking-tight tabular-nums"
-            >
-              {/*
-                The measurement glitches too, at the quietest intensity: a burst
-                every 4.5-9s lasting 50-90ms. Rare and short enough that the
-                figure stays readable — a number you cannot read at a glance has
-                stopped being a measurement.
-              */}
-              <GlitchText text={String(terrain.peak)} intensity="subtle" trigger="auto" />
+            <p className="mt-2 font-mono text-5xl font-medium leading-none tracking-tight tabular-nums">
+              <ElevationValue value={terrain.peak} />
             </p>
           </div>
 

@@ -5,6 +5,40 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-04 — The two new effects were built without Framer Motion**
+The brief specified Framer Motion for "orchestrating trigger timing". Both
+effects are a counter prop, one `setTimeout` and one CSS keyframe — that is the
+whole orchestration — so adding a runtime animation dependency would have bought
+nothing and would have contradicted the standing CSS-and-SVG-only rule that
+`GlitchText` was already written to. Flagged rather than assumed; revisit if
+something needs interruptible or sequenced timelines.
+
+Related: the brief asked for shards including green. The palette has no green —
+it was retired with the motif system — so the mismatch is built from the plates
+the theme owns (magenta, cyan, yellow, red, purple) plus one pure white.
+
+**2026-09-04 — `GlitchText` was already a shatter, and was left alone**
+The brief asked to correct it "if it was built as pure chromatic aberration". It
+was not: alongside the RGB split it renders clip-path torn bands at higher
+intensities. The conditional did not apply, so it is unchanged — and the two
+devices now coexist deliberately, `GlitchText` for resting text accents and
+`GlitchShatter` for the instant something changes.
+
+**2026-09-04 — Effects never fire on a negative change**
+No shatter on an undo, no bolt when elevation falls. The report line already
+goes muted for a withdrawal and the beat refuses to tint a fall; an effect that
+celebrated those would be reporting the opposite of what happened. The elevation
+bolt also rides the beat's existing one-stat rule rather than adding its own, so
+a check-in that moved the streak lights the streak and leaves the bolt out —
+otherwise a single tap would set off the tick, the report, the shatter, the
+misregistration and a bolt at once.
+
+**2026-09-04 — Transients render nothing under reduced motion**
+Not "frozen at a neutral pose", which is the rule for the ambient layers. A bolt
+or a shatter held at its start state is a permanent scribble over the interface;
+the atmosphere is a place and should persist, a discharge is an event and should
+not. The state change is still fully reported by the report line and the numbers.
+
 **2026-09-04 — Every delete absorbs a repeat**
 `deleteTrack` used `prisma.track.delete`, which raises P2025 when the row has
 already gone — so a double click on the confirm button produced a real 500 for
