@@ -47,7 +47,7 @@ Full context: see `docs/PRD.md`.
 - **Animation:** CSS and SVG only. There is no animation library and adding one
   needs a discussion first. `GlitchText` was deliberately written without
   Framer Motion — its glitch frames are discrete style writes, which a library
-  does not help with. `VenomLightning` and `GlitchShatter` were later specified
+  does not help with. `AmbientLightning` and `GlitchShatter` were later specified
   *with* Framer Motion for "orchestrating trigger timing" and were still built
   without it: both are a counter prop, a `setTimeout` and a CSS keyframe, which
   is what orchestration means here. Revisit only if something genuinely needs
@@ -224,11 +224,26 @@ nothing is stored.
   the animation runs, leaving the entire page ghosted and unreadable.
 
 **Two signature effects, both transients, both for moments of change only:**
-- `VenomLightning` — a branching bio-electric arc. Jagged `L` segments only,
-  never curves; a spine that throws tapering forks; three hard flicker frames in
-  ~70ms then a fade. Fires on a counter prop. Used on the elevation figure when
-  volume rises and on the ADD button press. **Never loop it** — a smooth repeat
-  reads as a neon sign, which is the opposite of a discharge.
+- `AmbientLightning` — a Lichtenberg discharge breaking off the interface's own
+  borders. Mounted once in the layout, above the content. **Ambient and
+  deliberately uncorrelated with anything the user does:** it arrives on its own
+  every 8-18s and means nothing. It replaced a version wired to the ADD press
+  and to elevation rising; that wiring is gone and must not come back — an
+  effect that reports a state change has to be reliable, and this is not.
+  - Origins are sampled along real edges (panel borders, the masthead rule, the
+    page column) and the trunk leaves along that edge's outward normal, so it
+    reads as breaking *off* the interface rather than floating over it.
+  - Three generations, not two. Trunk, forks off its vertices, and forks off
+    *those*, with the same 0.6 length / 0.55 width falloff per jag at each
+    level. Two generations reads as "a bolt with forks"; the third is what makes
+    it self-similar and therefore a Lichtenberg figure.
+  - Timing is asymmetric on purpose: a hard 90ms flicker in (paired keyframe
+    stops, no interpolation), a 1.0-1.8s hold, then a *smoothly eased* 0.4-0.7s
+    fade. Struck instantly, dissipating slowly. **Never loop it** — a smooth
+    repeat reads as a neon sign.
+  - One strike at a time, rarely two. Its layer is `overflow-x: clip`, because a
+    520px canvas centred near a narrow viewport's edge otherwise widens the
+    document.
 - `GlitchShatter` — the film's fracture: 6-12 clip-path triangles in the plate
   colours, knocked out of register and snapped back over 220-360ms. This is the
   app's "that landed" confirmation, on check-in and on creating a track. It is

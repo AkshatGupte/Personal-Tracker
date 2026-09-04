@@ -1,7 +1,6 @@
 "use client";
 
 import { useCheckInBeat, type BeatSignal } from "@/components/CheckInBeat";
-import VenomLightning from "@/components/spiderverse/VenomLightning";
 
 /**
  * One measurement in the track header: mono label, mono numeral.
@@ -93,30 +92,9 @@ export default function TrackStat({
   */
   const tint = wanted === rest.token ? "var(--fg)" : wanted;
 
-  /*
-    An arc across the elevation figure when volume actually rises.
-
-    This is the stat the home page's big numeral mirrors, but the home page only
-    ever *arrives* at a new figure — a check-in happens over here, so this is the
-    one place elevation is seen to climb while you are looking at it.
-
-    It rides the beat's existing rule rather than adding one: only the stat the
-    check-in was about reacts, so a check-in that moved the streak lights the
-    streak and leaves this alone. Without that, one tap would set off the tick,
-    the report line, the shatter, the misregistration and a bolt all at once,
-    which is the pile-up the beat exists to prevent.
-  */
-  const arc = signal === "elevation" && mine && rose ? mine.seq : 0;
-
   return (
-    <div className="relative">
-      <VenomLightning
-        fire={arc}
-        width={132}
-        height={44}
-        className="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/4"
-      />
-      <dt className="relative font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted">
+    <div>
+      <dt className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted">
         {label}
       </dt>
       <dd
@@ -126,7 +104,7 @@ export default function TrackStat({
           element would only run for the first.
         */
         key={mine ? `beat-${mine.seq}` : "rest"}
-        className={`relative mt-1.5 font-mono text-3xl font-medium leading-none tracking-tight tabular-nums ${rest.cls}`}
+        className={`mt-1.5 font-mono text-3xl font-medium leading-none tracking-tight tabular-nums ${rest.cls}`}
         style={
           mine
             ? {

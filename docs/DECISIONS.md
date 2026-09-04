@@ -5,6 +5,42 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-04 — The lightning is ambient, and correlates with nothing**
+It first shipped wired to the ADD press and to elevation rising. Both triggers
+are removed and the component is now a single spawner mounted in the layout,
+firing every 8-18 seconds on its own.
+
+The trigger version failed twice over. It was reported as invisible, and it was:
+the elevation bolt rode the beat's one-stat rule, which meant it only fired when
+a check-in did *not* move the streak — a person checking one task off once a day
+would never have seen it. And on the create flow the shatter landed on the same
+strip of form and erased the 2.6px line under solid plates. Rather than keep
+tuning weight and stagger against those collisions, the effect was reclassified:
+it is weather, not feedback. Anything reporting a state change has to be
+reliable, and this never could be.
+
+**2026-09-04 — A strike starts on a border and grows away from it**
+Origins are sampled along real element edges — panel borders, the masthead rule,
+the page column — recomputed per strike rather than cached, since panels come
+and go with the data and a stale rect hangs a discharge in empty space. The
+trunk leaves along that edge's outward normal with a little angular slop, which
+is what makes it read as breaking *off* the interface instead of floating over
+it. Only edges currently on screen are offered.
+
+**2026-09-04 — Three generations, because two is a bolt with forks**
+A Lichtenberg figure is self-similar: the same forking logic repeats at every
+scale. Trunk, branches off its vertices, and branches off *those*, with the
+same 0.6 length / 0.55 width falloff per jag at each level, which tapers the
+extremities to capillary threads. Measured on a real strike: 44 segments split
+4 trunk / 21 gen-1 / 19 gen-2, widths running 2.60 down to 0.35.
+
+**2026-09-04 — Struck instantly, dissipating slowly**
+The entry keeps the hard-cut technique — paired keyframe stops so the browser
+cannot interpolate, ~90ms — while the exit is a *smoothly eased* 0.4-0.7s ramp
+after a 1.0-1.8s hold. The asymmetry is the character. It is two animations
+rather than one, because the hold is randomised per strike and a single keyframe
+scaled to the total would stretch the flicker along with it.
+
 **2026-09-04 — The two new effects were built without Framer Motion**
 The brief specified Framer Motion for "orchestrating trigger timing". Both
 effects are a counter prop, one `setTimeout` and one CSS keyframe — that is the

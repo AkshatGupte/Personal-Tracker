@@ -473,50 +473,51 @@ body {
 }
 
 /* ----------------------------------------------------------------------------
-   VENOM LIGHTNING
+   AMBIENT LIGHTNING
    ----------------------------------------------------------------------------
-   Three hard on/off frames inside the first ~35% of the run, then a fade. The
-   pairs of stops with equal values are what make it cut rather than tween: a
-   smoothly interpolated opacity ramp reads as a neon sign breathing, and the
-   reference is a discharge, which is instantaneous.
+   Two animations, not one, because the hold is randomised per strike: a single
+   keyframe scaled to the total would stretch the flicker along with it, and the
+   flicker has to stay at ~90ms whatever the strike's overall length.
 
-   At the 200ms default the flicker occupies 20-90ms and the fade the rest,
-   which is the "2-3 frames, ~50-100ms, then fade" the effect is drawn from.
+   `sv-strike-in` cuts. The paired stops with equal values are what stop the
+   browser interpolating between them — a tweened opacity ramp reads as a neon
+   sign breathing, and a discharge is instantaneous. No fill mode, so it hands
+   the element back at full opacity for the hold.
 
-   Opacity only. The geometry is regenerated per strike in JS, never tweened.
+   `sv-strike-out` is the opposite on purpose: a smooth eased ramp, delayed past
+   the hold, `forwards` so it stays gone. That asymmetry is the whole character
+   — struck instantly, dissipating slowly.
 ---------------------------------------------------------------------------- */
-@keyframes sv-bolt {
+@keyframes sv-strike-in {
   0%,
-  9% {
+  24% {
     opacity: 0;
   }
-  10%,
-  19% {
+  25%,
+  49% {
     opacity: 1;
   }
-  20%,
-  25% {
-    opacity: 0.08;
+  50%,
+  62% {
+    opacity: 0.12;
   }
-  26%,
-  33% {
-    opacity: 1;
-  }
-  34%,
-  38% {
-    opacity: 0.3;
-  }
-  39%,
-  45% {
-    opacity: 1;
-  }
+  63%,
   100% {
+    opacity: 1;
+  }
+}
+
+@keyframes sv-strike-out {
+  from {
+    opacity: 1;
+  }
+  to {
     opacity: 0;
   }
 }
 
-.sv-bolt {
-  animation: sv-bolt 200ms linear both;
+.sv-strike {
+  opacity: 1;
 }
 
 /* ----------------------------------------------------------------------------

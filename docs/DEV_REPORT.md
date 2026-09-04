@@ -6,6 +6,57 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-04 — The lightning became weather
+
+**What was built:**
+The blue lightning was rebuilt from scratch and now works completely
+differently. It is no longer attached to anything you do — it simply happens,
+roughly every ten to fifteen seconds, on its own, for as long as the page is
+open. Each bolt now starts *on* an edge of the interface (the border of a panel,
+the line under the masthead) and grows away from it, and it is a much more
+detailed shape: a trunk with branches, and smaller branches off those, thinning
+to hair-fine tips.
+
+**How it works (flow):**
+1. A timer waits a random 8-18 seconds.
+2. It looks at what is currently on screen and collects the real edges — panel
+   borders, the masthead rule, the sides of the page column — then picks one at
+   random and a random point anywhere along it.
+3. It grows a trunk outward from that point, away from the edge. Branches fork
+   off the trunk at uneven places and angles, and smaller branches fork off
+   those. Each level is about 40% shorter and 45% thinner than its parent, which
+   is what tapers the tips to threads.
+4. The bolt snaps on in about a tenth of a second, holds for a second or two,
+   then fades away smoothly. Struck fast, dissipating slow.
+5. Then the timer starts again with a new random wait, and the next bolt is a
+   brand new shape somewhere else.
+
+**Technical concepts used:**
+- **Why it stopped being a reward.** The old version fired when you pressed ADD
+  and when your elevation went up, and it was reported as invisible — it was.
+  The elevation one only fired on a *second* check-in the same day, so checking
+  one task off once a day never showed it, and on the create flow the coloured
+  shatter landed on top and erased it. Rather than keep tuning it against those
+  collisions, it was reclassified: it is atmosphere, not feedback. Feedback has
+  to be reliable; weather does not.
+- **Branching that repeats at three scales** is what makes it look like a real
+  electrical discharge (the pattern is called a Lichtenberg figure) rather than
+  a zigzag with a couple of forks. Measured on a real bolt: 44 segments, split
+  4 trunk / 21 branches / 19 sub-branches.
+- **One at a time, rarely two** — more than that stops reading as an occasional
+  flicker of power and starts reading as a storm.
+- **Off entirely when the system asks for reduced motion**, not slowed down.
+- **A narrow-screen bug found and fixed on the way**: each bolt is drawn on a
+  520px canvas, and one starting near the right edge of a phone-width window
+  pushed the page sideways and produced a horizontal scrollbar. The bolt layer
+  now trims anything past the page edge without affecting anything else.
+
+**Roadmap status:** no roadmap item — a visual pass on the Spider-Verse
+direction in `CLAUDE.md`. Phase 2 still has the learning trajectory view open,
+waiting on real check-in data.
+
+---
+
 ## 2026-09-04 — Blue lightning and a shatter glitch
 
 **What was built:**

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GlitchShatter from "@/components/spiderverse/GlitchShatter";
-import VenomLightning from "@/components/spiderverse/VenomLightning";
 
 /**
  * The bench itself. Every control fires a real burst of the real component —
@@ -15,9 +14,27 @@ const fireButton =
   "rounded-none bg-sv-yellow px-3 py-1.5 font-label text-[0.6rem] uppercase tracking-[0.14em] text-sv-ink";
 
 export default function EffectLab() {
-  const [bolt, setBolt] = useState(0);
-  const [wide, setWide] = useState(0);
   const [shatter, setShatter] = useState(0);
+  const [strikes, setStrikes] = useState(0);
+
+  /*
+    The spawner owns its own state, so the lab counts what it renders rather
+    than being told. A MutationObserver on the strike layer is enough and keeps
+    the component free of any lab-only reporting hook.
+  */
+  useEffect(() => {
+    const seen = new Set<string>();
+    const observer = new MutationObserver(() => {
+      document.querySelectorAll("svg.sv-strike").forEach((el) => {
+        const key = el.getAttribute("style") ?? "";
+        if (seen.has(key)) return;
+        seen.add(key);
+        setStrikes((n) => n + 1);
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
   const [shards, setShards] = useState(9);
   const [panel, setPanel] = useState(0);
 
@@ -34,52 +51,29 @@ export default function EffectLab() {
 
       {/* ---------------------------------------------------------------- */}
       <section className="flex flex-col gap-3">
-        <h2 className={sectionLabel}>Venom lightning · stat accent</h2>
+        <h2 className={sectionLabel}>Ambient lightning</h2>
         <p className={note}>
-          The size used behind the elevation numeral. Fire it repeatedly — the bolt is
-          regenerated every strike, so no two are the same shape.
+          Nothing here triggers it. The spawner is mounted once in the layout and fires
+          on its own every 8-18 seconds, picking a random point along a real border — a
+          panel edge, the masthead rule, the page column. Leave this page open and watch;
+          the panels below are targets. &ldquo;Strike now&rdquo; only forces the same
+          spawner to run early, for inspection.
         </p>
-        <div className="flex items-center gap-6">
-          <div className="relative inline-flex items-center justify-center px-6 py-2">
-            <VenomLightning fire={bolt} width={130} height={44} className="-left-2 top-1/2 -translate-y-1/2" />
-            <span className="relative font-mono text-5xl leading-none tabular-nums">96</span>
-          </div>
-          <button type="button" className={fireButton} onClick={() => setBolt((n) => n + 1)}>
-            Strike
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            className={fireButton}
+            onClick={() => window.dispatchEvent(new Event("sv:lightning"))}
+          >
+            Strike now
           </button>
+          <p className="font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+            struck {strikes} {strikes === 1 ? "time" : "times"} since load
+          </p>
         </div>
-      </section>
-
-      {/* ---------------------------------------------------------------- */}
-      <section className="flex flex-col gap-3">
-        <h2 className={sectionLabel}>Venom lightning · wide arc</h2>
-        <p className={note}>
-          The button-press variant, arcing outward. Longer box, so the spine takes more
-          segments and the forks have room to taper.
-        </p>
-        <div className="flex items-center gap-6">
-          <div className="relative inline-block">
-            <VenomLightning fire={wide} width={260} height={60} className="-left-24 top-1/2 -translate-y-1/2" />
-            <span className="relative inline-block rounded-none bg-sv-yellow px-4 py-2 font-label text-[0.65rem] uppercase tracking-[0.14em] text-sv-ink">
-              Add
-            </span>
-          </div>
-          <button type="button" className={fireButton} onClick={() => setWide((n) => n + 1)}>
-            Arc
-          </button>
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------------------- */}
-      <section className="flex flex-col gap-3">
-        <h2 className={sectionLabel}>Venom lightning · idle accent</h2>
-        <p className={note}>
-          Self-firing every 8-15 seconds. Left running, it should read as an occasional
-          power fluctuation and never as a loop.
-        </p>
-        <div className="relative inline-flex w-fit items-center gap-2 border border-border px-4 py-2">
-          <VenomLightning idle width={96} height={28} className="-right-6 top-1/2 -translate-y-1/2" />
-          <span className="font-comic text-2xl leading-none">Rendred</span>
+        <div className="mt-2 grid grid-cols-2 gap-6">
+          <div className="sv-panel h-28" />
+          <div className="sv-panel h-28" />
         </div>
       </section>
 

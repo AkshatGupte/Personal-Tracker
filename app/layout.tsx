@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Archivo, Bangers, Space_Mono } from "next/font/google";
 import ChromaticDefs from "@/components/spiderverse/ChromaticDefs";
+import AmbientLightning from "@/components/spiderverse/AmbientLightning";
 import SpiderverseBackground from "@/components/spiderverse/SpiderverseBackground";
 import { WebPageCorners } from "@/components/spiderverse/SpiderWeb";
 import "./globals.css";
@@ -69,6 +70,11 @@ export default function RootLayout({
             referenced by url() from GlitchText and the page transition. */}
         <ChromaticDefs />
         {children}
+        {/* Mounted last and above the content, unlike the atmosphere: a
+            discharge comes *off* an edge, so it has to draw over the panel it
+            left rather than behind it. Ambient and uncorrelated with anything
+            the user does — see AmbientLightning. */}
+        <AmbientLightning />
       </body>
     </html>
   );
