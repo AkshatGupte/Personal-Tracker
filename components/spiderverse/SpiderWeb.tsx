@@ -74,16 +74,33 @@ function mapper(corner: Corner, w: number, h: number) {
  *
  * `jitter` is what separates the two uses. At zero the angles are evenly spaced
  * and every radial is the same length — a true symmetrical web, which is what
- * the Tracks panel wants. Above zero the seed pushes the angles around, varies
- * each radial's length and lifts the hub slightly off the corner, so every
- * instance is its own shape — which is what the page corners want.
+ * the Tracks panel wants. Above zero the seed pushes the angles around and
+ * varies each radial's length, so every instance is its own shape — which is
+ * what the page corners want.
+ *
+ * **Three rules keep an irregular web a web rather than a fan of lines.**
+ *
+ * 1. *The hub stays at the exact corner, always.* It used to drift inward by up
+ *    to `box * jitter * 0.5` while the radials still reached `box`, which put
+ *    the rim out past `1.3 * box` — outside a viewBox that is only `box` square.
+ *    The square clipped it, and what it clipped was the outer rings: the
+ *    surviving drawing was long straight radials running off the edge with a
+ *    couple of threads near the hub. Pinned at the corner, a radius of `box`
+ *    always fits, touching (box, 0) and (0, box) and bulging to 0.71 in the
+ *    diagonal.
+ * 2. *Angle jitter scales with the gap between radials, not with the whole
+ *    quarter-turn.* A flat ±18 degrees against a 12-degree spacing clustered
+ *    three radials together and left a bare wedge beside them, which reads as a
+ *    handful of lines however many rings cross it.
+ * 3. *Radial lengths vary gently.* Large variation makes the outer rings zig-zag
+ *    so hard they stop reading as rings.
  */
 type CornerWebSpec = {
   /** Radials, counted inclusive of the two that lie along the edges. */
   spokes: number;
   /** Concentric threads between hub and rim. */
   rings: number;
-  /** 0 = perfectly regular. Higher pushes angles, lengths and the hub around. */
+  /** 0 = perfectly regular. Higher varies the angles and radial lengths. */
   jitter: number;
   seed: number;
 };
@@ -92,29 +109,30 @@ function buildCornerWeb(box: number, spec: CornerWebSpec, map: (p: Pt) => Pt) {
   const { spokes, rings, jitter, seed } = spec;
   const next = rng(seed);
 
-  /*
-    The hub sits in the corner itself. A little off it when jittered, so an
-    irregular web is not pinned to the exact angle, but never far enough in that
-    the web stops hugging the corner.
-  */
-  const hub: Pt = [box * next() * jitter * 0.5, box * next() * jitter * 0.5];
+  // Rule 1: the hub is the corner. Anything else puts the rim outside the
+  // viewBox and the square clips the outer rings away.
+  const hub: Pt = [0, 0];
 
   /*
     Angles run the quarter turn from the +x edge to the +y edge. The first and
     last are pinned to exactly 0 and PI/2 whatever the jitter, so both radials
     lie along a real frame edge and the web is visibly attached to the border at
     both ends rather than floating near it.
+
+    Rule 2: jitter is measured in fractions of the gap between neighbouring
+    radials, so it can never open a bare wedge or stack three radials together.
   */
+  const gap = Math.PI / 2 / (spokes - 1);
   const angles = Array.from({ length: spokes }, (_, i) => {
-    const base = (i / (spokes - 1)) * (Math.PI / 2);
+    const base = i * gap;
     if (i === 0 || i === spokes - 1) return base;
-    return base + (next() - 0.5) * jitter;
+    return base + (next() - 0.5) * jitter * gap * 0.9;
   }).sort((a, b) => a - b);
 
-  // Every radial reaches the rim. Jittered, some fall short, which is what stops
-  // the outer ring from closing into a clean quarter-circle.
+  // Rule 3: gentle length variation. Enough that the rim is not a clean
+  // quarter-circle, not so much that the outer rings stop reading as rings.
   const radii = angles.map((_, i) =>
-    i === 0 || i === spokes - 1 ? box : box * (1 - next() * jitter * 0.55),
+    i === 0 || i === spokes - 1 ? box : box * (1 - next() * jitter * 0.22),
   );
 
   const at = (i: number, f: number): Pt => [
@@ -198,8 +216,8 @@ export function WebCorner({
       // A regular web is drawn to a fixed recipe; an irregular one takes its
       // counts from the seed as well as its angles, so two of them cannot come
       // out as the same web at different scales.
-      spokes: jitter === 0 ? 7 : 6 + Math.floor(pick() * 4),
-      rings: jitter === 0 ? 5 : 4 + Math.floor(pick() * 3),
+      spokes: jitter === 0 ? 7 : 7 + Math.floor(pick() * 4),
+      rings: jitter === 0 ? 5 : 5 + Math.floor(pick() * 3),
       jitter,
       seed,
     },
@@ -444,10 +462,10 @@ export function WebDivider({
  */
 export function WebPageCorners() {
   const webs: Array<{ corner: Corner; size: number; seed: number; opacity: number; jitter: number; size2: string }> = [
-    { corner: "tl", size: 268, seed: 0x14b7e2, opacity: 0.24, jitter: 0.44, size2: "h-[116px] w-[116px] sm:h-[268px] sm:w-[268px]" },
-    { corner: "tr", size: 322, seed: 0x8f3d55, opacity: 0.21, jitter: 0.62, size2: "h-[140px] w-[140px] sm:h-[322px] sm:w-[322px]" },
-    { corner: "bl", size: 300, seed: 0x2ea9c1, opacity: 0.2, jitter: 0.36, size2: "h-[130px] w-[130px] sm:h-[300px] sm:w-[300px]" },
-    { corner: "br", size: 244, seed: 0xd6714a, opacity: 0.23, jitter: 0.55, size2: "h-[106px] w-[106px] sm:h-[244px] sm:w-[244px]" },
+    { corner: "tl", size: 268, seed: 0x14b7e2, opacity: 0.3, jitter: 0.7, size2: "h-[116px] w-[116px] sm:h-[268px] sm:w-[268px]" },
+    { corner: "tr", size: 322, seed: 0x8f3d55, opacity: 0.27, jitter: 1, size2: "h-[140px] w-[140px] sm:h-[322px] sm:w-[322px]" },
+    { corner: "bl", size: 300, seed: 0x2ea9c1, opacity: 0.27, jitter: 0.55, size2: "h-[130px] w-[130px] sm:h-[300px] sm:w-[300px]" },
+    { corner: "br", size: 244, seed: 0xd6714a, opacity: 0.3, jitter: 0.85, size2: "h-[106px] w-[106px] sm:h-[244px] sm:w-[244px]" },
   ];
 
   return (
