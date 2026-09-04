@@ -178,14 +178,6 @@ function specFromSeed(seed: number): WebSpec {
   };
 }
 
-/** Which corner of the letterboxed viewport the drawing sticks to. */
-const ALIGN: Record<Corner, string> = {
-  tl: "xMinYMin meet",
-  tr: "xMaxYMin meet",
-  bl: "xMinYMax meet",
-  br: "xMaxYMax meet",
-};
-
 const ORIGIN: Record<Corner, string> = {
   tl: "top-0 left-0",
   tr: "top-0 right-0",
@@ -222,17 +214,14 @@ export function WebCorner({
     mapper(corner, size, size),
   );
 
-  const style: React.CSSProperties = {
-    opacity,
-    /*
-      Held to the outer corner zone. Previously the webs threw far enough to
-      cross the input field and the track rows, where cyan strands over body
-      text is a legibility problem, not texture. Capping in percentages keeps
-      that true on a short panel as well as a tall one.
-    */
-    maxWidth: "20%",
-    maxHeight: "44%",
-  };
+  /*
+    Sized in absolute pixels and nothing else. A percentage `maxWidth`/`maxHeight`
+    cap was tried here and it destroyed the webs: the viewBox is square, so a
+    non-square cap letterboxes the drawing and shrinks it to a sliver in the
+    corner. The web is meant to fill its corner — the frame's `overflow-hidden`
+    is what keeps it inside the panel, not a cap on the element.
+  */
+  const style: React.CSSProperties = { opacity };
   if (offset?.x) style[corner === "tl" || corner === "bl" ? "marginLeft" : "marginRight"] = offset.x;
   if (offset?.y) style[corner === "tl" || corner === "tr" ? "marginTop" : "marginBottom"] = offset.y;
 
@@ -242,20 +231,14 @@ export function WebCorner({
       width={size}
       height={size}
       viewBox={`0 0 ${size} ${size}`}
-      /*
-        Pinned to its own corner. The viewBox is square but the caps above are
-        not, so the default `xMidYMid` letterboxes the drawing and centres it —
-        which lifts the web off the corner and turns it into a fan hanging in
-        space. Aligning to the matching corner keeps the two anchored spokes
-        lying along the real frame edges.
-      */
-      preserveAspectRatio={ALIGN[corner]}
       className={`pointer-events-none absolute ${ORIGIN[corner]} ${className}`}
       style={style}
       fill="none"
     >
+      {/* Spokes at full weight. They are the structure; fading them is what made
+          the last pass read as a smudge rather than as silk. */}
       {spokePaths.map((d, i) => (
-        <path key={`s${i}`} d={d} stroke="currentColor" strokeWidth="1" strokeOpacity="0.75" vectorEffect="non-scaling-stroke" />
+        <path key={`s${i}`} d={d} stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       ))}
       {chordPaths.map((d, i) => (
         <path
@@ -263,7 +246,7 @@ export function WebCorner({
           d={d}
           stroke="currentColor"
           strokeWidth="0.75"
-          strokeOpacity={0.7 - i * 0.1}
+          strokeOpacity={0.85 - i * 0.1}
           vectorEffect="non-scaling-stroke"
         />
       ))}
@@ -272,21 +255,28 @@ export function WebCorner({
 }
 
 /**
- * Webs spun across a frame: one per corner, plus two extras set along an edge.
+ * Webs spun across a frame: one in every corner, plus three extras set along an
+ * edge, so no two corners carry the same number of them.
  *
  * Each carries its own seed and nothing else — the differences between them are
  * generated, not hand-tuned, so they cannot drift back into resembling one
- * another. The top pair sit over the caption bar where no body text competes,
- * so they run slightly stronger than the bottom pair.
+ * another.
+ *
+ * **Sizes are absolute pixels in the 88-250 range and opacities sit between
+ * 0.30 and 0.46.** Both numbers are load-bearing and were arrived at by being
+ * got wrong: a pass that shrank the webs with percentage caps and dropped them
+ * to 0.28 left faint slivers in two corners and nothing anywhere else. A corner
+ * web that does not visibly fill its corner is not doing the job.
  */
 export function WebFrame({ className = "" }: { className?: string }) {
   const webs: Array<{ key: string; corner: Corner; size: number; seed: number; opacity: number; offset?: { x?: number; y?: number } }> = [
-    { key: "tl", corner: "tl", size: 190, seed: 0x5eed21, opacity: 0.42 },
-    { key: "tr", corner: "tr", size: 165, seed: 0xa17e93, opacity: 0.44 },
-    { key: "tr2", corner: "tr", size: 104, seed: 0x3c0b17, opacity: 0.3, offset: { x: 190 } },
-    { key: "bl", corner: "bl", size: 175, seed: 0x7b1d4c, opacity: 0.32 },
-    { key: "br", corner: "br", size: 200, seed: 0xc4f2a8, opacity: 0.34 },
-    { key: "bl2", corner: "bl", size: 96, seed: 0x91aa35, opacity: 0.28, offset: { y: 145 } },
+    { key: "tl", corner: "tl", size: 214, seed: 0x5eed21, opacity: 0.42 },
+    { key: "tr", corner: "tr", size: 196, seed: 0xa17e93, opacity: 0.46 },
+    { key: "tr2", corner: "tr", size: 118, seed: 0x3c0b17, opacity: 0.32, offset: { x: 202 } },
+    { key: "bl", corner: "bl", size: 232, seed: 0x7b1d4c, opacity: 0.36 },
+    { key: "bl2", corner: "bl", size: 104, seed: 0x91aa35, opacity: 0.3, offset: { y: 196 } },
+    { key: "br", corner: "br", size: 250, seed: 0xc4f2a8, opacity: 0.38 },
+    { key: "br2", corner: "br", size: 88, seed: 0x2d7f61, opacity: 0.31, offset: { x: 244 } },
   ];
 
   return (

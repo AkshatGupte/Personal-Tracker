@@ -21,6 +21,9 @@ const eslintConfig = [
       // Preserved, not shipped. Nothing imports it and it is excluded from
       // tsconfig too — see archive/README.md.
       "archive/**",
+      // Screenshot tooling, not application code. Plain ESM run by hand with
+      // node — see qa/README.md.
+      "qa/**",
     ],
   },
 ];

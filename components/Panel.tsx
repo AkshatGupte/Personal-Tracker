@@ -60,7 +60,7 @@ export default function Panel({
   if (variant === "comic") {
     const surface = (
       <div className={`sv-panel relative h-full ${wobble ? "sv-wobble" : ""}`}>
-        {/* Six webs, no two alike and no axis of symmetry — see WebFrame. Each
+        {/* Seven webs, no two alike and no axis of symmetry — see WebFrame. Each
             one's spokes terminate on the panel's own edges, so the strands are
             anchored to the border rather than floating near it. */}
         <WebFrame className="text-sv-cyan" />
