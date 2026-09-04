@@ -503,6 +503,41 @@ body {
    frames, like every other glitch in this theme — an eased tween would read as
    a pulse rather than as a registration error. No fill mode, so the delay
    leaves the numeral in its resting colour instead of pre-tinting it. */
+/* The same registration error, thrown harder, for a crossed streak milestone.
+   Twice the travel, twice the frames and twice the duration of `sv-beat` — a
+   stronger version of the one emphasis the check-in already has, rather than a
+   second kind of emphasis. No new colour enters: it swings to the same
+   `--beat-tint` the ordinary beat uses, which for a streak numeral resting in
+   yellow is paper. */
+@keyframes sv-beat-milestone {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  16% {
+    color: var(--beat-tint);
+    transform: translate3d(-7px, 2px, 0);
+  }
+  33% {
+    color: var(--beat-tint);
+    transform: translate3d(6px, -2px, 0);
+  }
+  50% {
+    color: var(--beat-tint);
+    transform: translate3d(-5px, -1px, 0);
+  }
+  67% {
+    color: var(--beat-tint);
+    transform: translate3d(4px, 2px, 0);
+  }
+  84% {
+    color: var(--beat-tint);
+    transform: translate3d(-2px, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 @keyframes sv-beat {
   0% {
     transform: translate3d(0, 0, 0);

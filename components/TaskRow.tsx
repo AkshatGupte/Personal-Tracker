@@ -37,6 +37,18 @@ export type TaskRowData = {
  */
 const REPORT_DWELL_MS = 3800;
 
+/**
+ * The same, for a crossed streak milestone.
+ *
+ * Longer for the same reason the ordinary figure is 3800: the line is longer to
+ * read. "Checked in · 30 day streak · milestone · longest yet" is thirteen
+ * tokens of tracked uppercase against eight, and it wraps to two lines on a
+ * narrow screen. The cap at the other end still applies — this describes a
+ * moment, and a line still standing long after the act reads as sluggish — so
+ * it buys reading time and no more. Clicking any tick still clears it at once.
+ */
+const MILESTONE_DWELL_MS = 5600;
+
 // Actions recede until sought: mono, uppercase, small. They must never
 // compete with the task title they sit beside.
 const actionButton =
@@ -127,7 +139,10 @@ export default function TaskRow({
 
       if (result.outcome) {
         setReport({ seq: publish(result.outcome), outcome: result.outcome });
-        reportTimer.current = setTimeout(() => setReport(null), REPORT_DWELL_MS);
+        reportTimer.current = setTimeout(
+          () => setReport(null),
+          result.outcome.milestone ? MILESTONE_DWELL_MS : REPORT_DWELL_MS,
+        );
       }
     });
   };

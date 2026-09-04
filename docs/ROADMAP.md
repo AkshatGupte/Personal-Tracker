@@ -40,10 +40,16 @@ one is functionally complete, unless explicitly told otherwise.
       parameter, so the page stays a server component
 - [x] Progress bar components (per Track, per Topic) — the topic stratum meter
       and the completion ring, shipped with the redesign
-- [ ] Milestone detection (e.g. every 10/50/100 tasks) + simple celebratory UI
-      — detection already exists in `lib/terrain.ts` (`reached`, `next`);
-      what remains is the celebratory moment, which needs a "already seen"
-      signal that is not currently stored
+- [x] Milestone detection + simple celebratory UI. Shipped as **streak**
+      milestones at 7/14/30/60/100 days, derived from the before/after streak
+      pair the check-in already computes — so nothing is stored, no schema
+      changed, and a milestone crossed on an earlier day cannot replay. The
+      celebration is the existing check-in report line in a louder register (a
+      solid `streak` caption box) plus a stronger version of the numeral's
+      existing misregistration: no new surface, and no XP, badges or levels.
+      The volume milestones in `lib/terrain.ts` (`ELEVATION_MILESTONES`, 10/50/
+      100/250/500 cumulative check-ins) are a separate signal and stay drawn on
+      the terrain
 - [ ] Learning trajectory view — consistency and momentum over time, not a
       point-in-time count. Should answer: am I consistent, is my momentum
       improving, is progress trending up or declining, and is it sustained

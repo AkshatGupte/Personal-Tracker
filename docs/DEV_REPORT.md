@@ -6,6 +6,58 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-04 — Streak milestones get a moment
+
+**What was built:**
+When a check-in takes your streak to 7, 14, 30, 60 or 100 days, the line that
+already appears beside the task says so in a much louder way — a solid yellow
+block reading "Checked in · 7 day streak · milestone" — and the streak number in
+the track header jolts harder than it normally does. Every other check-in looks
+exactly as it did before.
+
+**How it works (flow):**
+1. You tap the tick. The app already worked out your streak just before the tap
+   and just after it, because that comparison is how it decides whether to say
+   "streak extended" at all.
+2. It now also asks a second question of those same two numbers: did any of
+   7/14/30/60/100 fall *between* them? Going from 6 to 7 did. Going from 7 to 8
+   did not.
+3. If one did, the usual line becomes the yellow block and the streak number
+   gets the stronger jolt. If not, everything behaves as before.
+
+**Technical concepts used:**
+- **Nothing is remembered, and nothing was added to the database** — the whole
+  feature is a question asked of two numbers the app already had. This is what
+  stops a milestone repeating itself every day afterwards: if you passed 7
+  yesterday, today's check-in runs from 7 to 8, and nothing sits between those,
+  so there is nothing to celebrate. No "already seen this" flag needed to exist.
+- **One rule covers every awkward case** — checking in a second task on the same
+  day, undoing a check-in, or undoing one while others stand all leave the
+  streak the same or lower it, and the rule only fires when the streak goes *up*.
+  None of them needed a special case written for it.
+- **The two kinds of "milestone" were given different names** — the app already
+  marked 10/50/100/250/500 *total* check-ins on the elevation graph. Those count
+  total effort; these count consecutive days. They are different ideas in
+  different colours, and having them both called "milestones" in the code was an
+  accident waiting to happen, so one is now "elevation milestones" and the other
+  "streak milestones".
+- **No new screen, popup or badge** — deliberately. It is the same sentence in
+  the same place, restyled, plus a stronger version of an animation that was
+  already there. There is still no XP, no levels and no points.
+- **Checked properly** — 40 automated checks on the rule itself (including
+  crossing several milestones at once, and every undo case), then a real browser
+  driven through crossing a milestone, re-checking the same day, undoing, and an
+  ordinary non-milestone day. Also confirmed that a screen reader announces the
+  sentence once rather than three times (the glitch effect paints it three
+  times), and that with animations turned off the yellow block and the words
+  still appear — the celebration never depends on movement.
+
+**Roadmap status:** completes "Milestone detection + simple celebratory UI" in
+Phase 2 of `docs/ROADMAP.md`. One Phase 2 item remains: the learning trajectory
+view, which is waiting on several weeks of real check-in data.
+
+---
+
 ## 2026-09-04 — Monthly progress, beside the weekly one
 
 **What was built:**

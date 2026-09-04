@@ -181,7 +181,21 @@ Nothing here finishes: a recurring activity has no terminal state. Any ratio
 reads "how many of today's activities are checked in", never "how many tasks
 are finished".
 
-No XP, levels, points or badges. The comic theme is not a licence to add them.
+**Milestones exist on two of these signals and must not be crossed over.**
+`STREAK_MILESTONES` (7/14/30/60/100 consecutive days) belongs to consistency and
+is yellow; `ELEVATION_MILESTONES` (10/50/100/250/500 cumulative check-ins)
+belongs to volume and is drawn on the terrain. Neither is called plain
+`MILESTONES`, precisely so they cannot be reached for interchangeably.
+
+A crossed streak milestone is celebrated by restyling the check-in report line
+that already exists — a solid `streak` caption box — and by throwing the streak
+numeral's existing misregistration harder. It is not a new surface, and adding
+a modal, toast or confetti for it would be.
+
+No XP, levels, points or badges. The comic theme is not a licence to add them,
+and neither is a milestone: a milestone is a *description of the streak*, not a
+reward on top of it, which is why it is derived from the streak numbers and
+nothing is stored.
 
 **Glitch, halftone and chromatic effects — intentional, never ambient noise:**
 - `GlitchText` fires in *bursts* with dead air between them, never on a smooth

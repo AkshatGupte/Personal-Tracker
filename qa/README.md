@@ -29,7 +29,24 @@ override which binary it uses.
    They share the directory and corrupt each other, which shows up as
    `TypeError: __webpack_modules__[moduleId] is not a function` and a 500.
 
+## Logic tests
+
+```
+./qa/run-tests.sh
+```
+
+Runs every `*.test.mjs` here. No test framework and no dependencies — these
+cover pure functions over dates and numbers, and a runner would be more
+machinery than the thing it runs. `register-alias.mjs` is what lets plain `node`
+resolve the project's `@/` imports.
+
+| Suite | Covers |
+|---|---|
+| `period-buckets.test.mjs` | Week and month bucketing, including leap-year February, the year boundary, and the 31st-of-the-month overflow that breaks naive month arithmetic. |
+| `streak-milestone.test.mjs` | Streak milestone crossing: the crossing itself, no replay of an earlier day's, every non-advancing write (same-day recheck, undo, restart), and several milestones crossed at once. |
+
 ## Using it
+
 
 ```js
 import { launch } from "./qa/cdp.mjs";

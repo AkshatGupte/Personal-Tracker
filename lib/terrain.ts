@@ -13,7 +13,16 @@
 import { addDays, dayKey, startOfDay } from "@/lib/day";
 
 export const TERRAIN_DAYS = 84; // 12 weeks
-export const MILESTONES = [10, 50, 100, 250, 500] as const;
+/**
+ * Cumulative check-in totals worth marking on the terrain.
+ *
+ * **These are volume milestones, and they are not the streak milestones in
+ * `lib/streak.ts`.** The two answer different questions and the theme keeps
+ * their signals apart: volume is elevation and magenta, consistency is the
+ * streak and yellow. The name says `ELEVATION` so the two cannot be reached for
+ * interchangeably — before the rename both lists were called `MILESTONES`.
+ */
+export const ELEVATION_MILESTONES = [10, 50, 100, 250, 500] as const;
 
 export type DayLog = { date: Date; tasksCompletedCount: number };
 
@@ -108,7 +117,7 @@ export function buildTerrain(
   // A milestone is only real once the running total actually crosses it, and it
   // is placed at the day it happened rather than at the end of the chart.
   const reached: ReachedMilestone[] = [];
-  for (const value of MILESTONES) {
+  for (const value of ELEVATION_MILESTONES) {
     if (value > peak) continue;
     const crossing = points.find((point) => point.cumulative >= value);
     if (crossing) {
@@ -116,7 +125,7 @@ export function buildTerrain(
     }
   }
 
-  const next = MILESTONES.find((value) => value > peak) ?? null;
+  const next = ELEVATION_MILESTONES.find((value) => value > peak) ?? null;
 
   const todayCount = series[series.length - 1]?.count ?? 0;
   const thisWeek = series.slice(-7).reduce((total, day) => total + day.count, 0);

@@ -5,6 +5,47 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-04 — Milestones are streak days, and are derived, never stored**
+Streak milestones are 7, 14, 30, 60 and 100 consecutive days, and a crossing is
+computed from the `before`/`after` streak pair `describeCheckIn` already
+produces: the highest milestone in the half-open interval `(before, after]`.
+
+Storing an "already celebrated" flag was considered and rejected. It would have
+been the only piece of remembered UI state in the codebase, and a schema change
+for something the numbers already answer — a streak that passed 7 yesterday
+arrives today as 7 → 8, and `(7, 8]` contains no milestone, so yesterday's
+crossing cannot replay. Every non-advancing write (same-day recheck, undo, an
+undo that left other check-ins standing) returns null through the single
+`after <= before` guard rather than through a clause of its own.
+
+The accepted cost: undo-then-recheck re-crosses the same milestone, because the
+undo genuinely lowered the streak and the recheck genuinely restored it. This is
+the same call already recorded for "extending a streak" on 2026-09-03, and it
+inflates nothing — there is no counter to farm and the streak is the same length
+either way.
+
+**2026-09-04 — Streak milestones and elevation milestones are different signals**
+Two lists, deliberately named apart: `STREAK_MILESTONES` in `lib/streak.ts`
+counts consecutive days and is yellow, `ELEVATION_MILESTONES` in
+`lib/terrain.ts` counts cumulative check-ins and is magenta on the terrain. Both
+were previously reachable as `MILESTONES`, which is exactly how a later session
+would have conflated the volume and consistency signals that `CLAUDE.md`
+requires be kept apart. Neither is called `MILESTONES` any more.
+
+**2026-09-04 — The celebration is the existing report line, louder**
+No modal, no toast, no confetti, no badge and no new component: the same one
+line, on the same row, at the same moment, swapping its hairline-and-tint for a
+solid `streak` caption box — the treatment the comic panel header and the
+primary button already use. The streak numeral runs the misregistration it
+already runs, with twice the travel, frames and duration. A milestone can only
+ever land on the streak numeral, because crossing requires the streak to have
+moved and that is exactly what makes `signalFor` choose it.
+
+The dwell is 5600ms against the ordinary 3800, for the same reason the ordinary
+figure is 3800: the line is longer to read. Under reduced motion the box, the
+colour and the words all remain and only the glitch stops — verified, along with
+the accessibility tree announcing the sentence once rather than three times.
+
 **2026-09-04 — The summary window is a URL parameter, not component state**
 `/progress` reads weeks; `/progress?period=month` reads months. Chosen over a
 client-side toggle so the page stays a server component — no client bundle, no

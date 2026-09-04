@@ -32,6 +32,13 @@ export default function TrackStat({
 }) {
   const { beat } = useCheckInBeat();
   const mine = signal && beat?.signal === signal ? beat : null;
+  /*
+    A crossed streak milestone throws the same misregistration harder, rather
+    than adding a second kind of emphasis. It can only ever land here: crossing
+    requires the streak to have moved, and a moved streak is exactly what makes
+    `signalFor` choose the streak signal.
+  */
+  const milestone = mine?.outcome.milestone ?? null;
 
   /*
     Where the numeral rests, as both the utility class and the token behind it.
@@ -104,7 +111,9 @@ export default function TrackStat({
                 ["--beat-tint" as string]: tint,
                 // No fill mode, so the 90ms delay leaves the numeral in its
                 // resting colour rather than pre-applying the tint.
-                animation: "sv-beat 300ms steps(3, end) 90ms",
+                animation: milestone
+                  ? "sv-beat-milestone 620ms steps(6, end) 90ms"
+                  : "sv-beat 300ms steps(3, end) 90ms",
               }
             : undefined
         }

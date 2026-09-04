@@ -196,6 +196,30 @@ function makePage(browser, sessionId, width, height) {
       return path;
     },
 
+    /**
+     * The accessible text of a subtree, as the accessibility tree actually
+     * reports it — not `innerText`.
+     *
+     * The two differ in exactly the place this project cares about: a glitched
+     * string is painted three times, and `innerText` sees all three because the
+     * duplicate layers are `aria-hidden` rather than `display: none`. Only the
+     * AX tree shows whether a screen reader would announce it once.
+     */
+    async axText(selector) {
+      await send("DOM.enable");
+      await send("Accessibility.enable");
+      const { root } = await send("DOM.getDocument", { depth: -1 });
+      const { nodeId } = await send("DOM.querySelector", { nodeId: root.nodeId, selector });
+      if (!nodeId) throw new Error(`no element for ${selector}`);
+      const { nodes } = await send("Accessibility.queryAXTree", { nodeId });
+      return nodes
+        .filter((n) => !n.ignored && n.role?.value === "StaticText")
+        .map((n) => n.name?.value ?? "")
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+    },
+
     /** Console errors and page exceptions seen since the page was created. */
     errors: [],
   };
