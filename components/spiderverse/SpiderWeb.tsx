@@ -397,16 +397,35 @@ export function WebDivider({
   radius?: number;
 }) {
   const place = rng(seed);
-  // Where along the rule the web hangs. Off-centre, and different per seed, so
-  // the two dividers on a page are not a matched pair.
-  const at = 18 + place() * 60;
+  /*
+    Where along the rule the web hangs. Off-centre, and different per seed, so
+    the two dividers on a page are not a matched pair.
+
+    Kept out of the left third on purpose. The web hangs past the bottom of this
+    element into whatever follows, and on the home page what follows starts with
+    a text column on the left — a seed that placed the web at 20% would drop
+    cyan strands straight through the heading. The right two-thirds of a rule is
+    reliably open space.
+  */
+  const at = 34 + place() * 44;
 
   const W = radius * 2 + 4;
   const H = radius + 6;
   const { spokePaths, ringPaths } = buildHangingWeb(seed, radius, [W / 2, 1]);
 
+  /*
+    **The web hangs out of the element rather than being boxed by it.** Reserving
+    the web's full drop made each divider 88px of vertical layout — two of them
+    on the home page, which is most of the reason the page read as loose. Silk
+    hanging into the space below is what it should look like anyway; the rule is
+    the section break, and the web is decoration that should not push the page
+    apart. Reserve a little over half the drop so the thin lower tip is the only
+    part that overlaps, and keep the rest as overflow.
+  */
+  const reserve = Math.round(radius * 0.5) + 10;
+
   return (
-    <div aria-hidden="true" className={`relative w-full ${className}`} style={{ height: H + 4 }}>
+    <div aria-hidden="true" className={`relative w-full ${className}`} style={{ height: reserve }}>
       {/* The rule itself: a plain element, so no viewBox can stretch it. */}
       <div className="absolute inset-x-0 top-0 border-t" style={{ borderColor: "var(--border)" }} />
       <svg

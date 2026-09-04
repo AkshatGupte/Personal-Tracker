@@ -17,7 +17,7 @@ export default async function Home() {
     await getHomeProgress();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
       <TopNav />
 
       {/*
@@ -26,10 +26,10 @@ export default async function Home() {
         so the horizon is a structural line instead of a widget border.
       */}
       <section
-        className="grid grid-cols-1 items-stretch gap-4 pb-2 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] lg:gap-8"
+        className="grid grid-cols-1 items-stretch gap-3 pb-3 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] lg:gap-8"
         aria-labelledby="elevation-heading"
       >
-        <div className="sv-settle flex flex-col justify-center gap-5 py-2">
+        <div className="sv-settle flex flex-col justify-center gap-4">
           <div>
             <h1
               id="elevation-heading"
@@ -70,19 +70,47 @@ export default async function Home() {
           )}
         </div>
 
-        <div className="bleed-r min-h-[9rem] lg:min-h-[12rem]">
+        {/*
+          The chart carries the height, not this wrapper, and not `h-full`.
+
+          `lg:h-full` here resolved to auto against an auto-height row, so the
+          box fell back to the SVG's own 720x200 viewBox ratio and came out
+          322px at full column width — nearly twice the 12rem intended, and most
+          of the empty space above the Tracks panel. Pinning the *wrapper* to a
+          fixed height instead only moved the problem: the chart still claimed
+          100% of it and squeezed the "12 weeks / next 100" caption out of the
+          bottom of the figure, straight onto the divider rule below.
+
+          A definite height on the chart does not work either: the chart box is
+          `flex-1`, whose `flex-basis: 0%` beats a height class, and 0% of an
+          indefinite height falls back to content — the SVG ratio again.
+
+          So the height goes on the wrapper and the chart asks for `h-auto`, plus
+          `min-h-0`. That last one is the whole fix: a flex item defaults to
+          `min-height: auto`, which floors it at its min-content height — and
+          the SVG's ratio makes that 322px, so it refused to shrink into the box
+          however the height was written. With the floor released the figure's
+          `h-full` resolves against a definite box, the chart's `flex-1` grows
+          into the real free space, and the caption keeps its own line inside
+          the figure instead of being pushed out of the bottom onto the rule.
+        */}
+        <div className="bleed-r h-[10rem] lg:h-[11rem]">
           <TerrainProfile
             id="home"
             terrain={terrain}
             scope="All tracks"
-            height="h-36 sm:h-44 lg:h-full"
+            height="h-36 sm:h-44 lg:h-auto min-h-0"
             quiet
           />
         </div>
       </section>
 
-      {/* Webbing instead of a flat rule between the two halves of the page. */}
-      <WebDivider className="mb-2" seed={0xd93a} />
+      {/* Webbing instead of a flat rule between the two halves of the page. The
+          section above keeps a little bottom padding so the terrain's own
+          baseline does not land on this rule and read as one merged line —
+          the terrain bleeds past the container, so the two would join up into a
+          single stroke running the full width of the window. */}
+      <WebDivider seed={0xd93a} />
 
       <div>
         {/* Tracks are the loudest surface on this page: the comic panel is spent

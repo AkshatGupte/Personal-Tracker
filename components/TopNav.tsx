@@ -29,8 +29,8 @@ export default function TopNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="mb-2">
-      <div className="flex items-center justify-between gap-4 border-b-2 border-sv-magenta pb-3.5">
+    <nav>
+      <div className="flex items-center justify-between gap-4 border-b-2 border-sv-magenta pb-2.5">
       <Link href="/" className="flex min-w-0 items-center gap-2.5 text-fg">
         <svg
           aria-hidden="true"

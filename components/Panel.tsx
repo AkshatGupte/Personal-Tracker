@@ -90,12 +90,12 @@ export default function Panel({
       </div>
     );
 
-    return <div className={`relative my-6 ${className}`}>{surface}</div>;
+    return <div className={`relative my-4 ${className}`}>{surface}</div>;
   }
 
   return (
     <section
-      className={`grid grid-cols-1 gap-x-6 gap-y-3 py-6 lg:grid-cols-[7rem_minmax(0,1fr)] ${className}`}
+      className={`grid grid-cols-1 gap-x-6 gap-y-3 py-5 lg:grid-cols-[7rem_minmax(0,1fr)] ${className}`}
     >
       {(label || action) && (
         <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:justify-start lg:gap-1.5 lg:pt-0.5">
