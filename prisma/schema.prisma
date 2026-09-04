@@ -52,7 +52,10 @@ model Topic {
   @@index([trackId, position])
 }
 
-/// An individual completable item within a Topic, e.g. "Solve: Two Sum".
+/// A persistent recurring learning activity within a Topic, e.g. "Practice
+/// array problems". A task is never permanently completed: it stays available
+/// indefinitely and is checked in once per day. There is deliberately no
+/// one-time task type and no `kind` discriminator — see docs/PRD.md.
 model Task {
   id      String @id @default(cuid())
   topicId String
@@ -61,22 +64,42 @@ model Task {
   /// Optional: "easy" | "medium" | "hard".
   difficulty String?
 
-  /// "pending" | "completed". SQLite has no enum type, so this is a string.
-  status String @default("pending")
-
-  /// Null until the task is completed.
-  completedAt DateTime?
-
   /// Explicit order within the topic. Same reasoning as Topic.position.
   position Int @default(0)
 
   createdAt DateTime @default(now())
 
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topic    Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  checkIns TaskCheckIn[]
 
   @@index([topicId])
   @@index([topicId, position])
-  @@index([status])
+}
+
+/// One row per task per day: the user's statement that they did this activity
+/// today. This is the ground truth the whole product is built on — CompletionLog
+/// is a derived per-track rollup of these rows and can always be rebuilt.
+///
+/// There is no status column. The row's existence *is* the state, so undoing a
+/// check-in deletes the row rather than flipping a flag.
+model TaskCheckIn {
+  id     String   @id @default(cuid())
+  taskId String
+
+  /// Local midnight, normalised through startOfDay() in lib/day.ts — the same
+  /// convention as CompletionLog.date.
+  date DateTime
+
+  /// The real time of day. Kept for interest; nothing reads it for logic.
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  /// One check-in per task per day. Enforced here rather than in application
+  /// code, so a double submit cannot produce two rows for one day.
+  @@unique([taskId, date])
+  @@index([taskId])
+  @@index([date])
 }
 
 /// One row per track per day, so streaks and weekly/monthly rollups can be

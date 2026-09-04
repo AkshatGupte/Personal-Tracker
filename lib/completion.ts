@@ -1,72 +1,89 @@
 /**
- * The one write path that keeps history, streaks and live task state agreeing.
+ * The one write path that keeps history, streaks and live check-in state agreeing.
  *
- * Task.status and Task.completedAt own whether a single task is done.
- * CompletionLog owns daily history. Today's row is a *recomputed rollup* of the
- * tasks whose completedAt falls in today; every earlier row is frozen and is
- * never rewritten, so a streak that was earned stays earned.
+ * `TaskCheckIn` is the ground truth: one row per task per day, meaning "I did
+ * this activity today". `CompletionLog` is a *derived* per-track daily rollup of
+ * those rows, and `Track.currentStreak` / `longestStreak` / `lastActivityDate`
+ * are in turn a cache of what `CompletionLog` implies. Every layer can be
+ * rebuilt from the one below it, and that is what the functions here do.
  *
  * Recompute, never increment. `increment: 1` double-counts on
- * complete → uncomplete → complete, inflating elevation from a single task.
+ * check-in → undo → check-in, inflating elevation from a single activity.
  * Recomputing is idempotent, which is also what makes a double-click, a retry,
  * or a replayed action harmless.
  *
- * Track.currentStreak / longestStreak / lastActivityDate are a cache of what
- * CompletionLog already implies, and are rebuilt here from scratch rather than
- * nudged, for the same reason.
+ * **CompletionLog is a rollup, not frozen history.** A day's row is whatever
+ * the surviving check-ins for that day say it is. Deleting a task or a topic
+ * therefore has to rebuild every day it touched, not just today — see
+ * `recomputeDays`.
  */
 
 import type { Prisma } from "@/lib/generated/prisma/client";
-import { addDays, startOfDay } from "@/lib/day";
+import { startOfDay } from "@/lib/day";
 import { summariseStreak } from "@/lib/streak";
 
 /** Any Prisma client, inside a transaction or not. */
 type Db = Prisma.TransactionClient;
 
-/**
- * Rewrites today's CompletionLog row for one track from live task state, then
- * rebuilds that track's cached streak numbers.
- *
- * Call this after anything that can change which tasks count as completed
- * today: completing, uncompleting, or deleting a task or a topic. Safe to call
- * when nothing changed — it lands on the same result.
- */
-export async function recomputeToday(db: Db, trackId: string, now: Date = new Date()) {
-  const dayStart = startOfDay(now);
-  const dayEnd = addDays(dayStart, 1);
-
-  const completedToday = await db.task.count({
-    where: {
-      status: "completed",
-      completedAt: { gte: dayStart, lt: dayEnd },
-      topic: { trackId },
-    },
+/** Check-ins recorded for one track on one day. */
+async function countForDay(db: Db, trackId: string, date: Date): Promise<number> {
+  return db.taskCheckIn.count({
+    where: { date, task: { topic: { trackId } } },
   });
+}
 
-  if (completedToday === 0) {
-    // No row rather than a zero row: a zero would be indistinguishable from a
-    // real day of work when read back, and would keep a streak alive on a day
-    // nothing was finished.
-    await db.completionLog.deleteMany({ where: { trackId, date: dayStart } });
-  } else {
-    // date is normalised to local midnight on every write. The unique
-    // constraint compares the whole DateTime, so writing `new Date()` here
-    // would quietly create a second row for today instead of updating one.
-    await db.completionLog.upsert({
-      where: { trackId_date: { trackId, date: dayStart } },
-      create: { trackId, date: dayStart, tasksCompletedCount: completedToday },
-      update: { tasksCompletedCount: completedToday },
-    });
+/**
+ * Rewrites one day's CompletionLog row for one track from the check-ins that
+ * currently exist for it.
+ *
+ * A day with no check-ins gets no row rather than a zero row: a zero would be
+ * indistinguishable from real activity when read back, and would keep a streak
+ * alive on a day nothing was done.
+ */
+async function writeDay(db: Db, trackId: string, date: Date): Promise<void> {
+  const count = await countForDay(db, trackId, date);
+
+  if (count === 0) {
+    await db.completionLog.deleteMany({ where: { trackId, date } });
+    return;
   }
 
+  // date is normalised to local midnight on every write. The unique constraint
+  // compares the whole DateTime, so writing `new Date()` here would quietly
+  // create a second row for the day instead of updating one.
+  await db.completionLog.upsert({
+    where: { trackId_date: { trackId, date } },
+    create: { trackId, date, tasksCompletedCount: count },
+    update: { tasksCompletedCount: count },
+  });
+}
+
+/**
+ * The track's streak as its history currently stands, writing nothing.
+ *
+ * This exists so a caller can capture the streak *before* it mutates anything
+ * and compare the two. It reads `CompletionLog` rather than the cached columns
+ * on `Track` deliberately: the cache is only refreshed by a write, so after a
+ * lapse it still holds the pre-lapse streak. Reading it as the "before" would
+ * compare a stale 5 against a fresh 1 and report a genuine restart as a fall.
+ *
+ * `now` matters for the same reason — the current run has to end today or
+ * yesterday — so pass the same `now` used for the write that follows.
+ */
+export async function readStreak(db: Db, trackId: string, now: Date = new Date()) {
   const activeDays = await db.completionLog.findMany({
     where: { trackId, tasksCompletedCount: { gt: 0 } },
     select: { date: true },
   });
-  const streak = summariseStreak(
+  return summariseStreak(
     activeDays.map((day) => day.date),
     now,
   );
+}
+
+/** Rebuilds the cached streak columns from the track's full activity history. */
+async function writeStreak(db: Db, trackId: string, now: Date) {
+  const streak = await readStreak(db, trackId, now);
 
   await db.track.update({
     where: { id: trackId },
@@ -78,6 +95,60 @@ export async function recomputeToday(db: Db, trackId: string, now: Date = new Da
   });
 
   return streak;
+}
+
+/**
+ * Rebuilds today's rollup for one track, then its streak.
+ *
+ * Call after anything that changes today and only today: a check-in or an undo.
+ * Safe to call when nothing changed — it lands on the same result.
+ */
+export async function recomputeToday(db: Db, trackId: string, now: Date = new Date()) {
+  const today = startOfDay(now);
+  await writeDay(db, trackId, today);
+  return writeStreak(db, trackId, now);
+}
+
+/**
+ * Rebuilds an arbitrary set of days for one track, then its streak.
+ *
+ * This is the deletion path. Deleting a task or a topic removes check-ins
+ * across its whole history, so every day it contributed to is now wrong — not
+ * just today's. The caller collects those dates *before* deleting, because the
+ * cascade takes the rows with it and they cannot be found afterwards.
+ *
+ * Days that end up with no surviving check-ins lose their row entirely, which
+ * is how a streak correctly breaks when the only activity on a day is deleted.
+ */
+export async function recomputeDays(
+  db: Db,
+  trackId: string,
+  dates: Date[],
+  now: Date = new Date(),
+) {
+  // De-duplicated by timestamp: several deleted tasks commonly share a day, and
+  // rewriting the same row repeatedly is wasted work rather than wrong.
+  const unique = new Map(dates.map((date) => [date.getTime(), date]));
+  for (const date of unique.values()) {
+    await writeDay(db, trackId, date);
+  }
+  return writeStreak(db, trackId, now);
+}
+
+/**
+ * Every day a set of tasks has ever been checked in on, with the track they
+ * belong to. Must be called before the deletion that removes them.
+ */
+export async function affectedDays(
+  db: Db,
+  where: Prisma.TaskCheckInWhereInput,
+): Promise<Date[]> {
+  const rows = await db.taskCheckIn.findMany({
+    where,
+    select: { date: true },
+    distinct: ["date"],
+  });
+  return rows.map((row) => row.date);
 }
 
 /** The track a task belongs to, or null if the task is gone. */

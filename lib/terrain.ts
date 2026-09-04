@@ -1,7 +1,7 @@
 /**
  * Terrain maths for the progress visualisation.
  *
- * Elevation is cumulative completed tasks. Nothing here invents a value: every
+ * Elevation is cumulative check-ins. Nothing here invents a value: every
  * point comes from CompletionLog rows, and a track with no logged completions
  * produces an explicitly empty terrain rather than a fabricated curve.
  *
@@ -146,14 +146,14 @@ export function ridgePath(points: TerrainPoint[], width: number, height: number)
 /** Plain-language summary used as the text alternative for the drawing. */
 export function describeTerrain(terrain: Terrain, scope: string): string {
   if (!terrain.hasData) {
-    return `${scope}: no tasks completed in the last 12 weeks, so there is no elevation to show yet.`;
+    return `${scope}: no check-ins in the last 12 weeks, so there is no elevation to show yet.`;
   }
   const milestone = terrain.reached.length
     ? ` Milestones reached: ${terrain.reached.map((m) => m.value).join(", ")}.`
     : "";
   const upcoming = terrain.next ? ` Next milestone at ${terrain.next}.` : "";
   return (
-    `${scope}: ${terrain.peak} tasks completed over the last 12 weeks, ` +
+    `${scope}: ${terrain.peak} check-ins over the last 12 weeks, ` +
     `${terrain.thisWeek} in the last 7 days.${milestone}${upcoming}`
   );
 }

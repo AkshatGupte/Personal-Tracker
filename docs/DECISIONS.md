@@ -5,6 +5,583 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-03 — The check-in speaks once, and emphasises one measurement**
+
+How the composed check-in moment is built. Recorded because the obvious
+alternative — letting each signal animate when its own number changes — is what
+this replaces, and it would be easy to drift back into.
+
+**The problem.** One check-in changes five things on a track page: the tick, the
+topic tally, the elevation, the streak and the ring. Each used to redraw when
+its own value happened to change, so one act produced five reactions and read as
+five unrelated events. Animating all of them harder would only have made that
+worse.
+
+**The shape, in three moments.**
+
+1. **Confirm** — the tick flips optimistically and its magenta/cyan plates
+   scissor apart, unchanged from before. Instant, local, no server.
+2. **State** — when the server answers, one line appears beside the row that was
+   clicked, naming what the check-in did and quoting the real numbers. The pause
+   between 1 and 2 is deliberate: it is what makes the rest read as *caused by*
+   the tick instead of as a second thing that also happened.
+3. **Emphasise** — the single measurement that line is about misregisters
+   briefly, and its colour flickers. Everything else simply arrives at its new
+   value.
+
+**The emphasis colour is chosen against the resting colour, not the signal.**
+The first cut tinted the numeral toward its own signal — yellow for the streak,
+magenta for the elevation — which is a no-op whenever a numeral already rests in
+that colour. Measured: during an `extended` beat the streak numeral's computed
+colour came back byte-identical to its resting one, so the more meaningful of
+the two outcomes was riding on a 3px shift while elevation got a full
+paper-to-magenta swing. The same collision hit a streak falling to zero, where
+muted-onto-muted was equally invisible. So a numeral that already rests on a
+plate colour swaps to paper instead of to itself; both directions read as the
+plates momentarily disagreeing, and no colour enters the palette to make it
+work — paper is already what the neighbouring stats rest in, and the numeral
+returns to yellow, so `streak` keeps its meaning.
+
+**Exactly one stat is emphasised, and a rule picks it.** The streak is the
+headline when it moved; otherwise the volume is. So `started`, `extended` and an
+undo that broke the day point at Streak; `recorded` and an undo that left other
+check-ins standing point at Elevation. Derived from `before`/`after` rather than
+a table per outcome. A check-in genuinely moves elevation *and* streak together,
+so flashing both would put the moment straight back into the two-reactions state
+this exists to fix.
+
+**A personal best does not light a second number.** It is said in the same
+sentence as the outcome ("streak 4 days · longest yet") rather than given its own
+celebration, which is the line between reinforcement and a reward system.
+`Longest` never flashes.
+
+**`CheckInBeat` is a client context, and it carries no data.** The numbers still
+come from the server on the revalidated render; the channel only says *which*
+measurement the act was about, plus a sequence number. That number is also what
+keeps a single statement on screen: a row shows its line only while its act is
+still the live one, so checking in several tasks quickly leaves one statement
+rather than a stack.
+
+**Direction is read from the signal, not from the streak.** A `recorded`
+check-in leaves the streak where it was — that is what makes it `recorded` —
+while still raising the elevation. Reading the streak delta to decide "rose or
+fell" painted a genuine rise in volume as a fall. Caught in the browser pass, and
+the reason `TrackStat` branches on the signal.
+
+**The ring advances instead of redrawing.** `ProgressRing` was keyed on its
+percentage and replayed a 1.1s draw from empty on every check-in — the one
+animation on the page that re-performed itself rather than settling. It now
+animates from the length it was already showing (620ms on a change, the original
+1.1s sweep still on first mount). Same fact, told as a consequence.
+
+**Nothing new is stored and no semantics changed.** No schema change, no
+duplicate state, strict streaks untouched. Reduced motion cancels all three
+moments; the words, the tick's colour and `aria-pressed` carry everything, and
+the report sits in an always-mounted `role="status"` region so it is announced
+rather than missed as a freshly inserted one.
+
+**Verification.** 33 browser assertions against a seeded scratch database over
+all four outcomes, personal best and its absence, repeat clicks, reduced motion,
+1440 / 1280x720 / 390 / 320 with no horizontal overflow, and no console output.
+
+---
+
+**2026-09-03 — "Extending a streak" is a before/after comparison, nothing else**
+
+Settled by the user, and it unblocks the rest of Phase 2's "check-in moment".
+
+**The definition:** a check-in extended the streak **if and only if the track's
+recomputed `currentStreak` is higher after the write than before it.** There is
+no second clause and nothing is remembered between calls.
+
+It is deliberately a comparison rather than a rule with exceptions. Any rule
+phrased as "…unless they already checked in today" needs stored state saying
+whether they had, and this codebase keeps no such state anywhere else. Two
+`StreakSummary` values need nothing remembered, which is what keeps a
+double-click, a retry and two tabs racing all describing the same write the
+same way — the same reason the engine recomputes instead of incrementing.
+
+The three cases that were actually in question, and how the comparison answers
+them without a special case:
+
+- **Day one counts as an extension** (0 → 1). Structurally the streak moved.
+  It is only *named* apart — `started`, so the copy can say "streak started"
+  rather than "extended to 1". Calling it merely recorded would give the first
+  check-in ever, and the first one after a lapse, the flattest feedback in the
+  app at exactly the moment the loop most needs to reward.
+- **A second check-in on a day already banked is `recorded`, not extended**
+  (N → N). The streak is a per-track *daily* fact. That check-in still raised
+  elevation: volume and consistency are separate signals in `CLAUDE.md`, and
+  this is the case that separates them.
+- **Undo then re-check on the same day reports as an extension again.** The
+  undo genuinely deleted the day's rollup row and lowered the streak; the
+  re-check genuinely restored it, so this is a faithful account of the write.
+  Nothing inflates — there is no counter to farm. If the repeat ever reads as
+  cheap, damp it in the client for the session and leave the server honest.
+  Doing it on the server would mean storing an "already celebrated today"
+  signal, which is the same unstored signal the roadmap already flags as the
+  blocker for milestone celebration. That decision stays where it is.
+
+**`before` is read from `CompletionLog`, never from `Track.currentStreak`.**
+The cached columns are only refreshed by a write, so after a lapse they still
+hold the pre-lapse streak — reading the cache as "before" would compare a stale
+5 against a fresh 1 and report a genuine restart as a *fall*. `readStreak` was
+split out of `writeStreak` for this, and is called inside the same transaction
+and against the same `now` as the recompute that follows.
+
+**The return shape is a named outcome, not a boolean.** An undo that removes a
+track's last check-in of the day *lowers* the streak, and a `didExtend: boolean`
+cannot say so. `setCheckIn` now returns `{ kind, before, after, personalBest }`
+with `kind` one of `started | extended | recorded | withdrawn`. Four names,
+because the numbers carry the rest: `withdrawn` covers both undos — the one
+that broke today and the one that left other check-ins standing — and `before`
+/ `after` already say which happened. `personalBest` is `longest` rising, which
+is a fact the schema already holds and costs nothing to report.
+
+**No schema change.** `recomputeToday` already returned this value and
+`setCheckIn` discarded it; the only new query is one `findMany` of dates for
+the "before".
+
+**Verification.** 10 assertions over the pure semantics — first check-in ever,
+extending a live streak, a second check-in on the same day, restart after a
+lapse (the case that fails if `before` comes from the cache), undo as the day's
+last check-in, undo with others standing, undo→re-check, an idempotent repeat
+click, extending without beating the record, and a streak alive from yesterday.
+All passing; build clean and unchanged at 111 kB.
+
+---
+
+**2026-09-01 — CompletionLog is a derived rollup, never frozen history**
+
+Settled by the user, and it is the rule the deletion paths turn on. A day's
+`CompletionLog` count is always whatever the surviving `TaskCheckIn` rows for
+that day say it is. Orphaned check-in history is never preserved.
+
+Deleting a task removes its check-ins by cascade, so **every day it appeared on
+is now wrong — not just today**. Same for a topic, one level up. Both paths
+therefore:
+
+1. collect the affected dates **before** the delete, because the cascade
+   destroys the evidence and they cannot be found afterwards;
+2. delete;
+3. rebuild each of those days from what survives, via `recomputeDays`.
+
+Today is always included in that set, so deleting a task that was never checked
+in still refreshes the current day rather than silently doing nothing.
+
+A day whose only activity was the deleted task loses its row entirely, and the
+streak recomputes to match. That is the intended consequence of treating the
+log as derived: a streak can shorten if you delete the work that earned it.
+
+**What changed in the engine.** `recomputeToday` now counts today's check-ins
+instead of tasks whose `completedAt` falls today; everything else about it —
+the single transaction, recompute-never-increment, no zero rows, the streak
+rebuild — is untouched. `recomputeDays` is the new generalisation for deletes,
+and `affectedDays` is the pre-delete query. `setTaskCompletion` is replaced by
+`setCheckIn`, which upserts or deletes today's row; the unique constraint on
+`(taskId, date)` absorbs a repeat click rather than throwing.
+
+**Unchanged, deliberately:** `lib/streak.ts`, `lib/terrain.ts`, `lib/rollup.ts`,
+the heatmap and the weekly summary. They count active days and are indifferent
+to whether the same activity recurs. Verified, not assumed.
+
+**Migration.** `TaskCheckIn` added, `Task.status` / `Task.completedAt` dropped,
+with a backfill turning each completed task into one check-in on its local
+completion day. The backfill was tested against a copy of the database seeded
+with a deliberate edge case — a task completed at 00:30 IST, which is the
+previous day in UTC — and it filed correctly under the local day. Naive UTC
+truncation would have put it on the wrong date.
+
+**Verification.** 26 engine assertions and 9 UI assertions, all passing: the
+same task across four separate days, yesterday not reading as checked today,
+five repeat check-ins changing nothing, undo removing only today, history
+surviving churn, both delete paths recomputing shared days downward and
+removing days that lost their only activity, and streak/terrain/rollup
+agreement including a gap correctly failing to extend a streak.
+
+**Two test bugs worth recording**, because both would recur. The first run had
+6 failures and every one was in the test, not the engine: a fixture from an
+earlier section left a check-in on a shared day and inflated the expected
+counts, and `weekBuckets(1)` covers one Monday-to-Sunday week while the fixture
+spanned a boundary, so a third of the data sat in the previous bucket. Isolate
+fixtures per assertion, and never assume three consecutive days share a week.
+
+**2026-09-01 — Tasks are recurring only; the daily check-in is the core loop**
+
+Settled by the user. A Task is a persistent recurring learning activity —
+"Practice array problems", "Read about binary trees" — available indefinitely
+and checked in **once per day**. It is never permanently completed. The daily
+check-in creates the historical record.
+
+**There is no one-time task type and no `kind` discriminator.** Recurring is
+the only model. This was considered and explicitly rejected: supporting both
+would double every read path for a case the product does not have.
+
+**What was actually shipped instead, and why it is wrong.** `Task.status` +
+`Task.completedAt` model a terminal state a recurring activity never reaches.
+Verified against the running engine rather than inferred:
+
+- Tapping an already-checked task **records nothing**. The idempotency guard in
+  `setTaskCompletion` short-circuits, so `completedAt` stays on the old day and
+  `recomputeToday` — which counts tasks whose `completedAt` falls in today —
+  counts zero.
+- Uncheck-then-recheck *does* work: it produced `Aug 31=1, Sep 01=1, streak=2`.
+  So the aggregate machinery already supports multi-day activity. The
+  interaction and the per-task state do not.
+- `completedAt` is overwritten on each new check-in, so a Task cannot say it
+  was done Monday *and* Tuesday.
+- `CompletionLog` has no `taskId`, so "which days did I practice Arrays?" is
+  unanswerable.
+- The ratio `completedCount / taskCount` reads **100% permanently** once each
+  task has been done once — a learning track that is complete forever.
+
+**The split is uneven, and that is the good news.** The aggregate half of the
+completion engine is correct and is kept unchanged: the `CompletionLog` rollup,
+the streak rebuild, the single write path, recompute-never-increment, frozen
+history. Only what it counts changes. Terrain, heatmap, streaks and the weekly
+rollup need no modification at all.
+
+**Schema.** `TaskCheckIn { id, taskId, date, createdAt }` with
+`@@unique([taskId, date])`. The row's existence is the state; there is no
+status field to toggle. `Task.status` and `Task.completedAt` are removed.
+`CompletionLog` keeps its shape and is recomputed from check-ins instead of
+from `completedAt`. Full specification in `docs/SCHEMA.md`.
+
+**Open decision, blocking.** `TaskCheckIn` cascades from `Task`, so deleting a
+Task erases its history and every `CompletionLog` day it contributed to becomes
+wrong — not just today's. Either recompute the affected days from the surviving
+check-ins, or keep those rows and accept that history is frozen and no longer
+reconstructible. The two answers need different code and the choice must be
+made before the engine is written.
+
+**The ratio changes meaning, everywhere.** "N of M done" becomes "N of M
+checked in today" — starting at zero each morning. This touches the home page,
+the track page, `TopicRow` and the `ProgressRing` currently labelled
+"Completion — live task state".
+
+**Not gamification.** The check-in loop's reward is the streak, the rising
+ground and the day recorded. XP, levels, points, badges and streak freezes stay
+forbidden; the loop is not a licence to reopen them.
+
+**2026-09-01 — The reading column is dimmed in the shader, not on the canvas**
+
+The page had a visible rectangle down the middle, exactly the width of the
+64rem container: the background and the interface read as two different
+surfaces with a seam between them. Two things were drawing it, both aligned to
+the same line — the energy field's own horizontal vignette, and the CSS mask on
+the canvas, which fell to 6.5% over a 70px ramp.
+
+**A CSS mask cannot tell a bright object from the background.** That is the
+whole problem. Everything the column needed protecting from was a handful of
+bright things; masking the canvas dimmed the environment along with them, and
+the only way to make it dim enough was to make the seam obvious.
+
+So the fade moved into the shaders, where it can apply per object:
+
+- `COLUMN_FADE_GLSL` in `hardLight.ts` is shared by constructs, the ring, its
+  trail, both pulse rings and the motes. It takes screen position from
+  `gl_FragCoord`, so it is a screen-space effect on a 3D object.
+- The energy field has no horizontal falloff at all any more. It is one level
+  across the width, which is what makes the ground read as a single surface.
+- The canvas mask stays, at 0.82 in the middle — a 1.2:1 ratio, imperceptible.
+
+Measured: edge-to-centre luminance ratio fell from **5.29x to 1.64x**, and the
+reading column holds **5.58:1** against the 4.5 floor.
+
+**Three traps, all of which cost a round trip:**
+
+1. `gl_FragCoord` is in **device** pixels; R3F's `size` is in CSS pixels.
+   Passing the CSS width put the fade in the wrong place at any device pixel
+   ratio above 1. Use `gl.domElement.width`.
+2. The fade must be **complete at the container edge**, not centred on it.
+   Centred, a construct still ran at ~85% strength exactly where the first line
+   of text begins.
+3. Fading to a small floor is not enough for additive blending. A construct is
+   many overlapping faces deep and each one adds, so a 7% floor still summed to
+   a bright green. Constructs, ring and pulse fade to **zero**; only the motes
+   keep a floor (0.22), because they are single flat sprites and the middle
+   would be dead without them.
+
+**And the thing that was actually brightest was the motes**, not the
+constructs. 3200 additive sprites spanning the full width, unfaded, held the
+column at 2.9:1 through three rounds of tuning everything else. Worth
+remembering: the loudest object is not always the one you are looking at.
+
+**Separately, the field plane was too small.** At 86 units wide it stopped
+short of the frame on a 2:1 monitor — the visible width at that depth is about
+90 units — and the strip beyond it showed the CSS ground through the canvas as
+a lighter band down the edge. Now 150 units.
+
+**2026-09-01 — The ruled grid is removed, from every motif and every route**
+
+It read as a lattice laid over the page rather than as the ground under it, and
+at full-window widths it dominated. Removed outright: `.atmosphere::before`,
+the `--grid-line` token, the emerald re-tint added earlier the same day for
+`willpower`, and the `terrace` rule that hid it by zeroing the pseudo-element.
+
+This reverses a standing rule. CLAUDE.md listed "a faint ruled grid over the
+page ground" under *Depth and pattern — required, this is what stops it looking
+basic*, and `globals.css` called it "the survey sheet the terrain is drawn on".
+Both are now updated; the earlier entries below stand as the record of what was
+true at the time.
+
+Tinting it emerald on `willpower` had already been tried a few hours earlier
+and was the wrong fix — it made the grid belong to that one motif while leaving
+it wrong everywhere else, and it did nothing about the real complaint, which
+was that the pattern was too present rather than the wrong colour.
+
+Depth now comes from the atmosphere alone: the layered grounds, the hairline
+rule system, the terrain's own light, and on `willpower` the 3D scene. Do not
+reintroduce it — the same standing rule as the retired ambient blobs.
+
+Contrast improves as a side effect, since the grid was the lightest thing
+sitting over the page ground on every route.
+
+**2026-09-01 — `willpower` rebuilt in three.js; the no-dependency decision reversed**
+
+The flat SVG/CSS version was judged too static — correctly. Two things were
+wrong with it, and only one was a calibration problem.
+
+The calibration problem: constructs ran on prime-length cycles of 71–181s with
+long dormancy, so the scene was genuinely empty roughly four fifths of the
+time. A screenshot taken at random showed a dark green grid and nothing else,
+which is exactly what it was most of the time.
+
+The real problem: CSS keyframes cannot produce depth, parallax, or an
+environment that is continuously alive without either becoming a scheduler or
+becoming noise. The earlier argument for staying dependency-free — that the
+contrast floor keeps the layer too dim for 3D fidelity to register — held for
+*fidelity* and was wrong about *life*. What the layer needed was motion and
+depth, and those survive being dim.
+
+**Added:** `three@0.185.1`, `@react-three/fiber@9.7.0`, `@types/three@0.185.0`,
+all pinned exactly. Not drei, not postprocessing, not gsap — the scene needs a
+camera, meshes and a render loop, and everything else is hand-written. Cost:
+about 1.2MB of JavaScript uncompressed, loaded only on a willpower day. That is
+roughly eleven times the rest of the app, and it is the honest price.
+
+**Removed:** `components/WillpowerField.tsx`, `lib/constructs.ts`, and ~600
+lines of generated keyframes from `globals.css`. Keeping both would have meant
+two systems drifting apart. The CSS ground stays: it is server-rendered, so the
+day has its colour before any JavaScript runs and there is no black flash while
+the canvas mounts.
+
+**Architecture.** `lib/atmosphere/` holds geometry and quality tiers,
+`components/atmosphere/` holds the scene. All six constructs are built from
+primitives and merged into one BufferGeometry each — one draw call, one
+material, no model file, no texture, and so no licence question.
+
+- The hard-light material is a fresnel rim plus scrolling object-space noise,
+  additively blended with depth writing off so a construct's own back faces
+  show through it. That translucency is what separates hard light from green
+  plastic; the first pass had none and looked like a wireframe.
+- Formation and dissolution are one mechanism run in opposite directions: a
+  threshold sweeping the object's Y axis, with a hot band at the boundary
+  forming and noise eating inward dissolving.
+- **React renders the tree once.** Every animation is inside `useFrame`,
+  mutating objects directly. The application above cannot be re-rendered by the
+  background.
+
+**Traps worth recording**
+
+- `mergeGeometries` returns null on a mixed set: three's primitives are
+  indexed, `ExtrudeGeometry` and `RoundedBoxGeometry` are not. Flatten with
+  `toNonIndexed()` first. This crashed the whole page.
+- An action written as an increment compounds. `scale.multiplyScalar(1.035)`
+  runs every frame, so a 3% pulse became an object filling the screen within a
+  second. Actions must be absolute offsets from a stored resting transform.
+- Placement must be worked out from the camera frustum at the object's own
+  depth. "Outside the reading column" is a screen-space idea, and a fixed world
+  x that clears the text at one window size sits on top of it at another.
+
+**Measured.** Worst composited ground in the reading column against `--muted`,
+with the ring forced to fire every 0.8s so the worst case is actually hit, and
+sampled at three window widths because the answer depends on the width:
+**5.08:1 at 1918px, 5.13:1 at 1440px, 5.18:1 at 1280px**, against the 4.5
+floor, 0 of 30 samples below it at each.
+
+**The margin's share of the frame grows with the window, and that broke both
+placement and contrast.** The container is a fixed 64rem, so the page margin is
+29% of half-width at 1440px but 47% at 1918px. Anything expressed as a fixed
+fraction of the frustum is therefore calibrated for exactly one window: tuned
+at 1440px, constructs sat wholly off-screen at 1918px. Placement and size are
+now derived from the real gutter in CSS pixels, and constructs are scaled to
+the margin they have to fit inside rather than to the window — at 1280px the
+margin is only 128px, and a construct sized for a 1920px margin simply spills
+across the text.
+
+**The ground is green-black, not blue-black.** `--willpower-ground` is a real
+tint now rather than a 2% wash, and the ruled grid is tinted emerald on this
+motif instead of staying the purple survey grid. The page ground was otherwise
+reading as neutral dark with a purple lattice on it — the background and the
+interface looked like two different surfaces. This is a hue shift at low
+luminance, not a brightness increase, which is what makes it affordable: a
+dark emerald and a dark blue-black differ by a factor of two in luminance and
+both sit far under the budget. The first attempt overshot anyway (0.24 alpha
+put the column at 3.55:1); the budget it spent was taken back from the
+constructs, which no longer dip into the reading column at all.
+Reduced motion renders one frame and is byte-identical 3 seconds later. No
+horizontal overflow at 390/768/1440 on either route. Switching motif away
+destroys the canvas and switching back recreates it, with no console errors.
+
+Liveliness, which was the actual complaint: over 60 seconds of continuous
+observation, **0 of 40 frames were identical to the one before**, and every
+sample after the first ~7 seconds of load had constructs on screen.
+
+**Not measured: real frame rate.** This environment has no GPU, so everything
+renders through swiftshader and the numbers (14–18fps at 1440×900, 60fps at
+390×844) describe software fill rate, not the laptop. They scale with pixel
+count exactly as software rasterisation would. Real performance is unverified.
+
+**The contrast fight, recorded because it cost the most time.** The canvas mask
+is the only reliable guard. Placement alone cannot promise a screen-space
+result, because the camera drifts and the ring crosses the frame. Three
+attempts failed before it held: ramping the mask from 110px before the gutter
+to 90px after dimmed the constructs to invisibility *and* still measured
+1.00:1; finishing the ramp 17px inside the gutter put the worst pixel exactly
+on the container edge at 3.59:1; confining constructs to the margin passed at
+5.11:1 but left the scene nearly empty, because at 1440px the margin is 208px
+and a construct is over half of that. What works: the ramp completes exactly at
+the container edge, the margin runs at full strength, the column runs at 0.10,
+and constructs are free to cross it because the mask handles them there.
+
+**2026-09-01 — Rendred is a laptop application and is not deployed**
+
+Stated plainly so it stops being re-derived. It runs on one machine, for one
+person, and there is no hosting plan. "Production" means `next build && next
+start` on that same laptop.
+
+What follows from it, and what should stop being treated as an open question:
+
+- No auth, no sessions, no tenancy — there is no second user to separate from.
+- Local time is simply correct. The server clock and the reader's clock are the
+  same clock, so `lib/day.ts` is not a compromise pending a timezone decision.
+- Secrets in `.env` are local files, not deployment configuration. `.env*` is
+  gitignored, so machine-specific pins live there safely.
+- Development affordances may ship in a build. The motif switcher is rendered
+  whenever `RENDRED_DEV_TOOLS=1`, which is set in `.env`, because visual QA is
+  run against a production build. On a deployed app that would be a leak; here
+  there is nobody to leak it to.
+- The outstanding `npm audit` advisories (PostCSS, via Next's bundled copy)
+  describe an attack surface that requires hostile input reaching the build.
+  Still worth fixing eventually, but not a reason to take a breaking upgrade.
+- Do not weigh a design decision by how it would behave on a server, at the
+  edge, or behind a CDN.
+
+This is a constraint, not a deferral. If it ever changes, auth and the day
+boundary are the two places to revisit first.
+
+**2026-09-01 — A development-only motif switcher**
+
+Temporary scaffolding while the atmosphere layer is being built: a small
+control, bottom right, that switches between the five motifs. Comes out when
+the visuals are finished.
+
+It writes a cookie and re-renders on the server rather than setting
+`data-motif` on the document. That is forced by the design, not a preference —
+`lattice` and `willpower` mount server components to draw their geometry, so
+flipping the attribute in the browser would recolour the ground and never
+summon the lattice or the constructs. That trap is recorded in the handoffs and
+this is the fix for it.
+
+Resolution order is cookie → `RENDRED_MOTIF` → the date. The switcher's first
+option clears the cookie rather than writing one, so it means "whatever a fresh
+browser would see", and it reads `today` or `pinned` depending on whether the
+env var is set. The motif that auto resolves to is outlined, so the pinned
+state still shows which one it is.
+
+**It is the only place in the product that names a motif on screen.** CLAUDE.md
+forbids that, and the rule stands for the interface — this is a tool, gated by
+`devToolsEnabled()`, and deleting `components/MotifSwitcher.tsx` plus its use in
+the layout removes it entirely.
+
+**2026-09-01 — `willpower` is pinned as the current motif**
+
+`RENDRED_MOTIF="willpower"` in `.env`, so the app opens on the Green Lantern
+day while it is being worked on rather than waiting for its turn in the
+rotation. `.env*` is gitignored, so this is a local pin and not a change to the
+rotation itself — `lib/motif.ts` still resolves Monday-to-Monday as before.
+Remove the line to go back to the daily motif.
+
+**2026-09-01 — `willpower`: a fifth motif, and the one that is allowed to move**
+
+Green Lantern-inspired hard-light constructs, added as a fifth motif rather
+than as a new theme. The brief that asked for it described Rendred's theme as
+already Green Lantern-inspired; it is not, and never was — the theme is
+black/purple with four abstract motifs. Adding a motif rather than repainting
+the product keeps emerald off the other four days, keeps the survey-sheet
+identity, and makes promotion to a default a one-line change if it earns it.
+
+**No new dependencies.** Three.js, R3F and drei were considered and rejected —
+the reason is the contrast floor, not conservatism. The base ground clears
+6.04:1 and the floor is 4.5:1, so this layer has roughly 1.5:1 of headroom and
+has to stay dim. Every advantage real 3D brings (shading, specular, depth of
+field, volumetric bloom) is imperceptible at that opacity, while the cost is
+about 1MB of client JS in an app whose atmosphere currently ships none.
+Recognisability — the actual success criterion — is a property of silhouette,
+which is 2D, and a hard-light construct is canonically bright line-art with
+glow. Confirmed after the fact: first-load JS is unchanged at 110kB.
+
+- **Geometry** (`lib/constructs.ts`): hammer, sword, shield, spear, chains, and
+  the ring. Plain path data, no colour, no React. Each is stroked four times —
+  a blurred halo, a wide body, a mid edge, a narrow core — over a gradient
+  fill. The halo is what separates hard light from a green wireframe; the first
+  pass had none and looked exactly like one.
+- **Formation** is `stroke-dashoffset` with `pathLength="1"`, so every path
+  draws in step regardless of its real length. The object is manufactured from
+  its own outline rather than faded in.
+- **Dissolution** reuses the motes that gathered to build it. Same particles,
+  run outward — creation and destruction are one visual language, not two
+  effects.
+- **The ring** is drawn flat and circular and tilted by a CSS 3D transform in
+  its own `perspective` container, so the foreshortening as it tumbles is real
+  rather than a squashed ellipse. Its own stage also means the scene's mask
+  flattening its ancestors cannot break it.
+- **The orchestrator is the delay set.** Each construct runs one cycle whose
+  length is prime (71/89/103/127/149/181s) with a negative delay, so events
+  drift against each other and the sequence never resynchronises. No JS
+  scheduler, no rAF, no React state — which is also why the page cannot
+  re-render while the scene animates.
+
+**The rule that changed:** the atmosphere is no longer unconditionally static.
+`willpower` moves because motion is its subject. This is deliberately narrow —
+the retired ambient blobs stay retired, and motion outside this motif still has
+to name the state change it reports.
+
+**The rule that did not change:** a motif may never colour data. Asserted per
+motif; `accent`, `streak`, `positive` and `fg` compute identically on all five.
+The emerald is turned toward teal (hue ~163) and away from `positive` (#4ADE80,
+hue ~142) because green already means "completed" here.
+
+Measured at 1440×900, worst composited ground in the reading column against
+`--muted`, at the motif's loudest animated frames: **willpower 4.89:1** against
+the 4.5 floor, on all three routes. Motif presence 7.63 mean delta / 58.5% of
+pixels — inside the band set by voyage (5.19/28.8%) and lattice (12.35/77%).
+
+**Device tiers are keyed to the gutter, not to device names.** The container is
+64rem, so the margin only reaches 150px once the window passes 1324px.
+Below that the two narrow constructs run at a smaller size; below 1200px the
+scene is removed entirely and the ground carries the motif alone. This was
+found by measuring, not assumed: at 768px the constructs were still in the DOM
+rendering at roughly 3% of intended weight, which is not a tablet tier.
+
+**Reduced motion** keeps one construct on screen, fully formed and completely
+still, plus the ground. `animation: none`, not a zero duration, so elements
+settle on their base rule rather than on a keyframe. Verified: zero running
+animations on every route.
+
+**2026-09-01 — `beacon` fails the contrast floor (pre-existing, not fixed)**
+
+Found while measuring the new motif, so recorded rather than silently changed.
+`beacon` puts the worst ground in the reading column at **4.08:1** against
+`--muted`, below the 4.5 floor, identically on `/`, `/progress` and the track
+page. It is unrelated to `willpower` and predates it — the earlier benchmarks
+recorded beacon's *presence* (6.43 / 26.8%) but never its contrast, so it
+appears simply never to have been measured. Left alone deliberately: fixing it
+means re-tuning another motif's appearance, which was not what this task was
+asked to do. `--beacon-sky` and `--beacon-glow` are the two values to pull
+down.
+
 **2026-08-31 — Lattice becomes a neon multiverse lattice; motifs may now decorate**
 Reworked against a Spider-Verse-styled reference. Three changes, and one rule
 change underneath them.

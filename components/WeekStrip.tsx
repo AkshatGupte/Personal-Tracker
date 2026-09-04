@@ -25,6 +25,19 @@ export default function WeekStrip({
   const max = Math.max(1, ...days.map((d) => d.count));
   const level = (count: number) => (count === 0 ? 0 : Math.min(4, Math.ceil((count / max) * 4)));
 
+  /*
+    Magenta, not the heatmap's yellow, and the two are not inconsistent.
+
+    This strip shares the heatmap's cell geometry but answers a different
+    question: it sits under "this week, N tasks completed" and encodes *volume*
+    across the days of one week. The twelve-week heatmap under "Consistency"
+    encodes whether the days were kept at all. Same grammar, different signal,
+    so the hue follows the signal.
+
+    These cells are also roughly four times the heatmap's, and yellow at a low
+    opacity over near-black turns olive at that size — a colour the palette does
+    not contain.
+  */
   const cellStyle = (lvl: number) =>
     lvl === 0
       ? { backgroundColor: "var(--border)", opacity: 0.55 }
@@ -55,7 +68,7 @@ export default function WeekStrip({
             />
             <span
               aria-hidden="true"
-              className={`text-center font-mono text-[0.55rem] uppercase leading-none tracking-[0.05em] ${
+              className={`text-center font-label text-[0.55rem] uppercase leading-none tracking-[0.05em] ${
                 day.isToday ? "text-fg" : "text-muted"
               }`}
             >

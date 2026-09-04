@@ -15,14 +15,23 @@ Build a multi-track, user-defined learning tracker where:
 
 - Users can **create their own goals/tracks** (Track → Topic → Task
   hierarchy) rather than being limited to hardcoded subjects
-- Progress is measured by **tasks completed**, with **strict, non-forgiving
+- **Tasks are persistent recurring activities, not one-time items.** A Task is
+  an ongoing learning activity — "Practice array problems", "Read about binary
+  trees" — that stays available indefinitely and is **checked in once per day**.
+  A Task is never permanently completed; the daily check-in is what creates the
+  historical record. There is no one-time task type and none is planned.
+- Progress is measured by **daily check-ins**, with **strict, non-forgiving
   streaks** to enforce consistency
 - A **smart coverage engine** compares logged progress against a subject's
   expected curriculum and flags gaps or imbalance
 - An **LLM-powered insight layer** generates intelligent, non-generic remarks
   (gaps, pace, imbalance, milestones) based on the user's actual data
-- **Weekly/monthly rollups** deliver a Duolingo-style dopamine hit,
-  reinforcing the habit loop
+- **The daily check-in is the core loop and must feel rewarding**: do the
+  activity → check in → immediate feedback → visible progress → streak held →
+  reason to return tomorrow. Weekly/monthly rollups reinforce the same loop
+  over a longer window. Duolingo-style in *pattern*, not in appearance —
+  adapted to Rendred's identity, and without XP, levels, badges or points
+  (see Explicit Non-Goals)
 
 ## System Classification
 
@@ -34,8 +43,11 @@ multi-step decision-making, no background agents, no model-initiated actions.
 ### Phase 1 — Core Tracking
 - Create/edit/delete Tracks
 - Add Topics under a Track (manual or LLM-suggested curriculum)
-- Add Tasks under a Topic
-- Mark tasks as complete
+- Add Tasks under a Topic (recurring activities, see Objective)
+- **Check in to a Task — once per day, every day, on the same Task.** Checking
+  in records that day and leaves the Task available for tomorrow
+- A Task shows whether it has been checked in **today**; that state resets with
+  the day rather than persisting
 - Strict daily streak per Track (resets to 0 on a missed day)
 
 ### Phase 2 — Progress Visibility
@@ -83,6 +95,9 @@ should be built ahead of its phase. See `docs/ROADMAP.md`.
 
 ## Explicit Non-Goals
 
+- **Deployment.** Rendred runs locally on a single laptop and is not hosted
+  anywhere. Everything below follows from that rather than being an
+  independent choice.
 - Multi-user support / accounts / auth
 - Autonomous or agentic AI (no self-adjusting study plans, no background
   decision-making)
@@ -91,8 +106,11 @@ should be built ahead of its phase. See `docs/ROADMAP.md`.
 
 ## Success Criteria (MVP)
 
-- User can create a track, add topics/tasks, and mark completions without
-  friction
+- User can create a track, add topics/tasks, and check in without friction
+- **The same Task can be checked in on many different days**, and each day is
+  recorded separately
+- A Task checked in yesterday is available, and visibly un-checked, today
+- Checking in gives immediate, legible feedback that the day counted
 - Streaks correctly reset on missed days
 - Weekly/monthly views accurately reflect logged data
 - Coverage gap detection correctly flags untouched topics against the

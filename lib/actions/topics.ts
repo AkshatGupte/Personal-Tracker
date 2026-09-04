@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { ActionResult } from "@/lib/actions/tracks";
-import { recomputeToday } from "@/lib/completion";
+import { affectedDays, recomputeDays } from "@/lib/completion";
+import { startOfDay } from "@/lib/day";
 
 const MAX_NAME = 80;
 
@@ -75,8 +76,13 @@ export async function deleteTopic(id: string, trackId: string): Promise<ActionRe
     });
     if (!topic) return;
 
+    // Same rule as deleting a task, one level up: the topic's tasks cascade,
+    // their check-ins cascade with them, and every day any of those tasks
+    // appeared on has to be rebuilt from what survives. Collected before the
+    // delete, because the cascade destroys the evidence.
+    const days = await affectedDays(tx, { task: { topicId: id } });
     await tx.topic.delete({ where: { id } });
-    await recomputeToday(tx, topic.trackId, now);
+    await recomputeDays(tx, topic.trackId, [...days, startOfDay(now)], now);
   });
 
   revalidatePath(`/tracks/${trackId}`);

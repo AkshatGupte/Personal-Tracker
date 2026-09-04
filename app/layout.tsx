@@ -1,32 +1,40 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
-import AtmosphereField from "@/components/AtmosphereField";
-import { motifForDate } from "@/lib/motif";
+import { Archivo, Bangers, Space_Mono } from "next/font/google";
+import ChromaticDefs from "@/components/spiderverse/ChromaticDefs";
+import SpiderverseBackground from "@/components/spiderverse/SpiderverseBackground";
 import "./globals.css";
 
-// Three roles, three families. Weights are held to what each role actually
-// uses, because the hierarchy is built from family, size, case and tracking
-// rather than from weight.
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
+/**
+ * One family. Bangers carries the entire interface.
+ *
+ * This reverses an earlier split that reserved the comic face for the wordmark
+ * and set everything else in Archivo. The app is a comic-book interface, and
+ * one mark in the comic voice over an otherwise conventional product read as a
+ * hat rather than an identity — so every family token now resolves to Bangers
+ * and it is inherited from `body`.
+ *
+ * Archivo and Space Mono are still loaded, and still earn their place: they sit
+ * *behind* Bangers in the font stacks as glyph fallbacks. Bangers has a narrow
+ * glyph set and no true lowercase, so anything it does not cover falls through
+ * to a face that does instead of rendering tofu.
+ */
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-// Ships a single weight, so a heading cannot be bolded even by accident.
-const instrument = Instrument_Serif({
-  variable: "--font-instrument",
+const bangers = Bangers({
+  variable: "--font-bangers",
   subsets: ["latin"],
   weight: ["400"],
   display: "swap",
 });
 
-// Every number in the app sits in this, which guarantees tabular figures.
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "700"],
   display: "swap",
 });
 
@@ -41,16 +49,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // The day's motif is stamped on the document, not just on the background
-    // layer, so a motif can carry a decorative treatment on non-data elements
-    // as well as paint the ground. It still may never colour data.
     <html
       lang="en"
-      data-motif={motifForDate()}
-      className={`${jakarta.variable} ${instrument.variable} ${plexMono.variable}`}
+      className={`${archivo.variable} ${bangers.variable} ${spaceMono.variable}`}
     >
-      <body className="min-h-dvh bg-bg font-sans text-fg antialiased">
-        <AtmosphereField />
+      <body className="min-h-dvh font-sans text-fg antialiased">
+        {/* Mounted once, here. Every route inherits the same environment and no
+            screen has to remember to draw it. Replaced the five-motif
+            AtmosphereField, which has been removed along with its three.js
+            scene — nothing in this theme needs a renderer. */}
+        <SpiderverseBackground />
+        {/* Filter definitions for true chromatic aberration, defined once and
+            referenced by url() from GlitchText and the page transition. */}
+        <ChromaticDefs />
         {children}
       </body>
     </html>

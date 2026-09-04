@@ -17,7 +17,7 @@ export type TrackRowData = {
 };
 
 const actionButton =
-  "rounded-[3px] px-1.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg";
+  "rounded-none px-1.5 py-1 font-label text-[0.58rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg";
 
 export default function TrackRow({ track }: { track: TrackRowData }) {
   const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
@@ -52,12 +52,12 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
               autoFocus
               maxLength={80}
               aria-label="Track name"
-              className="min-w-0 flex-1 rounded-[3px] border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
+              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
             />
             <button
               type="submit"
               disabled={pending}
-              className="shrink-0 rounded-[3px] bg-accent px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-accent-contrast disabled:opacity-60"
+              className="shrink-0 rounded-none bg-sv-yellow px-3 py-1.5 font-label text-[0.6rem] uppercase tracking-[0.14em] text-sv-ink disabled:opacity-60"
             >
               Save
             </button>
@@ -73,7 +73,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
             </button>
           </div>
           {error && (
-            <p role="alert" className="font-mono text-[0.7rem] text-muted">
+            <p role="alert" className="font-label text-[0.7rem] text-muted">
               {error}
             </p>
           )}
@@ -101,7 +101,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
             type="button"
             onClick={onDelete}
             disabled={pending}
-            className="rounded-[3px] px-1.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-streak disabled:opacity-60"
+            className="rounded-none px-1.5 py-1 font-label text-[0.58rem] uppercase tracking-[0.14em] text-sv-red disabled:opacity-60"
           >
             {pending ? "Deleting…" : "Delete"}
           </button>
@@ -119,18 +119,20 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
         <h3 className="truncate font-display text-2xl leading-tight tracking-tight">
           <Link
             href={`/tracks/${track.id}`}
-            className="rounded-[3px] transition-colors hover:text-accent"
+            className="rounded-none transition-colors hover:text-accent"
           >
             {track.name}
           </Link>
         </h3>
-        <p className="mt-1 font-mono text-[0.6rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+        <p className="mt-1 font-label text-[0.6rem] uppercase tracking-[0.12em] tabular-nums text-muted">
           {track.taskCount === 0 ? (
-            `${track.topicCount} topic${track.topicCount === 1 ? "" : "s"}, no tasks yet`
+            <span className="sv-status">
+              {track.topicCount} topic{track.topicCount === 1 ? "" : "s"}, no tasks yet
+            </span>
           ) : (
             <>
               <span className="text-fg">{track.completedCount}</span> of {track.taskCount}{" "}
-              tasks done
+              checked in today
             </>
           )}
           {track.currentStreak > 0 && (

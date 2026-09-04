@@ -15,7 +15,7 @@ export type TopicRowData = {
 };
 
 const actionButton =
-  "rounded-[3px] px-1.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg";
+  "rounded-none px-1.5 py-1 font-label text-[0.58rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg";
 
 export default function TopicRow({
   topic,
@@ -59,12 +59,12 @@ export default function TopicRow({
               autoFocus
               maxLength={80}
               aria-label="Topic name"
-              className="min-w-0 flex-1 rounded-[3px] border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
+              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
             />
             <button
               type="submit"
               disabled={pending}
-              className="shrink-0 rounded-[3px] bg-accent px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-accent-contrast disabled:opacity-60"
+              className="shrink-0 rounded-none bg-sv-yellow px-3 py-1.5 font-label text-[0.6rem] uppercase tracking-[0.14em] text-sv-ink disabled:opacity-60"
             >
               Save
             </button>
@@ -80,7 +80,7 @@ export default function TopicRow({
             </button>
           </div>
           {error && (
-            <p role="alert" className="font-mono text-[0.7rem] text-muted">
+            <p role="alert" className="font-label text-[0.7rem] text-muted">
               {error}
             </p>
           )}
@@ -107,7 +107,7 @@ export default function TopicRow({
             type="button"
             onClick={onDelete}
             disabled={pending}
-            className="rounded-[3px] px-1.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.14em] text-streak disabled:opacity-60"
+            className="rounded-none px-1.5 py-1 font-label text-[0.58rem] uppercase tracking-[0.14em] text-sv-red disabled:opacity-60"
           >
             {pending ? "Deleting…" : "Delete"}
           </button>
@@ -119,6 +119,8 @@ export default function TopicRow({
     );
   }
 
+  // Every activity in this topic has been checked in today. It is a state of
+  // the day, not of the topic: tomorrow it starts empty again.
   const allDone = topic.taskCount > 0 && topic.completedCount === topic.taskCount;
   const ratio = topic.taskCount === 0 ? 0 : topic.completedCount / topic.taskCount;
 
@@ -131,7 +133,7 @@ export default function TopicRow({
             onClick={() => setOpen((wasOpen) => !wasOpen)}
             aria-expanded={open}
             aria-controls={`tasks-${topic.id}`}
-            className="shrink-0 rounded-[3px] px-1 text-[0.6rem] text-muted transition-colors hover:text-fg"
+            className="shrink-0 rounded-none px-1 text-[0.6rem] text-muted transition-colors hover:text-fg"
           >
             <span aria-hidden="true">{open ? "\u25BE" : "\u25B8"}</span>
             <span className="sr-only">
@@ -141,23 +143,23 @@ export default function TopicRow({
           <p className="flex min-w-0 items-baseline gap-2 truncate font-semibold">
             {topic.name}
             {topic.isExpected && (
-              <span className="font-mono text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+              <span className="font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
                 curriculum
               </span>
             )}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <p className="font-mono text-[0.65rem] tabular-nums tracking-[0.1em] text-muted">
+          <p className="font-label text-[0.65rem] tabular-nums tracking-[0.1em] text-muted">
             {topic.taskCount === 0 ? (
-              "no tasks"
+              <span className="sv-status">no tasks</span>
             ) : (
               <>
                 <span className={allDone ? "text-positive" : "text-fg"}>
                   {topic.completedCount}
                 </span>
                 {" / "}
-                {topic.taskCount} done
+                {topic.taskCount} today
               </>
             )}
           </p>

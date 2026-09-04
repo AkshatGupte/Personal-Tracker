@@ -6,6 +6,489 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-03 — The check-in moment: one act, one piece of feedback
+
+**What was built:**
+Checking in now tells you what it *did*. Before, tapping a task quietly changed
+five things on the page — the tick, the topic tally, the elevation, the streak
+and the ring — each redrawing when its own number happened to move, so one act
+looked like five unrelated twitches. Now the tap produces a single statement
+beside the task ("Checked in · streak 4 days · longest yet"), and the one
+measurement that statement is about is briefly marked. The underlying model is
+unchanged: activities are still permanent and recurring, the same activity is
+still checked in on many different days, and that daily record is still the only
+thing the app treats as true.
+
+**How it works (flow):**
+1. You tap the tick. It flips immediately and its coloured plates split apart —
+   this does not wait for anything, so the app always answers instantly.
+2. The tap is saved, and the app compares your streak from just before the save
+   with your streak just after. That comparison is the whole definition of
+   "extended a streak" — there is no separate tally being kept.
+3. That comparison comes back as one of four plain outcomes: **started** (a
+   streak begins), **extended** (it grew), **recorded** (the day was already
+   counted, so the streak stayed put), or **withdrawn** (you untapped).
+4. A short line appears next to the task saying which of those happened, and
+   quoting the real numbers. It deliberately waits for the answer to come back
+   — that small pause is what makes everything after it read as *caused by*
+   your tap rather than as a second thing that also happened.
+5. Exactly one number at the top of the page is then emphasised: the streak if
+   the streak moved, otherwise the elevation. Everything else simply arrives at
+   its new value without performing.
+6. The line clears itself after about four seconds, and tapping anything else
+   clears it at once, so it never gets in your way.
+
+**Beating your record is part of the same sentence:**
+When a check-in sets a new longest streak, the line says "· longest yet" and
+that is all. No second number lights up and nothing is awarded. Personal bests
+were the most obvious place a points-and-badges layer could have crept in, and
+it deliberately did not.
+
+**What the numbers still come from:**
+Nothing new is stored and nothing is duplicated. The daily record remains the
+source of truth; the daily totals, streaks, rising ground, heatmap and weekly
+summary are all still worked out from it. There was no database change. The one
+thing that changed is that the app now *reports* a value it was already
+calculating and previously threw away.
+
+**Looks and motion:**
+Built entirely from what the theme already had — the existing colours keep their
+existing meanings (yellow for streaks, cyan for a day recorded, magenta for
+volume), the existing typefaces, and the existing short, snapped animation
+style. No new colour, glow, badge or icon. One fix was needed along the way: the
+streak number already sits in streak-yellow, so marking it *in* yellow did
+nothing at all and the whole outcome was riding on a three-pixel nudge. A number
+already resting in a colour now briefly drops to plain white instead, which
+reads as a printing plate slipping — the same idea the rest of the design is
+built on.
+
+**Reduced motion:** every part of this respects it. With motion turned down the
+movement stops and the words, colours and tick state carry the whole message,
+so nothing is communicated by animation alone.
+
+**Verified:** 41 automated checks driving a real browser against a test copy of
+the database, all passing, run twice in a row with identical results. They cover
+all four outcomes; a personal best and a check-in that is not one; starting a
+streak from nothing; restarting after a lapse; both kinds of untap — the one
+that breaks today and the one that does not; a streak falling back to zero;
+rapid repeated tapping; reduced motion; and the layout at desktop, 1280×720,
+phone and 320px with no sideways scrolling and no browser errors. The real
+database was never touched.
+
+**No gamification added.** No points, levels, badges, coins, streak freezes,
+reminders or daily targets. Streaks remain strict — a missed day still resets
+to zero, with no forgiveness.
+
+**Roadmap status:** completes "The check-in moment" in Phase 2 of
+`docs/ROADMAP.md`. Still open in that phase: the monthly summary, milestone
+celebration, and the learning trajectory view.
+
+---
+
+## 2026-09-01 — Daily check-ins: the same activity, every day
+
+**What was built:**
+Tasks are now the recurring activities they were always meant to be. "Practice
+array problems" stays on your list forever, and each day you tap it to say you
+did it today. Tomorrow it is waiting again, unticked. You never create the same
+task twice, and it is never permanently finished.
+
+**How it works (flow):**
+1. Tapping a task writes one record: this activity, this day.
+2. That record is the only thing the app treats as true. Everything else —
+   your daily totals, your streak, the rising ground, the heatmap, the weekly
+   summary — is worked out from those records.
+3. Tomorrow the tick is empty again, because it asks "did I do this *today*",
+   and today has changed.
+4. Tapping twice in one day does nothing the second time. The database itself
+   refuses a duplicate, so a double tap or a slow connection cannot log the
+   same day twice.
+5. Untapping removes only today. Every earlier day stays exactly as it was.
+
+**The change to what the numbers mean:**
+"4 of 8 done" used to count tasks you had finished — which, for activities you
+repeat, would have climbed to 8 of 8 and stayed there forever. It now reads
+"4 of 8 today" and starts empty each morning. That is the number the daily
+habit actually lives on. The elevation figure now counts check-ins rather than
+finished tasks, so the ground keeps rising for as long as you keep going.
+
+**What happens when you delete something:**
+You decided the history should be recalculated rather than left frozen, and
+that is what it does. Deleting a task removes its check-ins and then rebuilds
+every day it was part of — not just today. A day where that task was your only
+activity disappears, and your streak recalculates honestly to match. Deleting a
+whole topic does the same for all its tasks. Nothing is left behind pointing at
+something that no longer exists.
+
+**What was left alone:**
+Streaks, the terrain, the heatmap and the weekly summary needed no changes at
+all. They count *days you were active*, and they never cared whether you
+repeated an activity or did a new one. That was checked rather than assumed.
+
+**Existing data:**
+The upgrade converts any task previously marked finished into a single check-in
+on the day it was finished. This was tested against a copy of the database with
+a deliberately awkward case — an activity completed at half past midnight,
+which falls on the previous day in world time — and it filed under the right
+local day.
+
+**Verified:** 26 checks against the engine and 9 against the actual screen, all
+passing. The same task across four separate days; yesterday not showing as
+ticked today; five repeat taps changing nothing; undo touching only today;
+history surviving repeated tick/untick; both delete paths rebuilding correctly;
+and streaks, terrain and weekly totals still agreeing.
+
+**No gamification added.** No points, levels or badges. The reward is the
+streak, the rising ground, and the day being recorded.
+
+**Roadmap status:** completes the daily check-in item in Phase 2. The
+"check-in moment" item — making that tap *feel* like something — remains open.
+
+---
+
+## 2026-09-01 — Tasks are recurring, and the daily check-in is now written down
+
+**What changed:** documentation only. No code was touched.
+
+**The decision:**
+A Task in Rendred is an ongoing activity you repeat — "Practice array
+problems", "Read about binary trees" — not a one-off item you finish once and
+tick off forever. The same Task stays on your list indefinitely and you check
+in to it once a day. That daily check-in is what gets recorded. The Task itself
+is never "done". There is no second kind of task and none is planned.
+
+**Why this needed writing down:**
+None of the planning documents said any of that. The word "recurring" did not
+appear anywhere, and "check-in" did not either. The schema's own example of a
+Task was *"Solve: Two Sum"* — a problem you solve once. So the app was built
+for one-time tasks, which is not what it is for.
+
+**What I checked before changing anything:**
+I ran the real app against a task that had been checked yesterday. Tapping it
+again today did **nothing at all** — no record for today. The only way to
+register a second day was to untick it and tick it again, which nobody would
+guess. And even then, the task forgets it was ever done yesterday: only a
+running per-day total for the whole track survives, so "which days did I
+practise Arrays?" cannot be answered.
+
+There is also a quieter problem: the "4 of 8 done" figure counts tasks that are
+finished. With activities you repeat, that reaches 8 of 8 and stays there
+forever — a learning track that claims to be complete.
+
+**The good news:** roughly half the existing machinery is already right.
+Streaks, the heatmap, the rising terrain and the weekly summary all count *days
+you were active*, and they do not care whether you repeated the same activity
+or did a new one. Those need no changes. Only the per-task half is wrong.
+
+**What was written down:**
+- The recurring model and the daily check-in, in the product requirements
+- A new record — one row per task per day — in the data plan, replacing the
+  single "finished" flag a task currently carries
+- Two new items on the roadmap: the check-in itself, and the moment of
+  feedback that makes it worth doing again
+- A note in the project's design rules that green no longer means "finished",
+  it means "done today", and resets each morning
+
+**One question left open, deliberately:** if you delete a Task, should the days
+it contributed to be recalculated, or should that history stay frozen? Both are
+defensible and they need different code, so it is flagged as blocking rather
+than guessed at.
+
+**No new gamification.** The reward for checking in is the streak, the rising
+ground and the day being recorded. No points, levels or badges.
+
+**Roadmap status:** adds two unstarted items to Phase 2 in `docs/ROADMAP.md`.
+
+---
+
+## 2026-09-01 — The dark band down the middle of the page
+
+**What was wrong:**
+The green day had a visibly darker rectangle running down the centre of the
+page, exactly as wide as the column the text sits in. The background and the
+interface looked like two different surfaces with a join between them, rather
+than one environment.
+
+**Why it was there:**
+The text has to stay readable, so the middle of the page was being held dark.
+Two separate things were doing that, both lined up on the same edge — the
+background's own shading, and a mask over the whole 3D layer. Together they
+drew a rectangle.
+
+**How it was fixed:**
+The dimming moved into the 3D layer itself, where it can be applied to the
+bright objects alone rather than to everything. Now the background runs at one
+even level right across the width, and only the glowing objects fade out as
+they approach the text. The mask over the canvas remains but is so slight it
+cannot be seen.
+
+**Measured:** the difference in brightness between the edge of the screen and
+the middle dropped from **5.3x to 1.6x** — near enough even that there is no
+edge to see — while readability actually improved, to **5.58 against a 4.5 pass
+mark**.
+
+**Something else found along the way:**
+The brightest thing over the text was never the big constructs — it was the
+drifting specks. Three thousand of them, spread across the whole width, each
+one faint but adding up. They held the page below the readability mark through
+several rounds of adjusting everything else. They are now thinned over the text
+and left alone everywhere else.
+
+**Also fixed:** the sheet of light that forms the background was slightly too
+small and stopped short of the screen edge on a wide monitor, leaving a paler
+strip down the side.
+
+**Roadmap status:** not a roadmap item — a fix to the daily atmosphere layer.
+
+---
+
+## 2026-09-01 — The ruled grid is gone
+
+**What changed:**
+The faint squared grid that sat behind every page is removed — on all four
+routes and all five daily backgrounds, not just the green one. It was reading
+as a mesh laid on top of the page rather than as the surface underneath it, and
+on a wide screen it took over.
+
+**Why it needed removing rather than adjusting:**
+Earlier the same day it was re-tinted green so it would blend into the green
+day. That was the wrong fix: it made the grid fit one background while leaving
+it wrong on the other four, and the actual problem was never its colour — it
+was that the pattern was simply too present.
+
+**What holds the depth now:**
+The background layers, the hairline rules that separate sections, the terrain's
+own light, and on the green day the 3D scene. Nothing was added to compensate.
+
+**A side benefit:**
+The grid was the lightest thing sitting over the page background on every
+route, so removing it makes the text slightly easier to read everywhere.
+
+**Note:** this reverses a written rule. The project's design notes listed the
+grid as required, so those notes were updated to match. The older entries in
+`docs/DECISIONS.md` are left alone — they record what was true when written.
+
+**Roadmap status:** not a roadmap item — a design change to the shared page
+background.
+
+---
+
+## 2026-09-01 — The willpower day rebuilt in real 3D
+
+**What was built:**
+The green "willpower" day is now a real 3D environment rather than flat shapes
+drawn on the page. Objects made of emerald light — a fist, a hammer, a sword, a
+shield, a bow, a chain — build themselves out in the margins, hang there and do
+one small thing, then come apart. A ring falls through the depth of the scene
+trailing light and lands with a soft pulse. Behind all of it the background
+itself is always moving. Nothing ever sits completely still.
+
+**Why it was rebuilt:**
+The first version was too static, and that was two separate faults. One was a
+mistake I made: the objects appeared on very long timers, so the screen was
+genuinely empty about four fifths of the time — a screenshot taken at random
+showed a dark green grid and nothing else, because that is what it usually was.
+The other was a real limit: drawing with CSS cannot give you depth or
+perspective, and depth is most of what makes a space feel alive.
+
+**How it works (flow):**
+1. On a willpower day the page paints its green ground immediately, before any
+   code runs, so there is no black flash.
+2. A 3D canvas then loads behind the interface and takes over.
+3. Four objects run independently. Each one gathers, builds itself as a bright
+   edge sweeps along it, holds and makes one small movement, then loses
+   cohesion and breaks up. Then a different object appears somewhere else.
+4. If nothing else is on screen, the next object comes back immediately — the
+   scene is never allowed to empty out.
+5. The camera drifts very slowly on three timings that never line up, so near
+   things slide past faster than far things. That difference is what makes it
+   read as a space rather than a picture.
+
+**The thing that took the longest:**
+Keeping the text readable. There is a minimum contrast the writing must keep
+against whatever is behind it, and a glowing 3D scene fights that constantly.
+Placing objects carefully is not enough on its own, because the camera moves
+and the ring crosses the whole screen. The fix is a mask over the middle of the
+page: the margins run at full brightness, the reading column runs at a tenth of
+it. Three earlier attempts failed — one dimmed the objects into invisibility
+and *still* failed the check, another left the scene almost empty. Measured
+now, with the ring forced to fire constantly so the worst moment is actually
+caught, and checked at three window widths because the answer changes with the
+width: **5.08, 5.13 and 5.18 against a 4.5 pass mark, with none of 30 samples
+below it at any width.**
+
+**Two things that were still wrong, and are now fixed:**
+The ruled grid was still the original purple, so it sat on top of the green
+rather than belonging to it, and the middle of the page read as neutral dark
+rather than green. The ground is now a dark emerald and the grid is tinted to
+match. Separately, the objects were placed using a fixed proportion of the
+screen, which was measured on a narrower window — on a wider one they all fell
+outside the edges. Placement and size are now worked out from the real width of
+the page margin, so they sit in it on any window.
+
+**Was the original complaint fixed:**
+Measured over a minute of continuous watching: **none of 40 frames were
+identical to the one before**, and after the first few seconds of loading,
+every single sample had objects on screen.
+
+**What this cost:**
+Two new libraries, three.js and React Three Fiber, about 1.2MB of code for the
+browser to download — roughly eleven times the size of the rest of the app. It
+only loads on a willpower day. This reverses an earlier decision to avoid them,
+which is recorded in `docs/DECISIONS.md`.
+
+**Still true:**
+Nothing here touches your tracks, topics, tasks, completions or streaks. You
+cannot click it. With "reduce motion" turned on it renders a single still frame
+and stops completely. Switching to another day releases it entirely.
+
+**One thing I could not check:**
+Real speed. This machine has no graphics card available to the test browser, so
+everything was drawn in software. The frame rates I measured describe that, not
+your laptop. It is the one claim in this entry I cannot stand behind.
+
+**Technical concepts used:**
+- three.js / React Three Fiber (tools for drawing 3D in a web page) — the scene
+- Shaders (small programs that run on the graphics card, once per pixel) — used
+  for the light-object look and the moving background
+- A mask (a rule for how strongly to show something in each area) — used to
+  hold the middle of the page down so the text stays readable
+
+**Roadmap status:** not a roadmap item — a rework of the daily atmosphere
+layer. Phase 2's remaining items are untouched.
+
+---
+
+## 2026-09-01 — A switcher for the daily backgrounds, and one pinned day
+
+**What was built:**
+Two small things, both for working on the visuals rather than for using the
+app. A control in the bottom-right corner lets you switch between the five
+daily backgrounds instead of waiting for one to come round. And the app now
+opens on the green "willpower" day every time, until that pin is removed.
+
+**How it works (flow):**
+1. Clicking a name in the control saves your choice in a small browser cookie.
+2. The page then asks the server to redraw itself. This matters: two of the
+   backgrounds draw real shapes that the server has to build. Changing the
+   colour in the browser alone would tint the page and never summon the
+   lattice or the constructs — a trap that has cost time before.
+3. The server picks what to show in this order: your switcher choice first, the
+   pinned setting second, and the day's date last.
+4. The first button clears your choice rather than setting one, so it means
+   "whatever a fresh browser would show". It reads "pinned" while a background
+   is pinned, and "today" once that pin is removed. The one it lands on gets a
+   thin outline so you can still see which it is.
+5. Your choice survives a reload, so you can keep working on one background.
+
+**How to change it back:**
+Both settings live in `.env`, which is not committed. `RENDRED_MOTIF` is the
+pinned day — delete that line and the app returns to the normal rotation.
+`RENDRED_DEV_TOOLS` keeps the switcher visible in a built copy of the app;
+delete it and the switcher only appears while developing.
+
+**A note on the rule it bends:**
+The project has a standing rule that the interface never names which background
+is showing — if it needs explaining, it has failed. This control names all five.
+That is deliberate and it is why it is a development tool: it only renders when
+development tools are switched on, and deleting one file plus one line in the
+layout removes it completely.
+
+**Also recorded, not built:**
+Rendred runs on one laptop and is not going to be deployed. That was written
+into `CLAUDE.md`, `docs/PRD.md`, `docs/ROADMAP.md` and `docs/DECISIONS.md`, so
+it stops being an open question. Several things follow from it and no longer
+need debating: no accounts or logins, local time being simply correct rather
+than a compromise, settings in `.env` being local files rather than deployment
+configuration, and development tools being allowed to ship in a build.
+
+**Technical concepts used:**
+- A cookie (a small note the browser sends back with each request) — used so
+  the server knows which background you picked
+- Server-side rendering — the page is rebuilt by the app rather than repainted
+  by the browser, which is what makes the drawn backgrounds appear at all
+- Environment variables (settings kept in a file outside the code) — used for
+  the pinned day and for showing the tool in a built copy
+
+**Roadmap status:** not a roadmap item — temporary tooling for the atmosphere
+work, plus a documentation correction.
+
+---
+
+## 2026-09-01 — Willpower: a day made of hard light
+
+**What was built:**
+A fifth daily background, called "willpower". On its day the page ground turns
+a deep emerald and objects made of green light — a hammer, a sword, a shield, a
+spear, a chain — build themselves in the empty margins beside the page, do one
+small thing, and break apart again. Every so often a ring falls through the
+scene and lands. It is background only: you cannot click it, it never covers
+what you are reading, and it never tells you anything about your learning.
+
+**How it works (flow):**
+1. When a page is requested, the app checks the day and picks that day's
+   background. This happens on the server, once, so it cannot flicker.
+2. On a willpower day it draws six shapes into the page margins. The shapes are
+   stored as plain outlines — the same way the app already stores the lattice.
+3. Each object then runs a fixed sequence: specks of light drift inward, the
+   outline draws itself as if being traced, the inside fills with light, the
+   object moves once, and then it comes apart into the same specks it gathered.
+4. Nothing schedules this. Each object simply repeats on its own timer, and the
+   timers are lengths that share no common factor (71, 89, 103, 127, 149 and
+   181 seconds). Because of that they slide out of step with each other and the
+   sequence never settles into a pattern you can predict.
+5. The falling ring is tilted in real 3D by the browser, so it squashes and
+   turns as it drops rather than just sliding down the screen.
+
+**Why it looks the way it does:**
+The obvious way to build this would have been a 3D engine. That was measured
+and rejected. Text has to stay readable against whatever sits behind it, and
+there is a hard minimum for that. The plain background scores 6.04 where 4.5 is
+the pass mark, which leaves very little room — so this layer has to stay faint.
+Everything a 3D engine is good at (realistic shading, glare, depth blur) is
+invisible when something is that faint, and it would have added roughly a
+megabyte for the browser to download. What actually makes an object
+recognisable is its outline, which is flat. So it is drawn flat, and the page
+downloads exactly as much as it did before: 110kB, unchanged.
+
+**What was measured, not assumed:**
+- Readability behind the effect: **4.89** against the 4.5 pass mark, on all
+  three pages, checked at the brightest moment the animation ever reaches.
+- The meaning of colours is untouched. Purple still means progress, amber still
+  means streak, green still means completed — verified identical on all five
+  backgrounds. The emerald was deliberately pushed toward teal so the ground is
+  never mistaken for the green that means "done".
+- No sideways scrolling at phone, tablet or desktop width; no browser console
+  errors; nothing on the page intercepts a click.
+- On narrower screens the objects are removed rather than shrunk. Below the
+  width where the page has empty margins there is nowhere to put an object that
+  is not on top of the text, so only the emerald ground remains.
+
+**If you have "reduce motion" turned on:**
+Nothing moves at all. One shield stays on screen, fully formed and still, and
+the emerald ground remains, so the day still looks like itself.
+
+**Something found along the way, not fixed:**
+While measuring, the "beacon" background turned out to score **4.08** — below
+the 4.5 pass mark. That is an existing problem, nothing to do with this work,
+and it looks like it was simply never measured before. It is written up in
+`docs/DECISIONS.md` with the two values that need lowering. Left alone because
+fixing it changes how a different day looks, which was not what was asked for.
+
+**Technical concepts used:**
+- SVG (shapes described as instructions rather than as a picture, so they stay
+  sharp at any size) — used for every construct and the ring
+- CSS animation on the browser's own compositor — used for the whole sequence,
+  which is why the app itself never redraws while this is moving
+- A CSS 3D transform — used to give the falling ring real perspective
+- A mask tied to the page margin — used to keep the effect off the text
+
+**Roadmap status:** not a roadmap item — an addition to the daily atmosphere
+layer. Phase 2's remaining items (monthly summary, milestone celebration,
+learning trajectory) are untouched.
+
+---
+
 ## 2026-08-31 — One theme instead of two
 
 **What was built:**

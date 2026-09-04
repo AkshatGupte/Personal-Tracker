@@ -1,6 +1,17 @@
+"use client";
+
+import { useState } from "react";
+
 /**
  * Circular completion ring, drawn as SVG so it can animate its own stroke on
  * load. Shows real task completion — never an invented XP or level number.
+ *
+ * On a *change* it advances from the length it was already showing rather than
+ * wiping to empty and redrawing. Redrawing was the one animation on this page
+ * that re-performed itself on every check-in, which is exactly how a signal
+ * stops reading as part of the moment and starts reading as its own unrelated
+ * reaction. A ring that grows by a slice is the same fact, told as a
+ * consequence.
  */
 export default function ProgressRing({
   completed,
@@ -15,7 +26,26 @@ export default function ProgressRing({
   const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
   const radius = 66;
   const circumference = 2 * Math.PI * radius;
-  const filled = circumference * (percent / 100);
+
+  /*
+    The value this ring was last showing, so the next draw can start there.
+
+    Adjusted during render rather than in an effect: the new length has to be
+    known for the very first paint after the change, and an effect would run a
+    frame too late and let the ring snap before it animated. This is state
+    rather than a ref so that a double-invoked render leaves it correct.
+    `from` is null on first mount only, which keeps the original entrance.
+  */
+  const [seen, setSeen] = useState<{ at: number; from: number | null }>({
+    at: percent,
+    from: null,
+  });
+  if (seen.at !== percent) setSeen({ at: percent, from: seen.at });
+  const from = seen.at === percent ? seen.from : seen.at;
+
+  // Offset counts backwards from a full circle, so the dash always starts at
+  // the top and only its length changes.
+  const offsetFor = (value: number) => circumference - circumference * (value / 100);
 
   return (
     <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
@@ -58,10 +88,15 @@ export default function ProgressRing({
               stroke="var(--accent)"
               strokeWidth="12"
               strokeLinecap="round"
-              strokeDasharray={`${filled} ${circumference}`}
+              strokeDasharray={circumference}
+              strokeDashoffset={offsetFor(percent)}
               style={{
-                ["--ring-circumference" as string]: circumference,
-                animation: "ring-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) both",
+                ["--ring-from" as string]: `${offsetFor(from ?? 0)}px`,
+                // The full sweep is an entrance and can take its time; an
+                // advance is part of a check-in and has to keep its pace.
+                animation: `ring-draw ${
+                  from === null ? "1.1s" : "620ms"
+                } cubic-bezier(0.22, 1, 0.36, 1) both`,
               }}
             />
           )}
@@ -70,13 +105,13 @@ export default function ProgressRing({
           <span className="font-mono text-4xl font-medium leading-none tracking-tight tabular-nums">
             {percent}%
           </span>
-          <span className="mt-1.5 font-mono text-[0.6rem] uppercase tracking-[0.15em] text-muted">
+          <span className="mt-1.5 font-label text-[0.6rem] uppercase tracking-[0.15em] text-muted">
             complete
           </span>
         </div>
       </div>
 
-      <p aria-hidden="true" className="font-mono text-[0.65rem] uppercase leading-relaxed tracking-[0.14em] tabular-nums text-muted">
+      <p aria-hidden="true" className="font-label text-[0.65rem] uppercase leading-relaxed tracking-[0.14em] tabular-nums text-muted">
         <span className="text-fg">{completed}</span> of <span className="text-fg">{total}</span> tasks
       </p>
     </div>

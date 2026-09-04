@@ -42,13 +42,13 @@ export default function NewTaskForm({
           placeholder="e.g. Solve: Two Sum"
           aria-label="Task title"
           aria-invalid={state.error ? true : undefined}
-          className="min-w-0 flex-1 rounded-[3px] border border-border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted focus:border-accent"
+          className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted focus:border-accent"
         />
         <select
           name="difficulty"
           defaultValue=""
           aria-label="Difficulty (optional)"
-          className="shrink-0 rounded-[3px] border border-border bg-transparent px-2 py-1.5 font-mono text-[0.65rem] uppercase tracking-[0.12em] text-muted focus:border-accent"
+          className="shrink-0 rounded-none border border-border bg-transparent px-2 py-1.5 font-label text-[0.65rem] uppercase tracking-[0.12em] text-muted focus:border-accent"
         >
           <option value="">Difficulty</option>
           {DIFFICULTIES.map((level) => (
@@ -60,13 +60,13 @@ export default function NewTaskForm({
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 rounded-[3px] bg-accent px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-[0.14em] text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="shrink-0 rounded-none bg-sv-yellow px-3 py-1.5 font-label text-[0.65rem] uppercase tracking-[0.14em] text-sv-ink transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           {pending ? "Adding…" : "Add"}
         </button>
       </div>
       {state.error && (
-        <p role="alert" className="font-mono text-[0.7rem] text-muted">
+        <p role="alert" className="font-label text-[0.7rem] text-muted">
           {state.error}
         </p>
       )}

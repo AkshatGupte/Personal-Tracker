@@ -16,7 +16,7 @@ const STRATA = 7;
  * a curve that did not happen.
  *
  * The atmosphere behind the page never reaches in here: ridge, strata, fill and
- * milestones are drawn in `accent` and `streak` in every motif, because they
+ * milestones are drawn in `accent` and `streak` always, because they
  * are data. Only the sky behind them changes with the day.
  */
 export default function TerrainProfile({
@@ -176,7 +176,7 @@ export default function TerrainProfile({
             <span
               key={milestone.value}
               aria-hidden="true"
-              className="pointer-events-none absolute left-0 -translate-y-1/2 font-mono text-[0.6rem] uppercase tracking-[0.14em] tabular-nums text-streak"
+              className="pointer-events-none absolute left-0 -translate-y-1/2 font-label text-[0.6rem] uppercase tracking-[0.14em] tabular-nums text-streak"
               style={{ top: `${(1 - milestone.y) * 100}%` }}
             >
               {milestone.value}
@@ -187,8 +187,8 @@ export default function TerrainProfile({
           <p
             className={
               compact
-                ? "absolute inset-0 flex items-center justify-center font-mono text-[0.55rem] uppercase tracking-[0.14em] text-muted"
-                : "absolute inset-0 flex items-center justify-center px-4 text-center font-mono text-[0.65rem] uppercase tracking-[0.14em] text-muted"
+                ? "sv-status absolute inset-0 flex items-center justify-center font-label text-[0.55rem] uppercase text-muted"
+                : "sv-status absolute inset-0 flex items-center justify-center px-4 text-center font-label text-[0.65rem] uppercase text-muted"
             }
           >
             {compact ? "No elevation yet" : "No elevation yet \u00b7 completed tasks raise the ground"}
@@ -199,7 +199,7 @@ export default function TerrainProfile({
       {!compact && terrain.hasData && (
         <div
           aria-hidden="true"
-          className="mt-1.5 flex justify-between pr-4 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-muted sm:pr-6"
+          className="mt-1.5 flex justify-between pr-4 font-label text-[0.6rem] uppercase tracking-[0.12em] text-muted sm:pr-6"
         >
           <span>12 weeks</span>
           {terrain.next && <span className="tabular-nums">next {terrain.next}</span>}

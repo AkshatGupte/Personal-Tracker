@@ -5,7 +5,7 @@
 
   One semantic set, one theme. The light/dark duality was removed: the day's
   atmosphere is the only variation the interface carries, and maintaining a
-  second palette meant every motif was capped by whichever theme had less
+  second palette meant the theme was capped by whichever side had less
   contrast headroom — always the light one. Components reference tokens only,
   never a raw hex. Every text and ground pair is verified at 4.5:1 or better.
 
@@ -13,68 +13,69 @@
   buttons, inputs, the completion tick — carry 3px. Panels, sections and data
   surfaces carry none; they are separated by hairline rules and space instead.
 
-  Motif tokens (--m-*) are a separate layer from the semantic ones. They may
-  only paint the page ground. `accent`, `streak` and `positive` keep their
-  meanings in every motif, and no motif may tint data.
+  The Spider-Verse treatments live at the bottom of this file. `accent`,
+  `streak` and `positive` keep their meanings everywhere and no decorative
+  layer may tint data.
 */
 
-/* The single palette: black ground, purple accent. */
+/*
+  The single palette: comic four-colour print separation.
+
+  Retokenised from the original black/purple set to the approved Spider-Verse
+  system. The semantic names are unchanged on purpose — every component in this
+  app references tokens and never a raw hex, so re-skinning is a change to this
+  block rather than a sweep through the components.
+
+  The three progress signals keep their meanings and map onto the print plates:
+    accent   (volume, active, primary action) -> magenta, plate A
+    streak   (consistency, milestones)        -> comic yellow
+    positive (checked in today)               -> cyan, plate B
+  Green is deliberately gone: this palette has no green, and "done" now reads
+  as cyan. Nothing else changed hands, so no signal has swapped meaning.
+*/
 :root {
   color-scheme: dark;
-  --bg: #0a0a12;
-  --surface: #14141f;
-  --elevated: #1c1b2a;
-  --border: #2a2840;
-  --fg: #edebf5;
-  --muted: #9c96b0;
-  --accent: #a78bfa;
-  --accent-soft: #c4b5fd;
-  --accent-contrast: #16121f;
-  --streak: #e3a857;
-  --positive: #4ade80;
-  --focus: #c4b5fd;
+  --bg: #0a0a0f;
+  --surface: #16121a;
+  --elevated: #1e1826;
+  /* Tinted toward the ink/magenta family rather than violet. As a 1px hairline
+     the hue barely shows, but ProgressRing draws this as a 12px ring track and
+     the old #33203a (blue above red) read as a violet band in a palette that
+     has no violet. */
+  --border: #3a2030;
+  --fg: #f5f0e6;
+  --muted: #aba0b5;
+  --accent: #ff2079;
+  --accent-soft: #ff5c9e;
+  --accent-contrast: #0a0a0f;
+  --streak: #ffe800;
+  --positive: #00e5ff;
+  --focus: #ffe800;
+
+  /* Raw plates, for the treatments that are about ink rather than meaning. */
+  --sv-magenta: #ff2079;
+  --sv-cyan: #00e5ff;
+  --sv-yellow: #ffe800;
+  --sv-purple: #6b1fb0;
+  --sv-red: #ff003c;
+  --sv-ink: #16121a;
+  /* The two halves of every RGB split. Fixed pairing — this is the signature. */
+  --sv-split-a: var(--sv-magenta);
+  --sv-split-b: var(--sv-cyan);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px rgb(0 0 0 / 0.45);
 
-  --grid-line: rgb(196 181 253 / 0.055);
-  --card-edge: rgb(167 139 250 / 0.28);
-  --terrain-line: rgb(196 181 253 / 0.14);
-
-  /* Atmosphere, dark. Stronger than light, since the ground absorbs more. */
-  --voyage-sky: rgb(60 105 175 / 0.13);
-  --voyage-line: rgb(150 195 240 / 0.075);
-  --voyage-glow: rgb(96 150 215 / 0.085);
-  --voyage-ground: rgb(60 105 175 / 0.020);
-
-  /*
-    Neon multiverse: magenta above, electric blue below, the lattice drawn in
-    white and split into cyan and magenta ghosts. Hotter and more saturated
-    than the classic-suit red/blue it replaces.
-  */
-  --lattice-sky: rgb(236 40 140 / 0.22);
-  --lattice-sky-2: rgb(40 90 235 / 0.22);
-  --lattice-line: rgb(255 150 200 / 0.080);
-  --lattice-glow: rgb(255 120 60 / 0.065);
-  --lattice-ground: rgb(180 50 150 / 0.022);
-  --lattice-web: rgb(255 255 255);
-  --lattice-web-c1: rgb(80 240 255);
-  --lattice-web-c2: rgb(255 60 190);
-  --lattice-field-a: rgb(236 40 140 / 0.17);
-  --lattice-field-b: rgb(40 90 235 / 0.17);
-  --lattice-web-opacity: 0.40;
-  --lattice-web-fade: 0.15;
-
-  --beacon-sky: rgb(20 190 215 / 0.11);
-  --beacon-line: rgb(90 225 245 / 0.075);
-  --beacon-glow: rgb(70 215 240 / 0.105);
-  --beacon-ground: rgb(20 190 215 / 0.018);
-
-  --terrace-sky: rgb(120 180 230 / 0.13);
-  --terrace-line: rgb(150 200 240 / 0.045);
-  --terrace-glow: rgb(120 180 230 / 0.016);
-  --terrace-ground: rgb(120 180 230 / 0.020);
+  /* Leftovers from the purple system: the ring's track and the terrain's
+     hairlines. Both are structure rather than data, so they take the magenta
+     plate at low alpha rather than an accent that would read as a value. */
+  /* Ben-Day dots as a background tile. 7% of paper white on ink reads as print
+     texture at a 4px pitch; past ~10% it starts fighting the text over it. */
+  --sv-halftone: radial-gradient(
+    rgb(245 240 230 / 0.07) 0.9px,
+    transparent 1px
+  );
+  --card-edge: rgb(255 32 121 / 0.30);
+  --terrain-line: rgb(255 32 121 / 0.16);
 }
-
-
 
 /*
   `inline` is required: these reference other custom properties, and a plain
@@ -93,28 +94,65 @@
   --color-accent-contrast: var(--accent-contrast);
   --color-streak: var(--streak);
   --color-positive: var(--positive);
+  --color-sv-magenta: var(--sv-magenta);
+  --color-sv-cyan: var(--sv-cyan);
+  --color-sv-yellow: var(--sv-yellow);
+  --color-sv-red: var(--sv-red);
+  --color-sv-ink: var(--sv-ink);
 
   /*
     Three roles, so hierarchy comes from family, size, case and tracking
     rather than from weight. The display face ships one weight and cannot be
     bolded; measurements always sit in the mono, which guarantees tabular.
   */
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-instrument), "Iowan Old Style", Georgia, serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  /*
+    The comic face is the interface's voice, not an accent on it.
+
+    `sans`, `display` and `comic` are all Bangers now. It is inherited from
+    `body`, so every word in the app — headings, navigation, section labels,
+    buttons, body copy, and the Track, Topic and Task names people type — is set
+    in it. That is the point: this is a comic-book interface, and reserving the
+    face for the wordmark left the rest of the app looking like a different
+    product wearing a comic hat.
+
+    Archivo is kept as the reading fallback behind it rather than deleted. It
+    carries anything Bangers cannot: Bangers has no true lowercase and a narrow
+    glyph set, so a character it lacks falls through to Archivo instead of tofu.
+
+    **Space Mono keeps the digits, and that is the one exception.** Bangers has
+    a single weight and proportional, non-tabular figures, so an elevation or a
+    streak set in it shifts sideways every time the value changes and the
+    check-in emphasis lands on a numeral that has just moved. Measurements stay
+    in the mono so they stay still. Words do not need that and take the comic
+    face like everything else.
+  */
+  --font-sans: var(--font-bangers), var(--font-archivo), "Impact", sans-serif;
+  --font-display: var(--font-bangers), var(--font-archivo), "Impact", sans-serif;
+  --font-comic: var(--font-bangers), var(--font-archivo), "Impact", sans-serif;
+  --font-comic-family: var(--font-comic);
+  --font-mono: var(--font-bangers), var(--font-space-mono), ui-monospace, monospace;
   --shadow-card: var(--shadow);
 }
 
 @layer base {
-  body {
+  /* The ground is painted here and not on body, and that is load-bearing.
+     html's background propagates to the canvas; if body paints one too, any
+     negative-z-index child of body renders *behind* it. The Spider-Verse
+     atmosphere layer is exactly such a child, so painting body would make the
+     entire background invisible and the page would look flat black. */
+  html {
     background-color: var(--bg);
+  }
+
+  body {
     color: var(--fg);
     /*
-      Plus Jakarta Sans has an unusually narrow space glyph, 0.188em against
-      ~0.27em for most sans faces, which makes running text read as though the
-      words are joined. Nudge it back to a normal gap.
+      No word-spacing correction. The 0.06em that used to sit here was
+      compensating for Plus Jakarta Sans's unusually narrow space glyph, and
+      that typeface was removed when Archivo landed — so it was widening
+      Archivo's already-normal spaces and leaving body copy looser than every
+      mono label beside it. Archivo needs no correction.
     */
-    word-spacing: 0.06em;
   }
 
   /*
@@ -129,252 +167,13 @@
   [tabindex]:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
-    border-radius: 3px;
+    border-radius: 0;
   }
 
   /* Counts and dates must not jitter as their values change. */
   .tabular {
     font-variant-numeric: tabular-nums;
   }
-}
-
-/*
-  The atmosphere: the page ground, and the only place motif tokens are used.
-
-  Every layer here is static and decorative-by-permission — it carries the day
-  of the week, not learning data. The retired drifting glow stays retired. No
-  layer may be introduced that reduces text contrast, and none may borrow a
-  semantic colour.
-*/
-.atmosphere {
-  /* Space outside the 64rem container: the only place a motif may be loud. */
-  --gutter: max(0px, calc((100vw - 64rem) / 2));
-  --m-sky: transparent;
-  --m-line: transparent;
-  --m-glow: transparent;
-  --m-ground: transparent;
-  background-color: var(--m-ground);
-}
-
-/* The ruled ground, kept: it is the survey sheet the terrain is drawn on. */
-.atmosphere::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: 44px 44px;
-}
-
-.atmosphere::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-[data-motif="voyage"] .atmosphere {
-  --m-sky: var(--voyage-sky);
-  --m-line: var(--voyage-line);
-  --m-glow: var(--voyage-glow);
-  --m-ground: var(--voyage-ground);
-}
-/*
-  Lattice paints the entire ground red-to-blue, not only the gutter. An earlier
-  version masked the colour to the margin for contrast safety, which left most
-  of the page looking untouched. A flat full-page field is in fact the safe
-  shape: it lifts the ground evenly, so the headroom can be spent once and
-  measured, rather than spent on bright pixels that land under text.
-*/
-[data-motif="lattice"] .atmosphere {
-  background-image: linear-gradient(
-    170deg,
-    var(--m-field-a) 0%,
-    transparent 46%,
-    transparent 54%,
-    var(--m-field-b) 100%
-  );
-  --m-sky: var(--lattice-sky);
-  --m-sky-2: var(--lattice-sky-2);
-  --m-field-a: var(--lattice-field-a);
-  --m-field-b: var(--lattice-field-b);
-  --m-line: var(--lattice-line);
-  --m-glow: var(--lattice-glow);
-  --m-ground: var(--lattice-ground);
-  --m-web: var(--lattice-web);
-  --m-web-c1: var(--lattice-web-c1);
-  --m-web-c2: var(--lattice-web-c2);
-  --m-web-opacity: var(--lattice-web-opacity);
-  --m-web-fade: var(--lattice-web-fade);
-}
-[data-motif="beacon"] .atmosphere {
-  --m-sky: var(--beacon-sky);
-  --m-line: var(--beacon-line);
-  --m-glow: var(--beacon-glow);
-  --m-ground: var(--beacon-ground);
-}
-[data-motif="terrace"] .atmosphere {
-  --m-sky: var(--terrace-sky);
-  --m-line: var(--terrace-line);
-  --m-glow: var(--terrace-glow);
-  --m-ground: var(--terrace-ground);
-}
-
-/* Rhumb lines radiating from one bearing, the way a sea chart is ruled. */
-[data-motif="voyage"] .atmosphere::after {
-  background:
-    radial-gradient(125% 85% at 82% 4%, var(--m-sky), transparent 64%),
-    repeating-conic-gradient(from 8deg at 82% 4%, transparent 0 7.5deg, var(--m-line) 7.5deg 7.75deg, transparent 7.75deg 15deg),
-    repeating-radial-gradient(circle at 82% 4%, transparent 0 190px, var(--m-glow) 190px 191.5px, transparent 191.5px 380px);
-}
-
-/*
-  Lattice is the one motif whose structure is drawn rather than washed: the
-  threads live in components/LatticeWeb.tsx. A repeating gradient can only make
-  a field, and the earlier off-canvas version proved it — spokes that far from
-  a hub are parallel and rings that large are flat, so it read as streaks. What
-  stays here is the colour: a warm wash anchored on the right, where the web is.
-*/
-[data-motif="lattice"] .atmosphere::after {
-  /*
-    Red above, blue below — the two hues read as one field rather than as two
-    glows. Masked to the gutter like the threads are, so the colour can be
-    strong where the web lives and is nearly gone by the reading column.
-  */
-  background: linear-gradient(
-    to bottom,
-    var(--m-sky) 0%,
-    transparent 44%,
-    transparent 56%,
-    var(--m-sky-2) 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to left,
-    #000 0,
-    #000 max(0px, calc(var(--gutter) - 40px)),
-    rgb(0 0 0 / 0.18) var(--gutter),
-    rgb(0 0 0 / 0.07) 58%,
-    transparent 84%
-  );
-  mask-image: linear-gradient(
-    to left,
-    #000 0,
-    #000 max(0px, calc(var(--gutter) - 40px)),
-    rgb(0 0 0 / 0.18) var(--gutter),
-    rgb(0 0 0 / 0.07) 58%,
-    transparent 84%
-  );
-}
-
-/*
-  The web sits against the right edge and fades out before the reading column,
-  so it is dense in the permanently empty margin and gone under text. Height is
-  pinned to the viewport; `slice` keeps the threads at a constant scale rather
-  than stretching them.
-*/
-.lattice-web {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: var(--m-web-opacity, 0.3);
-
-  /*
-    Present everywhere, heaviest in the two page gutters. The dip across the
-    middle is not decoration, it is the contrast budget: white threads over body
-    text are what push the ground past the floor. Keyed to the gutter rather
-    than to a percentage, so on a narrow viewport — where there is no margin —
-    the whole web simply runs at the safe strength instead of putting full
-    weight over text.
-  */
-  -webkit-mask-image: linear-gradient(
-    to right,
-    #000 0,
-    #000 max(0px, calc(var(--gutter) - 48px)),
-    rgb(0 0 0 / var(--m-web-fade, 0.2)) var(--gutter),
-    rgb(0 0 0 / var(--m-web-fade, 0.2)) calc(100% - var(--gutter)),
-    #000 calc(100% - max(0px, calc(var(--gutter) - 48px))),
-    #000 100%
-  );
-  mask-image: linear-gradient(
-    to right,
-    #000 0,
-    #000 max(0px, calc(var(--gutter) - 48px)),
-    rgb(0 0 0 / var(--m-web-fade, 0.2)) var(--gutter),
-    rgb(0 0 0 / var(--m-web-fade, 0.2)) calc(100% - var(--gutter)),
-    #000 calc(100% - max(0px, calc(var(--gutter) - 48px))),
-    #000 100%
-  );
-}
-
-@media (max-width: 640px) {
-  /* Narrow screens are read closer, so the texture reads louder. */
-  .lattice-web {
-    opacity: calc(var(--m-web-opacity, 0.3) * 0.55);
-  }
-}
-
-/* One light source: a luminous core with rings. The falloff is unique to it. */
-[data-motif="beacon"] .atmosphere::after {
-  background:
-    radial-gradient(38% 46% at 11% 3%, var(--m-glow), transparent 70%),
-    radial-gradient(95% 78% at 11% 3%, var(--m-sky), transparent 62%),
-    repeating-radial-gradient(circle at 11% 3%, transparent 0 96px, var(--m-line) 96px 97.4px, transparent 97.4px 192px);
-}
-
-/* Mown banding replaces the square grid under a pale sky. */
-[data-motif="terrace"] .atmosphere::before {
-  opacity: 0;
-}
-[data-motif="terrace"] .atmosphere::after {
-  background:
-    linear-gradient(to bottom, var(--m-sky), transparent 58%),
-    repeating-linear-gradient(90deg, var(--m-line) 0 1px, transparent 1px 104px),
-    repeating-linear-gradient(90deg, var(--m-glow) 0 104px, transparent 104px 208px);
-}
-
-/* Narrow screens are read closer, so the texture reads louder. Halve it. */
-@media (max-width: 640px) {
-  .atmosphere::after {
-    opacity: 0.5;
-  }
-}
-
-/*
-  Motif-scoped treatments.
-
-  A motif may decorate non-data elements — a heading, a label marker — but the
-  rule that matters is unchanged: it may never colour data. `accent`, `streak`
-  and `positive` keep their meanings on every day of the week.
-*/
-
-/*
-  The title-card split. The reference's banner is misregistered in cyan and
-  magenta; this puts the same misregistration on the display type rather than
-  building a comic panel around it, so the editorial layout survives intact.
-  Offsets are fractional and static.
-*/
-[data-motif="lattice"] .font-display {
-  /*
-    The --m-* tokens are scoped to the atmosphere element, so they resolve to
-    nothing out here and the whole declaration would be dropped. The palette
-    tokens live on :root, which is what a treatment outside the background
-    layer has to reach for.
-  */
-  text-shadow:
-    -0.028em -0.012em 0 var(--lattice-web-c1),
-    0.028em 0.012em 0 var(--lattice-web-c2);
-}
-
-/*
-  Section labels carry a small marker on lattice days. Decorative only — it is
-  inserted from CSS, so it never reaches the accessible name of the heading.
-*/
-[data-motif="lattice"] .motif-mark::before {
-  content: "\1F578\FE0F";
-  margin-right: 0.55em;
-  font-size: 1.05em;
-  vertical-align: -0.05em;
 }
 
 /* Section rules. Hairlines and space do the work cards used to do. */
@@ -410,9 +209,12 @@
   }
 }
 
+/* The ring advances from wherever it already stood. `--ring-from` is the
+   offset it was showing: a full circle on first mount, so the entrance still
+   sweeps from empty, and the previous value on every change after that. */
 @keyframes ring-draw {
   from {
-    stroke-dashoffset: var(--ring-circumference);
+    stroke-dashoffset: var(--ring-from);
   }
 }
 
@@ -444,4 +246,471 @@
     transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ============================================================================
+   SPIDER-VERSE TREATMENTS
+   ----------------------------------------------------------------------------
+   The comic layer, kept in one place so it can be reasoned about as a system.
+   Everything here is CSS or SVG — no renderer, no animation library. The app
+   retired atmosphere used three.js; nothing in this theme needs a renderer, so
+   that whole layer is gone and no dependency replaced it.
+   ========================================================================== */
+
+/* The wordmark's own treatment. Same family as everything else now, so what it
+   still carries is the uppercase and the tracking. */
+.font-comic {
+  font-family: var(--font-comic);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+}
+
+/* Bangers ships one weight. Asking for 800 makes the browser synthesise a bold
+   by smearing the outline, which on a face this heavy turns to mud — so display
+   text is separated by size and tracking instead, and the weight stays 400. */
+.font-display {
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/*
+  Bangers is a tall, condensed display face drawn for headlines, so at body
+  sizes it sets tight and dark. A little tracking and a little more leading is
+  what makes a paragraph of it readable rather than a wall.
+
+  `font-synthesis: none` matters: several places ask for semibold or bold, and
+  without this the browser fakes it and the letterforms thicken into a blur.
+*/
+body {
+  font-synthesis-weight: none;
+  letter-spacing: 0.015em;
+}
+
+/*
+  Interface labels: section headings, buttons, navigation, metadata, empty
+  states. The comic face, same as everything else — this used to be the mono,
+  which meant most of the small text in the app was set in a face the theme
+  does not otherwise use.
+
+  Bangers has no true lowercase and sets very tight, so a label needs more
+  tracking than a heading does to stay readable at 10-12px. `optical-sizing`
+  and the slightly looser word-spacing stop short uppercase runs from closing up
+  into one block.
+*/
+.font-label {
+  font-family: var(--font-comic);
+  letter-spacing: 0.05em;
+  word-spacing: 0.08em;
+  font-weight: 400;
+}
+
+/*
+  Measurements. The comic face here too — every family token in this app now
+  resolves to Bangers, so there is no corner of the interface set in something
+  else.
+
+  This costs something real and it is a deliberate trade, not an oversight.
+  Bangers has strongly proportional figures — measured at 48px the digits run
+  15.4px for a 1 against 24.9px for an 8, a 38% spread — so a counter shifts
+  sideways as its value changes, and `tabular-nums` cannot fix it because the
+  face has no tabular set to switch to. An elevation ticking 9 to 10 nudges the
+  stats row; the check-in emphasis lands on a numeral that may have just changed
+  width.
+
+  That was judged worth it: the interface is meant to read as one comic voice,
+  and a single readout in a different family was the one thing still breaking
+  it. Reverting is a one-line change — point `--font-mono` back at
+  `--font-space-mono` and the numerals alone return to fixed width.
+*/
+.font-mono {
+  letter-spacing: normal;
+  word-spacing: normal;
+  font-synthesis-weight: none;
+}
+
+/* Hard ink-registration plate: an offset solid block, never a blur. A blurred
+   shadow reads as corporate elevation; an offset one reads as a print plate
+   that missed registration. */
+.sv-plate-a {
+  box-shadow: 5px 5px 0 0 var(--sv-cyan);
+}
+.sv-plate-b {
+  box-shadow: 5px 5px 0 0 var(--sv-magenta);
+}
+.sv-plate-sm {
+  box-shadow: 3px 3px 0 0 var(--sv-magenta);
+}
+
+/* Diagonal speed lines, and the slow creep along their own axis. 7.73px is one
+   gradient period measured along x for a 115deg ramp (7px / sin 115°), so the
+   loop is seamless. */
+.sv-speedlines {
+  background-image: repeating-linear-gradient(
+    115deg,
+    color-mix(in srgb, var(--fg) 4%, transparent) 0px,
+    color-mix(in srgb, var(--fg) 4%, transparent) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+}
+.sv-speedlines-drift {
+  animation: sv-speedline-pan 9s linear infinite;
+}
+
+/* Hand-inked edge. A fixed polygon, not a random one: a randomised clip-path
+   differs between server and client and is a hydration mismatch. */
+.sv-wobble {
+  clip-path: polygon(0.6% 0.4%, 99.1% 0%, 100% 98.8%, 99.4% 100%, 1.2% 99.6%, 0% 1.8%);
+}
+
+/* Idle atmosphere. Long, mutually indivisible periods (37 / 43 / 29s) so the
+   layers never visibly re-align into a loop. Transform and background-position
+   only, so it all stays on the compositor. */
+.sv-drift-a {
+  animation: sv-drift-a 37s ease-in-out infinite;
+}
+.sv-drift-b {
+  animation: sv-drift-b 43s ease-in-out infinite;
+}
+.sv-drift-c {
+  animation: sv-drift-c 29s ease-in-out infinite;
+}
+
+@keyframes sv-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) scale(1.14);
+  }
+}
+@keyframes sv-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.06);
+  }
+  50% {
+    transform: translate3d(-5%, -3%, 0) scale(1);
+  }
+}
+@keyframes sv-drift-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate3d(3%, -4%, 0) scale(1.1);
+    opacity: 1;
+  }
+}
+@keyframes sv-speedline-pan {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: 7.73px;
+  }
+}
+
+/* The dimension cut, used by app/template.tsx on every navigation. Enter only:
+   the App Router unmounts the old tree before the new one paints, so an exit
+   animation would need machinery (and a dependency) to hold it.
+
+   Transform and opacity only, deliberately. This first drove the chromatic SVG
+   filter across the whole page, and that was wrong twice over: it is a
+   per-pixel filter over an entire route's subtree, and `fill: both` means its
+   0% state — filter on — applies during *any* delay before the animation runs.
+   Whenever the route was slow to paint, the entire page sat fully ghosted and
+   unreadable. The chromatic identity is already carried by GlitchText and the
+   palette; the transition only has to feel like a cut. */
+@keyframes sv-page-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(14px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.sv-page-in {
+  animation: sv-page-in 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Focus has to survive a near-black page. The browser default resolves to a
+   1px near-black ring here, which is invisible. Yellow clears both the ground
+   and the magenta/cyan panel borders. */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* The check-in is the product's core loop and gets the strongest feedback in
+   the interface: the tick draws, and the plates split apart and snap back once.
+   One event, not a loop. */
+@keyframes sv-checkin-split {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(-3px, 1px, 0);
+  }
+  55% {
+    transform: translate3d(2px, -1px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+.sv-checkin-a {
+  animation: sv-checkin-split 320ms steps(4, end) both;
+}
+.sv-checkin-b {
+  animation: sv-checkin-split 320ms steps(4, end) reverse both;
+}
+
+/* ----------------------------------------------------------------------------
+   THE CHECK-IN BEAT
+   ----------------------------------------------------------------------------
+   One act, three moments, in this order: the tick confirms (sv-checkin-split,
+   above, optimistic and instant), the report line states the consequence, and
+   the one measurement that consequence is about misregisters briefly. The
+   report and the emphasis land together, because both wait for the same server
+   response — that pause is what makes the header read as caused by the tick
+   rather than as a second thing that also happened.
+
+   Reduced motion cancels all three globally. Nothing here carries information
+   on its own: the tick has colour and aria-pressed, the report is words, and
+   the emphasised numeral has already changed to its new value.
+   -------------------------------------------------------------------------- */
+
+/* The consequence arrives; same 180ms transform+opacity cut as the route
+   change, so a new statement reads the same way a new page does. */
+@keyframes sv-report-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-6px, 0, 0);
+  }
+}
+.sv-report-in {
+  animation: sv-report-in 180ms cubic-bezier(0.2, 0, 0, 1) 90ms both;
+}
+
+/* The measurement the report named, knocked off its plate and back. Discrete
+   frames, like every other glitch in this theme — an eased tween would read as
+   a pulse rather than as a registration error. No fill mode, so the delay
+   leaves the numeral in its resting colour instead of pre-tinting it. */
+@keyframes sv-beat {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  33% {
+    color: var(--beat-tint);
+    transform: translate3d(-3px, 1px, 0);
+  }
+  66% {
+    color: var(--beat-tint);
+    transform: translate3d(2px, -1px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* ============================================================================
+   INK REGISTRATION, GLOW AND SIGNAL
+   ----------------------------------------------------------------------------
+   A misregistered print pass, as a panel. Cyan holds the plate, magenta echoes
+   it down-right, and a faint yellow pass sits off the opposite way — three
+   plates that did not quite line up.
+
+   **The offset never animates.** It is a printing error, not a jitter: it has
+   to sit still to read as a mistake the press made once, and a moving offset
+   would fight the glitch bursts instead of complementing them. Only the glow
+   breathes. The direction is the same on every panel for the same reason —
+   randomising it per panel reads as a bug rather than a press.
+   ========================================================================== */
+
+.sv-panel {
+  position: relative;
+  /*
+    Halftone on the panel itself rather than only in the page vignette. A CSS
+    dot tile instead of the SVG overlay that used to be layered in as a child:
+    as a background-image it sits under the content at a fixed 4px pitch and
+    cannot be covered by anything drawn inside the panel.
+  */
+  background-color: var(--sv-ink);
+  background-image: var(--sv-halftone);
+  background-size: 4px 4px;
+  border: 2px solid var(--sv-cyan);
+  border-radius: 0;
+  /* Establishes a stacking context, which is what lets the negative-z echoes
+     paint above this element's own background instead of behind it. Without a
+     stacking context here the ::before would be hidden by the panel fill and
+     the whole registration effect would silently do nothing. */
+  isolation: isolate;
+  animation: sv-pulse 4.5s ease-in-out infinite;
+}
+
+/* The magenta plate, offset down-right. */
+.sv-panel::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  right: -3px;
+  bottom: -3px;
+  border: 2px solid var(--sv-magenta);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/*
+  There is deliberately no third border.
+
+  A yellow pass used to sit here offset the *opposite* way. Two echoes pointing
+  in opposite directions cancel into an evenly-inset frame-within-a-frame, which
+  is a nested double border and not a registration error. Two lines total —
+  cyan on the panel edge, magenta 3px down-right behind it — is what reads as
+  one plate that missed.
+*/
+
+/* The caption box, with its own cyan plate slipped under it. */
+/*
+  No stacking context here, deliberately. `.sv-panel` already establishes one,
+  so this plate resolves against *that* — painting above the panel's fill but
+  below the caption's own magenta. Adding `isolation: isolate` here instead put
+  the cyan on top of the magenta and turned the whole caption box lavender.
+*/
+.sv-panel-header {
+  position: relative;
+}
+.sv-panel-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sv-cyan);
+  transform: translate(2px, 2px);
+  z-index: -1;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/*
+  The idle signal: a panel is lit from within rather than pasted onto the
+  ground. Colour, never black — a black shadow is corporate elevation, and this
+  is supposed to look like ink glowing on newsprint.
+
+  Slow on purpose. At 4.5s it is below the rate at which the eye tracks it, so
+  it registers as "alive" without ever asking to be watched.
+*/
+@keyframes sv-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 22px -6px color-mix(in srgb, var(--sv-cyan) 30%, transparent),
+      0 0 60px -18px color-mix(in srgb, var(--sv-cyan) 22%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 26px -6px color-mix(in srgb, var(--sv-magenta) 38%, transparent),
+      0 0 74px -18px color-mix(in srgb, var(--sv-magenta) 26%, transparent);
+  }
+}
+
+/*
+  Headers settle in once on load: three hard frames and done.
+
+  `steps()` rather than an ease, because the whole theme snaps rather than
+  tweens — an eased fade here would read as a generic entrance. It runs once,
+  never loops; a header that keeps flickering becomes something you have to
+  ignore rather than something you noticed.
+*/
+@keyframes sv-settle {
+  0% {
+    opacity: 0;
+    transform: translate3d(-4px, 0, 0);
+  }
+  40% {
+    opacity: 1;
+    transform: translate3d(3px, 0, 0);
+  }
+  70% {
+    opacity: 0.55;
+    transform: translate3d(-1px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.sv-settle {
+  animation: sv-settle 260ms steps(4, end) both;
+}
+
+/*
+  A value that changed. Fires on the element's key changing, so it marks the
+  transition and never the resting state — the same rule the check-in beat
+  follows.
+*/
+@keyframes sv-value-flash {
+  0% {
+    opacity: 0.35;
+    transform: translate3d(-3px, 1px, 0);
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(2px, -1px, 0);
+  }
+  70% {
+    opacity: 0.7;
+    transform: translate3d(-1px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.sv-value-flash {
+  animation: sv-value-flash 300ms steps(4, end) both;
+}
+
+/* One slow breath on an empty web, so an empty state is not a dead one. */
+@keyframes sv-web-breathe {
+  0%,
+  100% {
+    opacity: 0.38;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+.sv-web-breathe {
+  animation: sv-web-breathe 6s ease-in-out infinite;
+}
+
+/*
+  System-status labels: "no tasks yet", "soon", "no elevation yet".
+
+  These read as leftover placeholder text because nothing marked them as
+  deliberate. The brief asked for a monospace accent to fix that; the app now
+  has one voice, so the intent is carried by treatment instead — a cyan tick
+  before the string, wide tracking, and the muted tone. It reads as a readout
+  the interface is printing rather than as copy nobody styled.
+
+  The marker is generated content, so it is never selected, never announced,
+  and the label still says everything on its own.
+*/
+.sv-status {
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+}
+.sv-status::before {
+  content: "\203A";
+  margin-right: 0.45em;
+  color: var(--sv-cyan);
+  opacity: 0.7;
 }

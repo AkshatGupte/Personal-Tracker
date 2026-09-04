@@ -30,7 +30,10 @@ A sub-category within a Track (e.g. "Arrays", "Graphs").
 | createdAt | datetime | |
 
 ### Task
-An individual completable item within a Topic (e.g. "Solve: Two Sum").
+A **persistent recurring learning activity** within a Topic — "Practice array
+problems", "Read about binary trees". A Task is never permanently completed: it
+stays available indefinitely and is checked in once per day. There is no
+one-time task type and no `kind` discriminator; recurring is the only model.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -39,13 +42,32 @@ An individual completable item within a Topic (e.g. "Solve: Two Sum").
 | title | string | |
 | difficulty | string? | optional: easy / medium / hard |
 | position | int | explicit order within the Topic; appended as max+1 |
-| status | string | "pending" \| "completed" |
-| completedAt | datetime? | null until completed |
 | createdAt | datetime | |
 
+**`status` and `completedAt` are removed.** They modelled a terminal state a
+recurring activity never reaches: a single timestamp cannot hold "done Monday
+*and* Tuesday", and it was overwritten on each new check-in. Whether a Task was
+done on a given day is a question for `TaskCheckIn`.
+
+### TaskCheckIn
+One row per Task per day. This is the record the whole product is built on:
+the user's statement that they did this activity today.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | string (cuid) | primary key |
+| taskId | string | foreign key → Task |
+| date | date | local midnight, same convention as CompletionLog |
+| createdAt | datetime | the actual time of day, kept for interest only |
+
+A check-in is created and deleted, never toggled through a status field — the
+row's existence *is* the state. Undoing today's check-in deletes today's row
+and leaves every earlier row untouched.
+
 ### CompletionLog
-One row per day per track — used to compute streaks and weekly/monthly
-rollups without recalculating from raw task data every time.
+One row per day per track — a rollup of that day's `TaskCheckIn` rows, so
+streaks and weekly/monthly rollups can be read without recounting check-ins
+every time. Unchanged in shape: only what it is computed *from* changes.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -76,10 +98,13 @@ so past insights remain viewable.
 ## Relationships
 
 ```
-Track 1---N Topic 1---N Task
+Track 1---N Topic 1---N Task 1---N TaskCheckIn
 Track 1---N CompletionLog
 Track 1---N InsightLog (optional)
 ```
+
+`TaskCheckIn` is the ground truth for activity. `CompletionLog` is a derived
+per-track daily rollup of it and can always be rebuilt from it.
 
 All child relations use **cascade delete** — deleting a Track removes its
 Topics, Tasks and CompletionLogs, so "delete Track" cannot leave orphans.
@@ -95,10 +120,11 @@ Added when the schema was built; recorded here so this file matches
 | Track | `currentStreak`, `longestStreak` default `0` | a new track starts with no streak |
 | Track | `lastActivityDate` nullable | nothing has been completed yet |
 | Topic | `isExpected` defaults `false` | topics are user-added unless the curriculum marks them |
-| Task | `status` defaults `"pending"` | tasks start incomplete |
+| TaskCheckIn | `@@unique([taskId, date])` | one check-in per task per day — the rule the whole model rests on, enforced by the database rather than by application code |
 | CompletionLog | `tasksCompletedCount` defaults `0` | |
 | all | `createdAt` defaults to now | |
-| Topic, Task, CompletionLog | index on the foreign key; Task also on `status` | keeps per-track and pending/completed lookups cheap |
+| Topic, Task, CompletionLog | index on the foreign key | keeps per-track lookups cheap |
+| TaskCheckIn | index on `taskId`, and on `date` | per-task history and per-day rollups are the two read shapes |
 | Topic, Task | `position` defaults `0`, composite index with the parent id | ordered reads without a sort |
 
 **Ordering note:** Topics and Tasks are ordered by `position` with `createdAt`
@@ -108,29 +134,48 @@ survive editing or regeneration. Nothing reorders rows yet; the field exists so
 that ordering is not retrofitted later.
 
 **Type note:** SQLite has no dedicated date or enum type. All `date`/`datetime`
-fields are stored as `DateTime`, and `status`/`difficulty` are plain strings
-validated in application code.
+fields are stored as `DateTime`, and `difficulty` is a plain string validated in
+application code.
 
-**Phase note:** only Track, Topic, Task and CompletionLog exist in
-`prisma/schema.prisma` today. InsightLog (Phase 3) and UserPreferences
-(Phase 4) are documented below but deliberately not modelled yet.
+**Cascade note:** `TaskCheckIn` cascades from `Task`. Deleting a Task therefore
+erases its history, and the days it contributed to must be recomputed — see the
+deletion rule in Key Logic Notes.
+
+**Phase note:** Track, Topic, Task, TaskCheckIn and CompletionLog all exist in
+`prisma/schema.prisma`. InsightLog (Phase 3) and UserPreferences (Phase 4) are
+documented below and deliberately not modelled yet.
 
 ## Key Logic Notes (not schema, but affects it)
 
-- **Streak calculation:** on each task completion, upsert today's
-  `CompletionLog` row for that track. A scheduled/on-load check compares
-  `lastActivityDate` to today — if more than 1 day has passed with no log,
-  `currentStreak` resets to 0.
-- **Who owns what (implemented in Item 6):** `Task.status` and
-  `Task.completedAt` own current task state, and the completion ratio is
-  derived from them on read, never stored. `CompletionLog` owns daily history.
-  `Track.currentStreak` / `longestStreak` / `lastActivityDate` are a cache of
-  what `CompletionLog` implies and can always be rebuilt from it.
-- **Today's row is a rollup, earlier rows are frozen:** on completion,
-  uncompletion or deletion, today's `CompletionLog` row is recomputed from the
-  tasks whose `completedAt` falls in today. Earlier days are never rewritten,
-  so a streak that was earned stays earned. Counts are recomputed, never
+- **Streak calculation:** on each check-in, recompute today's `CompletionLog`
+  row for that track, then rebuild the streak from the full set of active days.
+  The displayed streak is derived on read (see below), because inactivity
+  writes nothing and so no write path could ever catch a lapse.
+- **Who owns what:** `TaskCheckIn` owns the ground truth — one row means "this
+  activity was done on this day". `CompletionLog` owns the per-track daily
+  rollup of those rows. `Track.currentStreak` / `longestStreak` /
+  `lastActivityDate` are a cache of what `CompletionLog` implies. Each layer is
+  rebuildable from the one below it, and nothing is stored that could be
+  derived without cost.
+- **A Task has no completion state of its own.** "Checked in today" is a
+  question about `TaskCheckIn`, answered per render for the current day. It is
+  not a column, and it does not persist into tomorrow.
+- **The per-track ratio changes meaning.** It was "how many of this track's
+  tasks are finished", which for a recurring activity is either meaningless or
+  permanently 100%. It becomes **"how many of today's activities have been
+  checked in"** — a figure that starts at zero each morning and is the point of
+  the daily loop. Every place showing `N / M done` reads this instead.
+- **Today's row is a rollup, earlier rows are frozen:** on check-in, undo or
+  deletion, today's `CompletionLog` row is recomputed by counting today's
+  `TaskCheckIn` rows for that track. Earlier days are never rewritten, so a
+  streak that was earned stays earned. Counts are recomputed, never
   incremented, which makes repeat clicks and retries harmless.
+- **Deleting a Task erases its history.** Check-ins cascade, so a deleted Task
+  takes its past days with it. Every `CompletionLog` day that task contributed
+  to is now wrong, not just today's. Either recompute the affected days from
+  the surviving check-ins, or decide deliberately that history is frozen and
+  keep the rows — **this is an open decision and must be settled before the
+  check-in engine is written**, because the two answers need different code.
 - **A day with no completions has no row.** Zero-count rows are deleted rather
   than stored, so a row always means real activity.
 - **`date` is always local midnight.** `@@unique([trackId, date])` compares the
@@ -141,6 +186,9 @@ validated in application code.
   Inactivity writes nothing, so a lapse cannot be caught by a write; deriving
   it on read is what makes the strict reset actually appear.
 - **Coverage gap detection:** compare the set of `Topic.name` where
-  `isExpected = true` and no completed `Task` exists, against the full
-  expected list. This is plain code — no LLM call needed for the comparison
+  `isExpected = true` and none of whose Tasks has ever been checked in, against
+  the full expected list. "Untouched" now means no `TaskCheckIn` has ever
+  existed for any task under that topic — which is a stronger and more useful
+  signal than the old "no task marked complete", because it also exposes topics
+  that were started and then abandoned. This is plain code — no LLM call needed for the comparison
   itself, only for generating the expected list and the final remark text.

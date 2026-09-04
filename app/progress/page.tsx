@@ -43,7 +43,7 @@ export default async function ProgressPage() {
           <div>
             <h1
               id="week-heading"
-              className="motif-mark font-mono text-[0.6rem] uppercase tracking-[0.17em] text-muted"
+              className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted"
             >
               This week
             </h1>
@@ -62,7 +62,7 @@ export default async function ProgressPage() {
                 : `tasks completed since Monday, across ${current.activeDays} of ${current.elapsedDays} days so far.`}
           </p>
 
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.14em] tabular-nums text-muted">
+          <p className="font-label text-[0.6rem] uppercase tracking-[0.14em] tabular-nums text-muted">
             {formatWeek(current.start, current.endExclusive)} · Mon–Sun
           </p>
         </div>
@@ -73,11 +73,17 @@ export default async function ProgressPage() {
       </section>
 
       <div className="divide-y divide-border">
+        {/* The same surface as Home's Tracks panel, in the same register. This
+            route carried no comic panel at all, which made it read as a
+            different application; the comic variant is still spent exactly
+            once here, on the level that dominates the screen. */}
         <Panel
+          variant="comic"
+          accent="magenta"
           label="Tracks"
           sublabel="this week"
           action={
-            <span className="font-mono text-[0.6rem] uppercase tabular-nums tracking-[0.12em] text-muted">
+            <span className="font-label text-[0.6rem] font-bold uppercase tabular-nums tracking-[0.12em]">
               {tracks.length === 0 ? "none yet" : `${tracks.length} total`}
             </span>
           }
@@ -85,13 +91,13 @@ export default async function ProgressPage() {
           {tracks.length === 0 ? (
             <p className="py-8 text-sm text-muted">
               No tracks yet.{" "}
-              <Link href="/" className="rounded-[3px] text-fg underline underline-offset-4">
+              <Link href="/" className="rounded-none text-fg underline underline-offset-4">
                 Create one
               </Link>{" "}
               and its weeks will show up here.
             </p>
           ) : (
-            <ul className="mt-2 divide-y divide-border border-t border-border">
+            <ul className="mt-2 divide-y divide-border border-t-2 border-sv-magenta/40">
               {tracks.map((track) => (
                 <li
                   key={track.id}
@@ -101,12 +107,12 @@ export default async function ProgressPage() {
                     <h3 className="truncate font-display text-2xl leading-tight tracking-tight">
                       <Link
                         href={`/tracks/${track.id}`}
-                        className="rounded-[3px] transition-colors hover:text-accent"
+                        className="rounded-none transition-colors hover:text-accent"
                       >
                         {track.name}
                       </Link>
                     </h3>
-                    <p className="mt-1 font-mono text-[0.6rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+                    <p className="mt-1 font-label text-[0.6rem] uppercase tracking-[0.12em] tabular-nums text-muted">
                       {track.completed === 0 ? (
                         track.everActive ? (
                           "nothing this week"
@@ -128,7 +134,7 @@ export default async function ProgressPage() {
                     </p>
                   </div>
 
-                  <p className="justify-self-end font-mono text-lg leading-none tabular-nums text-muted">
+                  <p className="justify-self-end font-label text-lg leading-none tabular-nums text-muted">
                     <span className={track.completed > 0 ? "text-fg" : undefined}>
                       {track.completed}
                     </span>
@@ -152,7 +158,7 @@ export default async function ProgressPage() {
                   key={week.key}
                   className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 py-3"
                 >
-                  <p className="font-mono text-[0.65rem] uppercase tracking-[0.12em] tabular-nums">
+                  <p className="font-label text-[0.65rem] uppercase tracking-[0.12em] tabular-nums">
                     <span className={week.isCurrent ? "text-fg" : "text-muted"}>
                       {formatWeek(week.start, week.endExclusive)}
                     </span>
@@ -162,7 +168,7 @@ export default async function ProgressPage() {
                       <> <span className="text-[0.55rem] text-muted">this week</span></>
                     )}
                   </p>
-                  <p className="font-mono text-[0.65rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+                  <p className="font-label text-[0.65rem] uppercase tracking-[0.12em] tabular-nums text-muted">
                     {week.completed === 0 ? (
                       "no activity"
                     ) : (

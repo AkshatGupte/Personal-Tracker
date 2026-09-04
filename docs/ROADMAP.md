@@ -10,10 +10,29 @@ one is functionally complete, unless explicitly told otherwise.
 - [x] CRUD: add Topic under Track
 - [x] CRUD: add Task under Topic
 - [x] Mark Task complete → updates CompletionLog + streak logic
+      — **superseded.** Shipped as a one-time completion (`Task.status` +
+      `Task.completedAt`). The aggregate half of it (CompletionLog rollup,
+      streak rebuild, one write path, recompute-never-increment) is correct and
+      is kept; the per-task half models the wrong thing. Replaced by the daily
+      check-in item in Phase 2
 - [x] Strict streak logic (reset on missed day)
 - [x] Basic UI: list tracks, view topics/tasks, mark complete
 
 ## Phase 2 — Progress Visibility
+
+- [x] **Daily check-in model — the core product loop.** Tasks are persistent
+      recurring activities checked in once per day. `TaskCheckIn` is the ground
+      truth; `CompletionLog` stays a derived per-track daily rollup of it.
+      `Task.status` and `Task.completedAt` removed. Deleting a task or topic
+      cascades its check-ins and recomputes every day it touched — the log is a
+      rollup, never frozen history. Streaks, terrain, heatmap and the weekly
+      rollup were unchanged: they count active days and are indifferent to
+      recurrence
+- [x] **The check-in moment.** The immediate feedback that makes the loop worth
+      repeating: the tick, the ring, the elevation rising, the streak
+      advancing — one composed beat rather than four unrelated updates. Must
+      say plainly when a check-in *extended a streak* versus merely happened.
+      No XP, levels, badges or points; see Explicit Non-Goals
 - [x] Weekly summary view (per-track task counts, streak status) — `/progress`
 - [ ] Monthly summary view — reuses `lib/rollup.ts`; needs only a
       `monthBuckets` function beside `weekBuckets`
@@ -75,4 +94,6 @@ already store explicit order, so sequence is available without new schema.
 - Multi-user auth
 - Agentic/autonomous study planning
 - Mobile app
-- Cloud deployment (Vercel) — only if/when the user wants remote access
+- Cloud deployment (Vercel or otherwise) — **not planned.** Rendred runs on
+  one laptop and is not deployed. This is a standing constraint, not a
+  deferral: see `docs/DECISIONS.md`.

@@ -1,4 +1,6 @@
 import InlineCreateForm from "@/components/InlineCreateForm";
+import { GlitchText } from "@/components/spiderverse/GlitchText";
+import { WebDivider, WebLoader } from "@/components/spiderverse/SpiderWeb";
 import Panel from "@/components/Panel";
 import StreakHeatmap from "@/components/StreakHeatmap";
 import TerrainProfile from "@/components/TerrainProfile";
@@ -24,30 +26,44 @@ export default async function Home() {
         so the horizon is a structural line instead of a widget border.
       */}
       <section
-        className="grid grid-cols-1 items-stretch gap-4 border-b border-border pb-6 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] lg:gap-8"
+        className="grid grid-cols-1 items-stretch gap-4 pb-2 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] lg:gap-8"
         aria-labelledby="elevation-heading"
       >
-        <div className="flex flex-col justify-center gap-5 py-2">
+        <div className="sv-settle flex flex-col justify-center gap-5 py-2">
           <div>
             <h1
               id="elevation-heading"
-              className="motif-mark font-mono text-[0.6rem] uppercase tracking-[0.17em] text-muted"
+              className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted"
             >
-              Elevation
+              <GlitchText text="Elevation" intensity="subtle" trigger="auto" baseColor="var(--muted)" />
             </h1>
-            <p className="mt-2 font-mono text-5xl font-medium leading-none tracking-tight tabular-nums">
-              {terrain.peak}
+            {/*
+              Keyed by the value, so the flash fires on the *change* and never on
+              the resting state — a check-in that raises the ground is marked,
+              and a plain revalidation is not.
+            */}
+            <p
+              key={terrain.peak}
+              className="sv-value-flash mt-2 font-mono text-5xl font-medium leading-none tracking-tight tabular-nums"
+            >
+              {/*
+                The measurement glitches too, at the quietest intensity: a burst
+                every 4.5-9s lasting 50-90ms. Rare and short enough that the
+                figure stays readable — a number you cannot read at a glance has
+                stopped being a measurement.
+              */}
+              <GlitchText text={String(terrain.peak)} intensity="subtle" trigger="auto" />
             </p>
           </div>
 
           <p className="max-w-[34ch] text-sm leading-relaxed text-muted">
             {terrain.hasData
-              ? `tasks completed over 12 weeks, ${terrain.thisWeek} in the last 7 days`
-              : "tasks completed so far. Finish something and the ground rises."}
+              ? `check-ins over 12 weeks, ${terrain.thisWeek} in the last 7 days`
+              : "check-ins so far. Check in to something and the ground rises."}
           </p>
 
           {bestStreak > 0 && (
-            <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em] tabular-nums">
+            <p className="font-label text-[0.65rem] uppercase tracking-[0.14em] tabular-nums">
               <span className="text-streak">{bestStreak} day</span>{" "}
               <span className="text-muted">best active streak</span>
             </p>
@@ -65,12 +81,23 @@ export default async function Home() {
         </div>
       </section>
 
-      <div className="divide-y divide-border">
+      {/* Webbing instead of a flat rule between the two halves of the page. */}
+      <WebDivider className="mb-2" seed={0xd93a} />
+
+      <div>
+        {/* Tracks are the loudest surface on this page: the comic panel is spent
+            here and nowhere else on Home, so the hierarchy still reads. */}
         <Panel
+          variant="comic"
+          accent="magenta"
           label="Tracks"
           action={
-            <span className="font-mono text-[0.6rem] uppercase tabular-nums tracking-[0.12em] text-muted">
-              {totalTasks === 0 ? "no tasks yet" : `${completedTasks} / ${totalTasks} done`}
+            <span className="font-label text-[0.6rem] font-bold uppercase tabular-nums tracking-[0.12em]">
+              {totalTasks === 0 ? (
+                <span className="sv-status">no tasks yet</span>
+              ) : (
+                `${completedTasks} / ${totalTasks} today`
+              )}
             </span>
           }
         >
@@ -81,11 +108,20 @@ export default async function Home() {
           />
 
           {rows.length === 0 ? (
-            <p className="py-8 text-sm text-muted">
-              No tracks yet. A Track is one learning goal, like DSA, Spanish or guitar.
-            </p>
+            <div className="py-8">
+              <p className="font-display text-3xl leading-none text-sv-yellow">No tracks yet</p>
+              {/*
+                An empty web, not a spinner: nothing is loading and nothing is
+                coming on its own. The sentence still carries the meaning — the
+                drawing never has to be read to understand the screen.
+              */}
+              <WebLoader
+                className="mt-4"
+                label="A Track is one learning goal, like DSA, Spanish or guitar."
+              />
+            </div>
           ) : (
-            <ul className="mt-2 divide-y divide-border border-t border-border">
+            <ul className="mt-2 divide-y divide-border border-t-2 border-sv-magenta/40">
               {rows.map((track) => (
                 <TrackRow key={track.id} track={track} />
               ))}

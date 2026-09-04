@@ -18,6 +18,9 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Preserved, not shipped. Nothing imports it and it is excluded from
+      // tsconfig too — see archive/README.md.
+      "archive/**",
     ],
   },
 ];

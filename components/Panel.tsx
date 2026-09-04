@@ -1,20 +1,49 @@
 import type { ReactNode } from "react";
+import { WebFrame } from "@/components/spiderverse/SpiderWeb";
+import { GlitchText } from "@/components/spiderverse/GlitchText";
 
 /**
- * A section of the sheet.
+ * A section of the sheet, in two registers.
  *
- * What used to be a rounded, shadowed card is now a labelled band: a hairline
- * rule above it, a mono label in the gutter, and the content in the main
- * column. At narrow widths the gutter collapses and the label sits above its
- * content as a tracked eyebrow.
+ * The comic register is a three-plate misregistration rather than a border and
+ * a drop shadow: cyan holds the plate, magenta echoes it 3px down-right, and a
+ * faint yellow pass sits 2px the other way — see `.sv-panel` in globals.css,
+ * which also carries the slow coloured glow that keeps a panel from reading as
+ * pasted onto the ground. The offset is fixed and identical on every panel; it
+ * is a press error, and a moving or per-panel-random one reads as a bug.
  *
- * Nothing here is a box. Separation comes from the rule and the space.
+ * **band** (default) is the original: a mono label in the gutter, content in
+ * the main column, separation from rules and space. It stays the workhorse,
+ * because a page where every section is a bordered comic panel has no
+ * hierarchy left to spend — it just looks busy.
+ *
+ * **comic** is the loud one: a 2px ink border, a solid caption box across the
+ * top, a hard registration plate offset behind it, and halftone over the
+ * surface. It is reserved for the level that should dominate a screen — Tracks
+ * on the home page, the Track header on a track page — and used sparingly on
+ * purpose. Topic and Task surfaces stay in `band`.
+ *
+ * The registration plate is a real sibling rather than a box-shadow. Panels can
+ * carry `wobble`, and a clip-path clips the element's own shadow away with it.
+ * It also cannot be a child: the panel paints its own background, so a
+ * negative-z child would render behind that background and never be seen.
  */
+type Accent = "magenta" | "cyan" | "yellow";
+
+const BORDER: Record<Accent, string> = {
+  magenta: "var(--sv-magenta)",
+  cyan: "var(--sv-cyan)",
+  yellow: "var(--sv-yellow)",
+};
+
 export default function Panel({
   label,
   sublabel,
   action,
   children,
+  variant = "band",
+  accent = "magenta",
+  wobble = false,
   className = "",
 }: {
   /** Mono gutter label, e.g. "Topics". */
@@ -23,17 +52,52 @@ export default function Panel({
   sublabel?: string;
   action?: ReactNode;
   children: ReactNode;
+  variant?: "band" | "comic";
+  accent?: Accent;
+  wobble?: boolean;
   className?: string;
 }) {
+  if (variant === "comic") {
+    const surface = (
+      <div className={`sv-panel relative h-full ${wobble ? "sv-wobble" : ""}`}>
+        {/* Six webs, no two alike and no axis of symmetry — see WebFrame. Each
+            one's spokes terminate on the panel's own edges, so the strands are
+            anchored to the border rather than floating near it. */}
+        <WebFrame className="text-sv-cyan" />
+
+        {(label || action) && (
+          <div
+            className="sv-panel-header relative flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-3 py-1.5 sm:px-4"
+            style={{ background: BORDER[accent], color: "var(--sv-ink)" }}
+          >
+            <h2 className="font-label text-[0.6rem] uppercase leading-relaxed tracking-[0.17em]">
+              {label && <GlitchText text={label} intensity="subtle" trigger="auto" blend="normal" baseColor="var(--sv-ink)" />}
+              {sublabel && (
+                <span className="ml-2 tracking-[0.1em] opacity-80">{sublabel}</span>
+              )}
+            </h2>
+            {action}
+          </div>
+        )}
+
+        <div className="relative min-w-0 p-3 sm:p-4">{children}</div>
+      </div>
+    );
+
+    return <div className={`relative my-6 ${className}`}>{surface}</div>;
+  }
+
   return (
-    <section className={`grid grid-cols-1 gap-x-6 gap-y-3 py-6 lg:grid-cols-[7rem_minmax(0,1fr)] ${className}`}>
+    <section
+      className={`grid grid-cols-1 gap-x-6 gap-y-3 py-6 lg:grid-cols-[7rem_minmax(0,1fr)] ${className}`}
+    >
       {(label || action) && (
         <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:justify-start lg:gap-1.5 lg:pt-0.5">
           {label && (
-            <h2 className="motif-mark font-mono text-[0.6rem] uppercase leading-relaxed tracking-[0.17em] text-muted">
-              {label}
+            <h2 className="font-label text-[0.6rem] uppercase leading-relaxed tracking-[0.17em] text-sv-cyan">
+              <GlitchText text={label} intensity="subtle" trigger="auto" baseColor="var(--sv-cyan)" />
               {sublabel && (
-                <span className="mt-0.5 block text-[0.58rem] tracking-[0.1em] opacity-70">
+                <span className="mt-0.5 block text-[0.58rem] tracking-[0.1em] text-muted">
                   {sublabel}
                 </span>
               )}

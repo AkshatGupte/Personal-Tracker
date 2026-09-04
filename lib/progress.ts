@@ -58,12 +58,24 @@ function groupByTrack(logs: { trackId: string; date: Date; tasksCompletedCount: 
 export async function getHomeProgress() {
   const since = windowStart();
 
-  const [tracks, logs, totalTasks, completedTasks] = await Promise.all([
+  const today = startOfDay();
+
+  const [tracks, logs, totalTasks, checkedInToday] = await Promise.all([
     prisma.track.findMany({
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { topics: true } },
-        topics: { select: { tasks: { select: { status: true } } } },
+        topics: {
+          select: {
+            tasks: {
+              select: {
+                // Today's check-in only. A task is never permanently complete,
+                // so the question is always "did this happen today".
+                _count: { select: { checkIns: { where: { date: today } } } },
+              },
+            },
+          },
+        },
       },
     }),
     // The whole history, not just the terrain window: a streak can be longer
@@ -72,7 +84,7 @@ export async function getHomeProgress() {
       select: { trackId: true, date: true, tasksCompletedCount: true },
     }),
     prisma.task.count(),
-    prisma.task.count({ where: { status: "completed" } }),
+    prisma.taskCheckIn.count({ where: { date: today } }),
   ]);
 
   const windowLogs = logs.filter((log) => log.date >= since);
@@ -91,7 +103,7 @@ export async function getHomeProgress() {
       currentStreak: streakOf(active).current,
       topicCount: track._count.topics,
       taskCount: tasks.length,
-      completedCount: tasks.filter((task) => task.status === "completed").length,
+      completedCount: tasks.filter((task) => task._count.checkIns > 0).length,
       terrain: buildTerrain(windowByTrack.get(track.id) ?? []),
     };
   });
@@ -99,7 +111,8 @@ export async function getHomeProgress() {
   return {
     rows,
     totalTasks,
-    completedTasks,
+    // "checked in today", not "finished ever" — the figure resets each morning.
+    completedTasks: checkedInToday,
     terrain: buildTerrain(
       windowLogs.map((l) => ({ date: l.date, tasksCompletedCount: l.tasksCompletedCount })),
     ),
@@ -111,6 +124,7 @@ export async function getHomeProgress() {
 /** Everything one track screen needs. Returns null when the id is unknown. */
 export async function getTrackDetail(id: string) {
   const since = windowStart();
+  const today = startOfDay();
 
   const track = await prisma.track.findUnique({
     where: { id },
@@ -122,7 +136,13 @@ export async function getTrackDetail(id: string) {
         include: {
           tasks: {
             orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-            select: { id: true, title: true, difficulty: true, status: true },
+            select: {
+              id: true,
+              title: true,
+              difficulty: true,
+              // Today's row only: yesterday's check-in must not read as checked.
+              checkIns: { where: { date: today }, select: { id: true } },
+            },
           },
         },
       },
@@ -145,18 +165,19 @@ export async function getTrackDetail(id: string) {
     name: topic.name,
     isExpected: topic.isExpected,
     taskCount: topic.tasks.length,
-    completedCount: topic.tasks.filter((task) => task.status === "completed").length,
+    completedCount: topic.tasks.filter((task) => task.checkIns.length > 0).length,
     tasks: topic.tasks.map((task) => ({
       id: task.id,
       title: task.title,
       difficulty: task.difficulty,
-      status: task.status,
+      checkedInToday: task.checkIns.length > 0,
     })),
   }));
 
-  // The completion ratio is derived from live task state, never from history:
-  // it answers "how much of this track is done now", which is a different
-  // question from "what was finished on each day".
+  // The ratio answers "how many of today's activities have been checked in",
+  // and starts at zero each morning. It is deliberately not "how many tasks are
+  // finished": a recurring activity never finishes, so that figure would sit at
+  // 100% forever once each task had been done once.
   const taskCount = topics.reduce((total, topic) => total + topic.taskCount, 0);
   const completedCount = topics.reduce((total, topic) => total + topic.completedCount, 0);
 

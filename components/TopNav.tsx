@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GlitchText } from "@/components/spiderverse/GlitchText";
+import { WebDivider } from "@/components/spiderverse/SpiderWeb";
 
 const BUILT = [
   { label: "Home", href: "/" },
@@ -12,27 +14,39 @@ const BUILT = [
 const PLANNED = [{ label: "Insights", when: "Phase 3" }];
 
 /**
- * The masthead: a wordmark, a rule, and the sections. No pill, no panel.
+ * The masthead: a wordmark, a rule, and the sections.
  *
- * The bearing mark is the one piece of the page that takes its colour from the
- * atmosphere layer rather than from a semantic token — it is a mark, not data.
+ * The wordmark is the one place in the whole app that gets Bangers and a live
+ * RGB split. It qualifies on both counts the theme sets for it: short, and
+ * author-written. Nothing a user typed is ever set this way — Track, Topic and
+ * Task names stay in Archivo throughout.
+ *
+ * Intensity is `subtle` on purpose. This sits at the top of every screen, and a
+ * masthead that tears itself apart every two seconds is a masthead you stop
+ * being able to ignore. It fires roughly every 4.5-9s.
  */
 export default function TopNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="mb-6 flex items-center justify-between gap-4 border-b border-border pb-3.5">
+    <nav className="mb-2">
+      <div className="flex items-center justify-between gap-4 border-b-2 border-sv-magenta pb-3.5">
       <Link href="/" className="flex min-w-0 items-center gap-2.5 text-fg">
         <svg
           aria-hidden="true"
           viewBox="0 0 24 24"
-          className="h-4 w-4 shrink-0 text-[color:var(--m-mark,var(--muted))]"
+          className="h-4 w-4 shrink-0 text-sv-cyan"
         >
           <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" strokeWidth="1" />
           <path d="M12 3.5 L12 20.5 M3.5 12 L20.5 12" stroke="currentColor" strokeWidth="1" opacity=".45" />
           <path d="M12 6.5 L14.6 12 L12 17.5 L9.4 12 Z" fill="currentColor" />
         </svg>
-        <span className="font-display text-xl leading-none tracking-tight">Rendred</span>
+        <GlitchText
+          text="Rendred"
+          intensity="subtle"
+          trigger="auto"
+          className="font-comic text-2xl leading-none"
+        />
         <span className="sr-only">home</span>
       </Link>
 
@@ -42,7 +56,7 @@ export default function TopNav() {
         them. Planned sections keep an explicit "soon", per the scope rule in
         CLAUDE.md: an unbuilt section is never presented as a working link.
       */}
-      <ul className="flex min-w-0 items-center gap-4 overflow-x-auto font-mono text-[0.65rem] uppercase tracking-[0.15em]">
+      <ul className="flex min-w-0 items-center gap-4 overflow-x-auto font-label text-[0.65rem] uppercase tracking-[0.15em]">
         {BUILT.map((section) => {
           const active = pathname === section.href;
           return (
@@ -52,8 +66,8 @@ export default function TopNav() {
                 aria-current={active ? "page" : undefined}
                 className={
                   active
-                    ? "whitespace-nowrap border-b border-fg pb-0.5 text-fg"
-                    : "whitespace-nowrap text-muted transition-colors hover:text-fg"
+                    ? "whitespace-nowrap border-b-2 border-sv-yellow pb-0.5 text-fg"
+                    : "whitespace-nowrap text-muted transition-colors hover:text-sv-cyan"
                 }
               >
                 {section.label}
@@ -71,11 +85,16 @@ export default function TopNav() {
               {section.label}
               {/* Size separates it, not opacity: dimming would push this
                   below the contrast floor the rest of the page holds. */}
-              <span className="text-[0.55rem] tracking-[0.1em] text-muted">soon</span>
+              <span className="sv-status text-[0.55rem] text-muted">soon</span>
             </span>
           </li>
         ))}
-      </ul>
+        </ul>
+      </div>
+      {/* The masthead rule keeps its magenta weight; the webbing hangs off it
+          rather than replacing it, so the section break still reads when
+          skimmed. */}
+      <WebDivider seed={0x2f71} />
     </nav>
   );
 }

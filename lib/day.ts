@@ -8,8 +8,10 @@
  * streak through no fault of the user. The server is the user's own machine and
  * there is a single local user, so local time is unambiguous here.
  *
- * If this is ever deployed to a server in another timezone, this is the file to
- * revisit — nothing else does day maths of its own.
+ * Rendred is not deployed — it runs on the author's own laptop — so the server
+ * clock and the user's clock are the same clock, and local time is simply
+ * correct here. Kept in one file anyway: nothing else does day maths of its
+ * own, so this stays the single thing to revisit if that ever changes.
  */
 
 const MS_PER_DAY = 86_400_000;
