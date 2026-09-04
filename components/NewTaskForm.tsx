@@ -42,7 +42,7 @@ export default function NewTaskForm({
           placeholder="e.g. Solve: Two Sum"
           aria-label="Task title"
           aria-invalid={state.error ? true : undefined}
-          className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted focus:border-accent"
+          className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted focus:border-accent aria-invalid:border-sv-red"
         />
         <select
           name="difficulty"
@@ -66,7 +66,7 @@ export default function NewTaskForm({
         </button>
       </div>
       {state.error && (
-        <p role="alert" className="font-label text-[0.7rem] text-muted">
+        <p role="alert" className="font-label text-[0.7rem] text-sv-red">
           {state.error}
         </p>
       )}

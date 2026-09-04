@@ -59,7 +59,8 @@ export default function TopicRow({
               autoFocus
               maxLength={80}
               aria-label="Topic name"
-              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
+              aria-invalid={error ? true : undefined}
+              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent aria-invalid:border-sv-red"
             />
             <button
               type="submit"
@@ -80,7 +81,7 @@ export default function TopicRow({
             </button>
           </div>
           {error && (
-            <p role="alert" className="font-label text-[0.7rem] text-muted">
+            <p role="alert" className="font-label text-[0.7rem] text-sv-red">
               {error}
             </p>
           )}
@@ -92,8 +93,9 @@ export default function TopicRow({
   if (mode === "confirm") {
     return (
       <li className="flex flex-wrap items-center justify-between gap-3 py-3.5">
-        <p className="text-sm">
-          Delete <span className="font-semibold">{topic.name}</span>
+        {/* Muted frame, name at full contrast — see the note in TrackRow. */}
+        <p className="text-sm text-muted">
+          Delete <span className="text-fg">{topic.name}</span>
           {topic.taskCount > 0 && (
             <>
               {" "}
@@ -133,7 +135,13 @@ export default function TopicRow({
             onClick={() => setOpen((wasOpen) => !wasOpen)}
             aria-expanded={open}
             aria-controls={`tasks-${topic.id}`}
-            className="shrink-0 rounded-none px-1 text-[0.6rem] text-muted transition-colors hover:text-fg"
+            /*
+              A 24px square, which the caret alone was nowhere near: it measured
+              13x14, well under the 24x24 minimum, and it is the only way to
+              open or close a topic. The glyph is unchanged — this is hit area,
+              not size.
+            */
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-none text-[0.6rem] text-muted transition-colors hover:text-fg"
           >
             <span aria-hidden="true">{open ? "\u25BE" : "\u25B8"}</span>
             <span className="sr-only">

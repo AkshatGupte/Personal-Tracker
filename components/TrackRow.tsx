@@ -52,7 +52,8 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
               autoFocus
               maxLength={80}
               aria-label="Track name"
-              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
+              aria-invalid={error ? true : undefined}
+              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent aria-invalid:border-sv-red"
             />
             <button
               type="submit"
@@ -73,7 +74,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
             </button>
           </div>
           {error && (
-            <p role="alert" className="font-label text-[0.7rem] text-muted">
+            <p role="alert" className="font-label text-[0.7rem] text-sv-red">
               {error}
             </p>
           )}
@@ -91,8 +92,13 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
 
     return (
       <li className="flex flex-wrap items-center justify-between gap-3 py-4">
-        <p className="text-sm">
-          Delete <span className="font-semibold">{track.name}</span>
+        {/* The frame is muted so the name carries, which is the only emphasis
+            available: the app has one font weight and `font-synthesis-weight:
+            none`, so the `font-semibold` that used to be here rendered exactly
+            like the words around it. In a destructive, irreversible flow the
+            thing being destroyed has to be unmistakable. */}
+        <p className="text-sm text-muted">
+          Delete <span className="text-fg">{track.name}</span>
           {alsoRemoved.length > 0 && <> and its {alsoRemoved.join(" and ")}</>}? This
           cannot be undone.
         </p>

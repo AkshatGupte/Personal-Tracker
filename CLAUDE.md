@@ -113,6 +113,12 @@ being asked.
 - **Weight is always 400.** Bangers ships one weight; asking for 700/800 makes
   the browser synthesise a bold that smears the outline, so `font-synthesis-weight:
   none` is set and hierarchy comes from size, case and tracking instead.
+  **A consequence worth stating, because it has already caused a bug: a
+  `font-semibold`/`font-bold` class emphasises nothing at all.** It is not
+  merely weaker — it renders byte-identical to the text around it. The delete
+  confirmations shipped for a while with the name of the thing being deleted
+  marked that way and therefore not marked at all. Emphasise with contrast
+  instead: mute the surrounding sentence and leave the important span at `fg`.
 - **Known trade-off: numerals shift as they change.** Bangers figures are
   strongly proportional — 15.4px for a 1 against 24.9px for an 8 at 48px, a 38%
   spread — and `tabular-nums` cannot fix it because the face has no tabular set.

@@ -5,6 +5,41 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-04 — Every delete absorbs a repeat**
+`deleteTrack` used `prisma.track.delete`, which raises P2025 when the row has
+already gone — so a double click on the confirm button produced a real 500 for
+what the user experiences as one successful deletion. It now uses `deleteMany`.
+
+This is not a new idea, it is the one place that had been missed: `deleteTopic`
+and `deleteTask` already absorb a repeat through their `findUnique` guard, and
+`setCheckIn` is documented as idempotent in both directions. A write that a
+double click can break is a write that is wrong for a single-user app where a
+double click costs nothing to make.
+
+**2026-09-04 — Emphasis is contrast, never weight**
+The app has one font weight and `font-synthesis-weight: none`, so a
+`font-semibold` span renders identically to the words around it — not weaker,
+identical. The delete confirmations used exactly that to mark the name of the
+thing being destroyed, which meant an irreversible action named its target with
+no emphasis whatsoever.
+
+Emphasis is now the surrounding sentence in `muted` with the name left at `fg`.
+Measured 2.19:1 between the two, which reads clearly without introducing a
+colour or borrowing one of the three progress signals. Recorded in `CLAUDE.md`
+too, because the failure mode is invisible in review: the class is right there
+in the markup and does nothing.
+
+**2026-09-04 — Validation errors use `sv-red`, and the field shows it**
+Error text was `muted`, the same colour as ordinary metadata, and `aria-invalid`
+was announced with no visual counterpart at all — the field kept its resting
+border. Errors are now `sv-red`, which is already this theme's danger colour on
+the Delete buttons, and the invalid field takes a red border through an
+`aria-invalid:` variant so the ARIA state and the paint cannot drift apart.
+
+Measured 4.68:1 against the panel surface it actually sits on. Worth noting the
+method: computed against the `bg` token it would have looked like 5.0:1, but the
+form sits on `surface`, which is lighter. Sample the composited ground.
+
 **2026-09-04 — Milestones are streak days, and are derived, never stored**
 Streak milestones are 7, 14, 30, 60 and 100 consecutive days, and a crossing is
 computed from the `before`/`after` streak pair `describeCheckIn` already

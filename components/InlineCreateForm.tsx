@@ -46,7 +46,7 @@ export default function InlineCreateForm({
           placeholder={placeholder}
           aria-label={label}
           aria-invalid={state.error ? true : undefined}
-          className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted focus:border-accent"
+          className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted focus:border-accent aria-invalid:border-sv-red"
         />
         <button
           type="submit"
@@ -57,7 +57,7 @@ export default function InlineCreateForm({
         </button>
       </div>
       {state.error && (
-        <p role="alert" className="font-label text-[0.7rem] text-muted">
+        <p role="alert" className="font-label text-[0.7rem] text-sv-red">
           {state.error}
         </p>
       )}

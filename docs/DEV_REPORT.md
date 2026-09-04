@@ -1,8 +1,59 @@
-![alt text](image.png)# Development Report
+# Development Report
 
 This is a running log of what's been built, explained in plain language.
 Newest entries are at the top. See `docs/RULES.md` for the format Claude
 Code follows when adding to this file.
+
+---
+
+## 2026-09-04 — Stabilization pass: four fixes, no new features
+
+**What was built:**
+Nothing new — this was a hunt for things that would bite in real daily use. Four
+real problems turned up and were fixed: double-clicking Delete on a track caused
+a server error, the delete confirmation did not actually highlight the name of
+the thing you were about to delete, error messages looked like ordinary grey
+text rather than errors, and the little arrow that opens and closes a topic was
+too small to click comfortably.
+
+**How it works (flow):**
+1. **Double-click Delete.** The first click removed the track; the second
+   arrived, found nothing to remove, and the database driver treated that as a
+   failure — a real error in the log for something the user saw as working. It
+   now uses a "delete anything matching this" call, which quietly does nothing
+   the second time. The other two delete buttons already worked this way; the
+   track one had been missed.
+2. **"Delete Arrays and its 1 task?"** The name was marked to stand out using
+   bold. The app uses a single-weight font on purpose, and bold is switched off
+   so it cannot smear — so the name rendered *identically* to the rest of the
+   sentence. It now works the other way round: the sentence is dimmed and the
+   name is left bright.
+3. **Error messages** were the same grey as ordinary secondary text, and while
+   the field was correctly marked invalid for screen readers, it did not *look*
+   any different. Errors are now red, and the field itself turns red — the same
+   red already used on the Delete buttons.
+4. **The topic open/close arrow** was a 13x14 pixel target, well under the 24x24
+   minimum, and it is the only way to show or hide a topic's tasks. It is now a
+   24x24 target. The arrow itself is unchanged; only the clickable area grew.
+
+**Technical concepts used:**
+- **Checked the colours against what is actually on screen** rather than against
+  the intended value — the form sits on a slightly lighter panel than the page
+  background, so the red measures 4.68:1 there rather than the 5.0:1 the raw
+  numbers suggest. Still above the 4.5:1 minimum, but only because it was
+  measured.
+- **Reproduced each problem before fixing it.** One suspected bug (deleting the
+  wrong track) turned out to be a mistake in the test, not the app, and was
+  dropped rather than "fixed".
+- **Also found a long-running local annoyance** — the development server has
+  been randomly breaking all session with a confusing error. The cause was an
+  abandoned server process from hours earlier still running in the background
+  and fighting the new one over the same build folder. Written up in `qa/README.md`
+  with how to spot it.
+
+**Roadmap status:** no roadmap item — a stabilization pass over Phase 2 work.
+Phase 2 still has one item open, the learning trajectory view, which is waiting
+on real check-in data.
 
 ---
 

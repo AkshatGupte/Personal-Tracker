@@ -175,7 +175,8 @@ export default function TaskRow({
               autoFocus
               maxLength={140}
               aria-label="Task title"
-              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent"
+              aria-invalid={error ? true : undefined}
+              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent aria-invalid:border-sv-red"
             />
             <select
               name="difficulty"
@@ -209,7 +210,7 @@ export default function TaskRow({
             </button>
           </div>
           {error && (
-            <p role="alert" className="font-label text-[0.7rem] text-muted">
+            <p role="alert" className="font-label text-[0.7rem] text-sv-red">
               {error}
             </p>
           )}
@@ -221,8 +222,9 @@ export default function TaskRow({
   if (mode === "confirm") {
     return (
       <li className="flex flex-wrap items-center justify-between gap-3 py-2">
-        <p className="text-sm">
-          Delete <span className="font-semibold">{task.title}</span>? This cannot be
+        {/* Muted frame, name at full contrast — see the note in TrackRow. */}
+        <p className="text-sm text-muted">
+          Delete <span className="text-fg">{task.title}</span>? This cannot be
           undone.
         </p>
         <div className="flex shrink-0 items-center gap-1">
@@ -300,7 +302,7 @@ export default function TaskRow({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {error && (
-            <span role="alert" className="font-label text-[0.6rem] text-muted">
+            <span role="alert" className="font-label text-[0.6rem] text-sv-red">
               {error}
             </span>
           )}

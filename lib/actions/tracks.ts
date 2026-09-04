@@ -45,9 +45,20 @@ export async function renameTrack(
 /**
  * Deletes a track. Topics, tasks and completion logs beneath it go too —
  * the schema cascades, so this cannot leave orphaned rows behind.
+ *
+ * `deleteMany` rather than `delete`, so a repeat is absorbed instead of
+ * throwing. `delete` raises P2025 when the row has already gone, which a double
+ * click on the confirm button reliably produces: the first call removes the
+ * track and the second arrives to find nothing, surfacing as a 500 in the
+ * console for what the user experiences as one successful deletion.
+ *
+ * This matches the rest of the write path rather than introducing a new idea —
+ * `deleteTopic` and `deleteTask` already absorb a repeat through their
+ * `findUnique` guard, and `setCheckIn` is idempotent in both directions by
+ * design. This was the one delete that was not.
  */
 export async function deleteTrack(id: string): Promise<ActionResult> {
-  await prisma.track.delete({ where: { id } });
+  await prisma.track.deleteMany({ where: { id } });
   revalidatePath("/");
   return {};
 }

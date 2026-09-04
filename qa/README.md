@@ -25,9 +25,35 @@ override which binary it uses.
    DATABASE_URL="file:/tmp/qa.db" npx next dev -p 3477
    ```
 
-2. **`rm -rf .next` when switching between `npm run dev` and `npm run build`.**
-   They share the directory and corrupt each other, which shows up as
-   `TypeError: __webpack_modules__[moduleId] is not a function` and a 500.
+2. **Only ever have one Next process running, and clear `.next` between them.**
+
+   The symptom is always the same: `TypeError: __webpack_modules__[moduleId] is
+   not a function` and a 500 on every page. It has three causes, and the first
+   is by far the most common and the least obvious:
+
+   - **An orphaned `next-server` from an earlier run.** `next dev` spawns a
+     `next-server` child, and killing the parent — or killing by port, which
+     finds only the listener — leaves that child alive, still watching files and
+     still writing `.next`. Two of them sharing the directory corrupt it. One
+     survived a whole session this way and poisoned every server started after
+     it. Check for them by hand before starting anything:
+
+     ```
+     ps -eo pid,args | grep -E "[n]ext-server|[n]ode_modules/\.bin/next"
+     ```
+
+     Note the `[n]` — a plain `pgrep -f next` or `pkill -f "next dev"` also
+     matches *the shell running that very command*, which kills your own shell
+     mid-script and looks like an unrelated failure.
+
+   - **Switching between `npm run dev` and `npm run build`.** They share the
+     directory too.
+
+   - **Editing a watched file while a server runs.** Anything under the project
+     root triggers a recompile, `qa/` included — it is excluded from tsconfig
+     and ESLint, not from the file watcher.
+
+   `rm -rf .next` after stopping everything, and start one server.
 
 ## Logic tests
 

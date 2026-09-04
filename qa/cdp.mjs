@@ -197,6 +197,36 @@ function makePage(browser, sessionId, width, height) {
     },
 
     /**
+     * Focuses a field and types into it.
+     *
+     * `Input.insertText` rather than per-character key events: key events go
+     * through the browser's own text-input pipeline and are easy to get subtly
+     * wrong, while this is what a paste does and lands reliably in a React
+     * input. It still fires a real `input` event, which is what the form needs.
+     */
+    async type(selector, text) {
+      const ok = await page.eval(`(() => {
+        const el = document.querySelector(${JSON.stringify(selector)});
+        if (!el) return false;
+        el.focus();
+        el.value = "";
+        return true;
+      })()`);
+      if (!ok) throw new Error(`no element for ${selector}`);
+      await send("Input.insertText", { text });
+    },
+
+    /** Waits for `expression` to return truthy, or throws after `timeout` ms. */
+    async until(expression, { timeout = 8000, every = 120 } = {}) {
+      const deadline = Date.now() + timeout;
+      for (;;) {
+        if (await page.eval(expression)) return true;
+        if (Date.now() > deadline) throw new Error(`timed out waiting for: ${expression}`);
+        await sleep(every);
+      }
+    },
+
+    /**
      * The accessible text of a subtree, as the accessibility tree actually
      * reports it — not `innerText`.
      *
