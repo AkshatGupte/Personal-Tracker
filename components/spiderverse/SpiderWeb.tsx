@@ -255,132 +255,213 @@ export function WebCorner({
 }
 
 /**
- * Webs spun across a frame: one in every corner, plus three extras set along an
- * edge, so no two corners carry the same number of them.
+ * Webs in the corners of a frame, and only in the corners.
  *
- * Each carries its own seed and nothing else — the differences between them are
- * generated, not hand-tuned, so they cannot drift back into resembling one
- * another.
+ * **Four, one per corner, all from the same seed.** They are exact mirrors of
+ * each other, which is deliberate and is the one place in the app where
+ * symmetry is allowed — a frame motif is what this is meant to be. Everywhere
+ * else (the dividers, the page corners) each web is its own shape.
  *
- * **Sizes are absolute pixels in the 88-250 range and opacities sit between
- * 0.30 and 0.46.** Both numbers are load-bearing and were arrived at by being
- * got wrong: a pass that shrank the webs with percentage caps and dropped them
- * to 0.28 left faint slivers in two corners and nothing anywhere else. A corner
- * web that does not visibly fill its corner is not doing the job.
+ * **The size is small and fixed on purpose.** Larger webs, and extra ones offset
+ * along an edge, were tried: on a panel holding a single track — barely 190px
+ * tall — the corners reached past each other and the strands ran straight
+ * through the middle of the content. A corner decoration that crosses the
+ * middle of the box has stopped being a corner decoration. 84px stays in the
+ * corner whether the panel is short or long, and on the shortest panel the top
+ * and bottom pairs still clear each other.
+ *
+ * Percentage caps are still not the way to hold it there: the viewBox is square,
+ * so a non-square cap letterboxes the drawing and shrinks it to a sliver. Size
+ * it small and let it be its natural size.
+ *
+ * The caller positions this. `Panel` hangs it off the *content* box rather than
+ * the panel box, so the top pair start below the caption bar instead of being
+ * half-buried under it — a web with its hub hidden is the hubless fan this
+ * theme keeps having to reject.
  */
 export function WebFrame({ className = "" }: { className?: string }) {
-  const webs: Array<{ key: string; corner: Corner; size: number; seed: number; opacity: number; offset?: { x?: number; y?: number } }> = [
-    { key: "tl", corner: "tl", size: 214, seed: 0x5eed21, opacity: 0.42 },
-    { key: "tr", corner: "tr", size: 196, seed: 0xa17e93, opacity: 0.46 },
-    { key: "tr2", corner: "tr", size: 118, seed: 0x3c0b17, opacity: 0.32, offset: { x: 202 } },
-    { key: "bl", corner: "bl", size: 232, seed: 0x7b1d4c, opacity: 0.36 },
-    { key: "bl2", corner: "bl", size: 104, seed: 0x91aa35, opacity: 0.3, offset: { y: 196 } },
-    { key: "br", corner: "br", size: 250, seed: 0xc4f2a8, opacity: 0.38 },
-    { key: "br2", corner: "br", size: 88, seed: 0x2d7f61, opacity: 0.31, offset: { x: 244 } },
-  ];
+  const corners: Corner[] = ["tl", "tr", "bl", "br"];
 
   return (
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}>
-      {webs.map((w) => (
-        <WebCorner
-          key={w.key}
-          corner={w.corner}
-          size={w.size}
-          seed={w.seed}
-          opacity={w.opacity}
-          offset={w.offset}
-        />
+    <div aria-hidden="true" className={`pointer-events-none absolute overflow-hidden ${className}`}>
+      {corners.map((corner) => (
+        <WebCorner key={corner} corner={corner} size={84} seed={0x5eed21} opacity={0.4} />
       ))}
     </div>
   );
 }
 
 /**
- * A section rule with web strands slung under it.
+ * A section rule with one web hung from it.
  *
- * **Independent segments with gaps, not one continuous path.** The previous
- * version chained its curves endpoint to endpoint, which produced a single
- * scalloped line — a waveform, not silk. Real strands break and re-anchor:
- * a few short spans at irregular intervals with open air between them.
+ * **One web, not a row of curves.** Three attempts came before this and two of
+ * them failed the same way: a continuous scalloped line read as an audio
+ * waveform, and independent sagging spans read as plain curved arcs. Neither
+ * had a hub, a spoke or a ring in it — and an arc is not a web, however it is
+ * tapered or broken up. Whatever else changes here, radial structure is the
+ * part that cannot be dropped.
  *
- * Each span is drawn as a filled envelope rather than a stroked curve so it can
- * *taper* — thick where it is anchored, thin at the bottom of the sag, the way
- * silk actually hangs. A stroke cannot vary its width along a path, so the
- * outline is built by sampling the curve and offsetting each sample by a width
- * that narrows toward the middle.
+ * So this is a real half orb-web growing out of the rule: the hub sits *on* the
+ * line, the spokes fan into the half-plane below it, the outermost two run
+ * along the line itself so the web is anchored at both ends, and the rings sag
+ * back toward the hub between neighbouring spokes.
+ *
+ * **Nothing about it is even.** The spoke angles are random within the fan
+ * rather than spaced, and every spoke gets its own length, so the outer boundary
+ * is ragged. An even fan at even radii is a semicircle, and a semicircle drawn
+ * under a horizontal line is exactly the arch this is trying not to be.
+ *
+ * The rule is a plain full-width element and the web is a separate, fixed-size
+ * SVG positioned along it. They cannot share one `preserveAspectRatio="none"`
+ * viewBox: that stretches the drawing to the container's width, which squashes
+ * a web flat into — again — an arch.
  */
-function taperedSag(x1: number, x2: number, y: number, sag: number, w0: number, w1: number) {
-  const cx = (x1 + x2) / 2;
-  const cy = y + sag * 2; // quadratic control: the curve reaches ~sag at its middle
-  const at = (t: number): Pt => {
-    const u = 1 - t;
-    return [u * u * x1 + 2 * u * t * cx + t * t * x2, u * u * y + 2 * u * t * cy + t * t * y];
-  };
-  // Thickest at the anchors, thinnest at the sag. sin gives a smooth waist.
-  const width = (t: number) => w0 - (w0 - w1) * Math.sin(Math.PI * t);
+function buildHangingWeb(seed: number, radius: number, hub: Pt) {
+  const next = rng(seed);
 
-  const N = 14;
-  const top: string[] = [];
-  const bottom: string[] = [];
-  for (let i = 0; i <= N; i++) {
-    const t = i / N;
-    const [px, py] = at(t);
-    const [nx, ny] = at(Math.min(1, t + 0.02));
-    const [bx, by] = at(Math.max(0, t - 0.02));
-    // Normal to the local tangent.
-    const tx = nx - bx;
-    const ty = ny - by;
-    const len = Math.hypot(tx, ty) || 1;
-    const ox = (-ty / len) * width(t) * 0.5;
-    const oy = (tx / len) * width(t) * 0.5;
-    top.push(`${r1(px + ox)} ${r1(py + oy)}`);
-    bottom.unshift(`${r1(px - ox)} ${r1(py - oy)}`);
+  /*
+    The fan runs from 0 to PI, measured with +y pointing down, so the whole web
+    hangs below the rule. The extremes are pinned so both ends land on the line
+    itself; everything between them is random and then sorted, so the rings
+    still connect neighbours.
+  */
+  const spokes = 7 + Math.floor(next() * 4); // 7-10
+  const inner = Array.from({ length: spokes - 2 }, () => 0.12 + next() * (Math.PI - 0.24));
+  const angles = [0, ...inner, Math.PI].sort((a, b) => a - b);
+
+  // Every spoke its own length. This is what keeps the outer edge from
+  // resolving into a smooth semicircular arc.
+  const radii = angles.map(() => radius * (0.66 + next() * 0.34));
+
+  const at = (i: number, f: number): Pt => [
+    hub[0] + Math.cos(angles[i]) * radii[i] * f,
+    hub[1] + Math.sin(angles[i]) * radii[i] * f,
+  ];
+
+  const spokePaths = angles.map(
+    (_, i) => `M ${r1(hub[0])} ${r1(hub[1])} L ${r1(at(i, 1)[0])} ${r1(at(i, 1)[1])}`,
+  );
+
+  const rings = 3 + Math.floor(next() * 2); // 3-4
+  const ringPaths: string[] = [];
+  for (let ring = 1; ring <= rings; ring++) {
+    const f = Math.pow(ring / rings, 1.15) * (0.82 + next() * 0.16);
+    const d: string[] = [];
+    for (let i = 0; i < angles.length - 1; i++) {
+      const a = at(i, f);
+      const b = at(i + 1, f);
+      // Control point pulled back toward the hub: the sag that separates a web
+      // from a wheel.
+      const slack = 0.74 + next() * 0.14;
+      const c: Pt = [
+        hub[0] + ((a[0] + b[0]) / 2 - hub[0]) * slack,
+        hub[1] + ((a[1] + b[1]) / 2 - hub[1]) * slack,
+      ];
+      d.push(
+        `${i === 0 ? `M ${r1(a[0])} ${r1(a[1])}` : ""} Q ${r1(c[0])} ${r1(c[1])} ${r1(b[0])} ${r1(b[1])}`,
+      );
+    }
+    ringPaths.push(d.join(" "));
   }
-  return `M ${top.join(" L ")} L ${bottom.join(" L ")} Z`;
+
+  return { spokePaths, ringPaths };
 }
 
 export function WebDivider({
   className = "",
   seed = 0xb1a5,
+  radius = 46,
 }: {
   className?: string;
   seed?: number;
+  /** How far the web hangs below the rule. */
+  radius?: number;
 }) {
-  const next = rng(seed);
-  const W = 1000;
-  const H = 26;
+  const place = rng(seed);
+  // Where along the rule the web hangs. Off-centre, and different per seed, so
+  // the two dividers on a page are not a matched pair.
+  const at = 18 + place() * 60;
 
-  // Three to five spans, with gaps. Position, length and sag all vary, and a
-  // gap is left at each end so the rule is not bracketed symmetrically.
-  const count = 3 + Math.floor(next() * 3);
-  const spans: Array<{ x1: number; x2: number; sag: number }> = [];
-  let cursor = W * (0.03 + next() * 0.08);
-  for (let i = 0; i < count; i++) {
-    const len = W * (0.09 + next() * 0.13);
-    if (cursor + len > W * 0.97) break;
-    spans.push({ x1: cursor, x2: cursor + len, sag: 4 + next() * 4 });
-    cursor += len + W * (0.05 + next() * 0.12); // the gap
-  }
-
-  // A tie dropping from one anchor, on some dividers and not others.
-  const tie =
-    next() > 0.4 && spans.length
-      ? `M ${r1(spans[0].x2)} 2 L ${r1(spans[0].x2 + (next() - 0.5) * 6)} ${r1(8 + next() * 6)}`
-      : null;
+  const W = radius * 2 + 4;
+  const H = radius + 6;
+  const { spokePaths, ringPaths } = buildHangingWeb(seed, radius, [W / 2, 1]);
 
   return (
-    <div aria-hidden="true" className={`relative w-full ${className}`}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-[26px] w-full" fill="none">
-        <line x1="0" y1="2" x2={W} y2="2" stroke="var(--border)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-        <g fill="var(--sv-cyan)" fillOpacity="0.6">
-          {spans.map((sp, i) => (
-            <path key={`s${i}`} d={taperedSag(sp.x1, sp.x2, 2, sp.sag, 2.6, 0.45)} />
-          ))}
-        </g>
-        {tie && (
-          <path d={tie} stroke="var(--sv-cyan)" strokeOpacity="0.45" strokeWidth="0.75" vectorEffect="non-scaling-stroke" />
-        )}
+    <div aria-hidden="true" className={`relative w-full ${className}`} style={{ height: H + 4 }}>
+      {/* The rule itself: a plain element, so no viewBox can stretch it. */}
+      <div className="absolute inset-x-0 top-0 border-t" style={{ borderColor: "var(--border)" }} />
+      <svg
+        width={W}
+        height={H}
+        viewBox={`0 0 ${W} ${H}`}
+        className="absolute top-0 text-sv-cyan"
+        style={{ left: `${at}%`, transform: "translateX(-50%)", opacity: 0.42 }}
+        fill="none"
+      >
+        {spokePaths.map((d, i) => (
+          <path key={`s${i}`} d={d} stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        ))}
+        {ringPaths.map((d, i) => (
+          <path
+            key={`r${i}`}
+            d={d}
+            stroke="currentColor"
+            strokeWidth="0.75"
+            strokeOpacity={0.85 - i * 0.1}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
       </svg>
+    </div>
+  );
+}
+
+/**
+ * Webs in the four corners of the viewport, behind everything.
+ *
+ * Mounted once in the root layout beside the atmosphere, never per screen. The
+ * page content is a centred column, so on a wide monitor there is a lot of bare
+ * ground either side of it — this is what frames that.
+ *
+ * **Four different seeds and four different sizes, and no mirroring.** Unlike
+ * the panel corners, these are meant to read as four separate webs that happen
+ * to share a page, not as one motif repeated. They also run much fainter: they
+ * sit behind real content rather than inside a bordered panel, and a strand at
+ * panel weight across the whole viewport competes with the interface.
+ *
+ * **They shrink on a narrow viewport, and that is the point of them.** On a wide
+ * monitor they fill ground the layout never uses. On a phone the content column
+ * *is* the full width, so a full-size corner web stops framing anything and
+ * starts sitting behind the interface. The CSS size overrides the attribute
+ * size; the viewBox is square and so is the element, so it scales uniformly
+ * with nothing to letterbox.
+ *
+ * Pure decoration — `aria-hidden`, `pointer-events-none`, no animation, so
+ * there is nothing for reduced motion to freeze.
+ */
+export function WebPageCorners() {
+  const webs: Array<{ corner: Corner; size: number; seed: number; opacity: number; size2: string }> = [
+    { corner: "tl", size: 268, seed: 0x14b7e2, opacity: 0.2, size2: "h-[116px] w-[116px] sm:h-[268px] sm:w-[268px]" },
+    { corner: "tr", size: 322, seed: 0x8f3d55, opacity: 0.17, size2: "h-[140px] w-[140px] sm:h-[322px] sm:w-[322px]" },
+    { corner: "bl", size: 300, seed: 0x2ea9c1, opacity: 0.16, size2: "h-[130px] w-[130px] sm:h-[300px] sm:w-[300px]" },
+    { corner: "br", size: 244, seed: 0xd6714a, opacity: 0.19, size2: "h-[106px] w-[106px] sm:h-[244px] sm:w-[244px]" },
+  ];
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden text-sv-cyan"
+    >
+      {webs.map((w) => (
+        <WebCorner
+          key={w.corner}
+          corner={w.corner}
+          size={w.size}
+          seed={w.seed}
+          opacity={w.opacity}
+          className={w.size2}
+        />
+      ))}
     </div>
   );
 }

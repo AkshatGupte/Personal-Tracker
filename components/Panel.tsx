@@ -60,11 +60,6 @@ export default function Panel({
   if (variant === "comic") {
     const surface = (
       <div className={`sv-panel relative h-full ${wobble ? "sv-wobble" : ""}`}>
-        {/* Seven webs, no two alike and no axis of symmetry — see WebFrame. Each
-            one's spokes terminate on the panel's own edges, so the strands are
-            anchored to the border rather than floating near it. */}
-        <WebFrame className="text-sv-cyan" />
-
         {(label || action) && (
           <div
             className="sv-panel-header relative flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-3 py-1.5 sm:px-4"
@@ -80,7 +75,18 @@ export default function Panel({
           </div>
         )}
 
-        <div className="relative min-w-0 p-3 sm:p-4">{children}</div>
+        <div className="relative min-w-0 p-3 sm:p-4">
+          {/* One web per corner and nothing in between — see WebFrame.
+              Hung off the *content* box rather than the panel box: an absolutely
+              positioned child resolves `inset-0` against the padding box, so
+              this already spans this element edge to edge, padding included.
+              That box starts just under the caption bar and ends at the panel's
+              inner edge, which is what puts the top pair below the bar instead
+              of half-buried under it — with no header height hardcoded here to
+              drift out of sync. */}
+          <WebFrame className="inset-0 text-sv-cyan" />
+          <div className="relative">{children}</div>
+        </div>
       </div>
     );
 

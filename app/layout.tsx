@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Archivo, Bangers, Space_Mono } from "next/font/google";
 import ChromaticDefs from "@/components/spiderverse/ChromaticDefs";
 import SpiderverseBackground from "@/components/spiderverse/SpiderverseBackground";
+import { WebPageCorners } from "@/components/spiderverse/SpiderWeb";
 import "./globals.css";
 
 /**
@@ -59,6 +60,11 @@ export default function RootLayout({
             AtmosphereField, which has been removed along with its three.js
             scene — nothing in this theme needs a renderer. */}
         <SpiderverseBackground />
+        {/* Webs in the four corners of the viewport. Mounted here for the same
+            reason as the atmosphere — once, so no screen has to remember it —
+            and after the background so it draws over the rift glows while
+            staying behind the content. */}
+        <WebPageCorners />
         {/* Filter definitions for true chromatic aberration, defined once and
             referenced by url() from GlitchText and the page transition. */}
         <ChromaticDefs />
