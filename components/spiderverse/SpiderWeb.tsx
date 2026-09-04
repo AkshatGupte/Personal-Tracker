@@ -56,126 +56,107 @@ function mapper(corner: Corner, w: number, h: number) {
   return ([x, y]: Pt): Pt => [flipX ? w - x : x, flipY ? h - y : y];
 }
 
-type WebSpec = {
-  /** Hub position inside the corner, as a fraction of the box. */
-  hubX: number;
-  hubY: number;
-  /** How far the web is allowed to throw before an edge stops it. */
-  reach: number;
+/**
+ * One corner web, built with its hub *at* the corner.
+ *
+ * **This is the shape everyone pictures when they hear "web in a corner":** an
+ * apex tucked into the angle, straight radials running out from it, and a stack
+ * of concentric threads sagging between neighbouring radials. It replaced a
+ * version that put the hub some way *inside* the box and fanned the spokes back
+ * toward the corner — that one drew a narrow wedge with two or three faint
+ * chords across it, which does not read as a web at all. The user's word for
+ * it was "a triangle", and that was fair.
+ *
+ * Two things had to change together. The hub moved to the corner, so the web
+ * opens outward across the full quarter-turn instead of closing to a point. And
+ * the rings went from two-to-four faint chords to five evenly stepped threads
+ * at full weight: the concentric rings *are* the web. Spokes alone are a fan.
+ *
+ * `jitter` is what separates the two uses. At zero the angles are evenly spaced
+ * and every radial is the same length — a true symmetrical web, which is what
+ * the Tracks panel wants. Above zero the seed pushes the angles around, varies
+ * each radial's length and lifts the hub slightly off the corner, so every
+ * instance is its own shape — which is what the page corners want.
+ */
+type CornerWebSpec = {
+  /** Radials, counted inclusive of the two that lie along the edges. */
   spokes: number;
+  /** Concentric threads between hub and rim. */
   rings: number;
-  /** Trims the start of the fan's arc, so no two webs begin at the same angle. */
-  rotate: number;
-  /** Trims the end of it. Independent of `rotate`, so the arc is never centred. */
-  trim: number;
+  /** 0 = perfectly regular. Higher pushes angles, lengths and the hub around. */
+  jitter: number;
   seed: number;
 };
 
-/**
- * Casts a ray from the hub and returns where it meets the frame.
- *
- * This is what replaced placing anchors at even fractions along each edge. That
- * older approach made every web the same even sweep at a different scale —
- * which is exactly why four webs with four seeds still read as one shape
- * mirrored. Choosing the *angle* at random and letting the geometry decide
- * which edge it lands on gives genuinely different structures: some spokes hit
- * the top, some the side, and the split is never the same twice.
- *
- * Local space: the corner is the origin, the two frame edges are y=0 and x=0.
- */
-function castToEdge(hub: Pt, angle: number, reach: number): Pt {
-  const dx = Math.cos(angle);
-  const dy = Math.sin(angle);
-  const ts: number[] = [];
-  if (dy < -1e-6) ts.push(-hub[1] / dy); // meets y = 0
-  if (dx < -1e-6) ts.push(-hub[0] / dx); // meets x = 0
-  const t = Math.min(reach, ...ts.filter((v) => v > 0));
-  return [hub[0] + dx * t, hub[1] + dy * t];
-}
-
-/** Builds one corner web's paths in local space, then maps them onto the box. */
-function buildWeb(spec: WebSpec, box: number, map: (p: Pt) => Pt) {
-  const { hubX, hubY, reach, spokes, rings, rotate, trim, seed } = spec;
+function buildCornerWeb(box: number, spec: CornerWebSpec, map: (p: Pt) => Pt) {
+  const { spokes, rings, jitter, seed } = spec;
   const next = rng(seed);
-  const hub: Pt = [box * hubX, box * hubY];
 
   /*
-    Angles are drawn at random inside the quadrant that faces the corner, not
-    spread evenly across it. Even spacing is a wheel; a real web has spokes that
-    crowd in one place and leave a gap in another.
-
-    The span stays *inside* [PI, 1.5PI] — the only arc where a ray from the hub
-    can reach both frame edges. `rotate` trims the ends rather than sliding the
-    whole fan, which is the bug that made every web hang off a single edge: a
-    base of PI + PI/2 put every angle past 1.5PI, so every spoke landed on the
-    top and none on the side, and the web stopped hugging its corner.
-
-    The first and last spokes are pinned to the ends of the span so both edges
-    always carry an anchor; the rest are random in between and sorted, so the
-    chords still connect neighbours.
+    The hub sits in the corner itself. A little off it when jittered, so an
+    irregular web is not pinned to the exact angle, but never far enough in that
+    the web stops hugging the corner.
   */
-  const a0 = Math.PI + rotate;
-  const a1 = Math.PI + Math.PI / 2 - trim;
-  const inner = Array.from({ length: Math.max(0, spokes - 2) }, () => a0 + next() * (a1 - a0));
-  const angles = [a0, ...inner, a1].sort((x, y) => x - y);
+  const hub: Pt = [box * next() * jitter * 0.5, box * next() * jitter * 0.5];
 
-  // Reach is deliberately past the far edge: an edge must always be what stops
-  // a spoke, or the outermost threads end in mid-air and nothing is anchored.
-  const anchors = angles.map((a) => castToEdge(hub, a, reach));
+  /*
+    Angles run the quarter turn from the +x edge to the +y edge. The first and
+    last are pinned to exactly 0 and PI/2 whatever the jitter, so both radials
+    lie along a real frame edge and the web is visibly attached to the border at
+    both ends rather than floating near it.
+  */
+  const angles = Array.from({ length: spokes }, (_, i) => {
+    const base = (i / (spokes - 1)) * (Math.PI / 2);
+    if (i === 0 || i === spokes - 1) return base;
+    return base + (next() - 0.5) * jitter;
+  }).sort((a, b) => a - b);
+
+  // Every radial reaches the rim. Jittered, some fall short, which is what stops
+  // the outer ring from closing into a clean quarter-circle.
+  const radii = angles.map((_, i) =>
+    i === 0 || i === spokes - 1 ? box : box * (1 - next() * jitter * 0.55),
+  );
+
+  const at = (i: number, f: number): Pt => [
+    hub[0] + Math.cos(angles[i]) * radii[i] * f,
+    hub[1] + Math.sin(angles[i]) * radii[i] * f,
+  ];
 
   const line = (a: Pt, b: Pt) => {
     const [x1, y1] = map(a);
     const [x2, y2] = map(b);
     return `M ${r1(x1)} ${r1(y1)} L ${r1(x2)} ${r1(y2)}`;
   };
-  const spokePaths = anchors.map((a) => line(hub, a));
+  const spokePaths = angles.map((_, i) => line(hub, at(i, 1)));
 
-  const chordPaths: string[] = [];
+  /*
+    Rings step evenly out from the hub. Even spacing is right here even for the
+    irregular webs: it is the ring *stack* that says "web", and unevenly spaced
+    rings just read as noise crossing a fan.
+  */
+  const ringPaths: string[] = [];
   for (let ring = 1; ring <= rings; ring++) {
-    const f = Math.pow(ring / rings, 1.2 + next() * 0.3) * (0.8 + next() * 0.18);
+    const f = ring / rings;
     const d: string[] = [];
-    for (let i = 0; i < anchors.length - 1; i++) {
-      const a: Pt = [hub[0] + (anchors[i][0] - hub[0]) * f, hub[1] + (anchors[i][1] - hub[1]) * f];
-      const b: Pt = [
-        hub[0] + (anchors[i + 1][0] - hub[0]) * f,
-        hub[1] + (anchors[i + 1][1] - hub[1]) * f,
-      ];
-      const slack = 0.72 + next() * 0.14;
-      const mid: Pt = [
+    for (let i = 0; i < angles.length - 1; i++) {
+      const a = at(i, f);
+      const b = at(i + 1, f);
+      // Control point pulled back toward the hub. This sag is the whole
+      // difference between a spider web and a wheel.
+      const slack = 0.86 - next() * jitter * 0.1;
+      const c: Pt = [
         hub[0] + ((a[0] + b[0]) / 2 - hub[0]) * slack,
         hub[1] + ((a[1] + b[1]) / 2 - hub[1]) * slack,
       ];
       const [ax, ay] = map(a);
       const [bx, by] = map(b);
-      const [cx, cy] = map(mid);
+      const [cx, cy] = map(c);
       d.push(`${i === 0 ? `M ${r1(ax)} ${r1(ay)}` : ""} Q ${r1(cx)} ${r1(cy)} ${r1(bx)} ${r1(by)}`);
     }
-    chordPaths.push(d.join(" "));
+    ringPaths.push(d.join(" "));
   }
 
-  return { spokePaths, chordPaths };
-}
-
-/**
- * Everything about one web, derived from a single seed.
- *
- * Spoke count, ring count, hub position, reach and starting rotation all come
- * out of the seed, so four different seeds cannot coincidentally produce four
- * similar webs the way four hand-tuned configs could.
- */
-function specFromSeed(seed: number): WebSpec {
-  const next = rng(seed);
-  return {
-    hubX: 0.3 + next() * 0.26,
-    hubY: 0.3 + next() * 0.26,
-    // Past the far edge on purpose — see the note in buildWeb.
-    reach: 2,
-    spokes: 5 + Math.floor(next() * 5), // 5-9
-    rings: 2 + Math.floor(next() * 3), // 2-4
-    rotate: next() * 0.24, // trims the arc's start
-    trim: next() * 0.24, // and its end, independently
-    seed,
-  };
+  return { spokePaths, ringPaths };
 }
 
 const ORIGIN: Record<Corner, string> = {
@@ -198,6 +179,7 @@ export function WebCorner({
   seed = 0x5eed,
   opacity = 0.34,
   offset,
+  jitter = 0.5,
   className = "",
 }: {
   corner?: Corner;
@@ -205,12 +187,22 @@ export function WebCorner({
   seed?: number;
   opacity?: number;
   offset?: { x?: number; y?: number };
+  /** 0 draws a perfectly regular web. Higher makes it its own shape. */
+  jitter?: number;
   className?: string;
 }) {
-  const spec = specFromSeed(seed);
-  const { spokePaths, chordPaths } = buildWeb(
-    { ...spec, reach: size * spec.reach },
+  const pick = rng(seed ^ 0x9e37);
+  const { spokePaths, ringPaths } = buildCornerWeb(
     size,
+    {
+      // A regular web is drawn to a fixed recipe; an irregular one takes its
+      // counts from the seed as well as its angles, so two of them cannot come
+      // out as the same web at different scales.
+      spokes: jitter === 0 ? 7 : 6 + Math.floor(pick() * 4),
+      rings: jitter === 0 ? 5 : 4 + Math.floor(pick() * 3),
+      jitter,
+      seed,
+    },
     mapper(corner, size, size),
   );
 
@@ -240,13 +232,15 @@ export function WebCorner({
       {spokePaths.map((d, i) => (
         <path key={`s${i}`} d={d} stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       ))}
-      {chordPaths.map((d, i) => (
+      {/* Rings at near-full weight too. They were the faint part before, and a
+          web whose rings you cannot see is a fan. */}
+      {ringPaths.map((d, i) => (
         <path
-          key={`c${i}`}
+          key={`r${i}`}
           d={d}
           stroke="currentColor"
-          strokeWidth="0.75"
-          strokeOpacity={0.85 - i * 0.1}
+          strokeWidth="0.9"
+          strokeOpacity={0.92 - i * 0.04}
           vectorEffect="non-scaling-stroke"
         />
       ))}
@@ -257,18 +251,25 @@ export function WebCorner({
 /**
  * Webs in the corners of a frame, and only in the corners.
  *
- * **Four, one per corner, all from the same seed.** They are exact mirrors of
- * each other, which is deliberate and is the one place in the app where
- * symmetry is allowed — a frame motif is what this is meant to be. Everywhere
- * else (the dividers, the page corners) each web is its own shape.
+ * **Four, one per corner, drawn to the same regular recipe.** `jitter={0}` means
+ * evenly spaced radials of equal length and evenly stepped rings, and the four
+ * are exact mirrors of each other. This is the one place in the app where
+ * symmetry is wanted — a frame motif is what it is meant to be. Everywhere else
+ * (the dividers, the page corners) each web is its own shape.
  *
- * **The size is small and fixed on purpose.** Larger webs, and extra ones offset
- * along an edge, were tried: on a panel holding a single track — barely 190px
- * tall — the corners reached past each other and the strands ran straight
- * through the middle of the content. A corner decoration that crosses the
- * middle of the box has stopped being a corner decoration. 84px stays in the
- * corner whether the panel is short or long, and on the shortest panel the top
- * and bottom pairs still clear each other.
+ * **The size is small and fixed on purpose, and it is pinned by arithmetic.**
+ * With the hub in the corner the web is a quarter-disc of radius `size`, so the
+ * top and bottom pairs meet as soon as `2 * size` passes the content height.
+ * A panel holding a single track is about 164px of content, which puts the hard
+ * ceiling at 82 and 74 comfortably under it — at 84 the left and right pairs
+ * met and webbed the full height of both edges. Larger webs, and extra ones
+ * offset along an edge, were both tried too and both ran strands straight
+ * through the middle of the content; a corner decoration that crosses the
+ * middle of the box has stopped being one.
+ *
+ * So legibility here comes from the geometry, not from more pixels: a hub in
+ * the corner, seven radials and five rings read as a web at 74px, where the old
+ * inward-facing fan with two chords did not read as one at 250px.
  *
  * Percentage caps are still not the way to hold it there: the viewBox is square,
  * so a non-square cap letterboxes the drawing and shrinks it to a sliver. Size
@@ -285,7 +286,7 @@ export function WebFrame({ className = "" }: { className?: string }) {
   return (
     <div aria-hidden="true" className={`pointer-events-none absolute overflow-hidden ${className}`}>
       {corners.map((corner) => (
-        <WebCorner key={corner} corner={corner} size={84} seed={0x5eed21} opacity={0.4} />
+        <WebCorner key={corner} corner={corner} size={74} seed={0x5eed21} opacity={0.42} jitter={0} />
       ))}
     </div>
   );
@@ -370,7 +371,7 @@ function buildHangingWeb(seed: number, radius: number, hub: Pt) {
 export function WebDivider({
   className = "",
   seed = 0xb1a5,
-  radius = 46,
+  radius = 78,
 }: {
   className?: string;
   seed?: number;
@@ -425,7 +426,9 @@ export function WebDivider({
  *
  * **Four different seeds and four different sizes, and no mirroring.** Unlike
  * the panel corners, these are meant to read as four separate webs that happen
- * to share a page, not as one motif repeated. They also run much fainter: they
+ * to share a page, not as one motif repeated. The `jitter` is what does it: the
+ * seed sets each web's radial count, ring count, angles, radial lengths and hub
+ * offset, so no two are the same shape at different scales. They also run much fainter: they
  * sit behind real content rather than inside a bordered panel, and a strand at
  * panel weight across the whole viewport competes with the interface.
  *
@@ -440,11 +443,11 @@ export function WebDivider({
  * there is nothing for reduced motion to freeze.
  */
 export function WebPageCorners() {
-  const webs: Array<{ corner: Corner; size: number; seed: number; opacity: number; size2: string }> = [
-    { corner: "tl", size: 268, seed: 0x14b7e2, opacity: 0.2, size2: "h-[116px] w-[116px] sm:h-[268px] sm:w-[268px]" },
-    { corner: "tr", size: 322, seed: 0x8f3d55, opacity: 0.17, size2: "h-[140px] w-[140px] sm:h-[322px] sm:w-[322px]" },
-    { corner: "bl", size: 300, seed: 0x2ea9c1, opacity: 0.16, size2: "h-[130px] w-[130px] sm:h-[300px] sm:w-[300px]" },
-    { corner: "br", size: 244, seed: 0xd6714a, opacity: 0.19, size2: "h-[106px] w-[106px] sm:h-[244px] sm:w-[244px]" },
+  const webs: Array<{ corner: Corner; size: number; seed: number; opacity: number; jitter: number; size2: string }> = [
+    { corner: "tl", size: 268, seed: 0x14b7e2, opacity: 0.24, jitter: 0.44, size2: "h-[116px] w-[116px] sm:h-[268px] sm:w-[268px]" },
+    { corner: "tr", size: 322, seed: 0x8f3d55, opacity: 0.21, jitter: 0.62, size2: "h-[140px] w-[140px] sm:h-[322px] sm:w-[322px]" },
+    { corner: "bl", size: 300, seed: 0x2ea9c1, opacity: 0.2, jitter: 0.36, size2: "h-[130px] w-[130px] sm:h-[300px] sm:w-[300px]" },
+    { corner: "br", size: 244, seed: 0xd6714a, opacity: 0.23, jitter: 0.55, size2: "h-[106px] w-[106px] sm:h-[244px] sm:w-[244px]" },
   ];
 
   return (
@@ -459,6 +462,7 @@ export function WebPageCorners() {
           size={w.size}
           seed={w.seed}
           opacity={w.opacity}
+          jitter={w.jitter}
           className={w.size2}
         />
       ))}
