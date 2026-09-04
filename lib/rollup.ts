@@ -15,7 +15,7 @@
  * disagree about which day a completion fell on.
  */
 
-import { addDays, dayKey, startOfDay } from "@/lib/day";
+import { addDays, dayKey, startOfDay, startOfMonth } from "@/lib/day";
 import type { DayLog } from "@/lib/terrain";
 
 export const WEEK_DAYS = 7;
@@ -57,6 +57,24 @@ export function weekBuckets(count: number, now: Date = new Date()): PeriodBucket
   for (let i = count - 1; i >= 0; i--) {
     const start = addDays(thisWeek, -i * WEEK_DAYS);
     buckets.push({ key: dayKey(start), start, endExclusive: addDays(start, WEEK_DAYS) });
+  }
+  return buckets;
+}
+
+/**
+ * `count` consecutive calendar months ending with the one containing `now`,
+ * oldest first. The last bucket is the current, partial month.
+ *
+ * Built from calendar arithmetic rather than by stepping a fixed number of
+ * days, because months are 28 to 31 days long: `addDays(-30)` would drift a
+ * little further off the first of the month with every step back, and by six
+ * buckets the labels no longer name the months they hold.
+ */
+export function monthBuckets(count: number, now: Date = new Date()): PeriodBucket[] {
+  const buckets: PeriodBucket[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const start = startOfMonth(now, -i);
+    buckets.push({ key: dayKey(start), start, endExclusive: startOfMonth(start, 1) });
   }
   return buckets;
 }

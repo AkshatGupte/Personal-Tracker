@@ -6,6 +6,106 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-04 — Monthly progress, beside the weekly one
+
+**What was built:**
+The Progress page can now be read a month at a time as well as a week at a
+time. There is a small Weekly / Monthly switch at the top; picking Monthly shows
+how many tasks you finished this month, a little calendar of the month with the
+active days filled in, each track's total for the month, and a list of the last
+six months. Weekly is still what you get by default and is unchanged.
+
+**How it works (flow):**
+1. You click "Monthly". That is an ordinary link — it takes you to
+   `/progress?period=month` rather than changing anything in the page.
+2. The page reads that one word out of the address and picks the set of date
+   ranges to use: eight weeks, or six months.
+3. Those ranges go to the same counting code the weekly view already used. That
+   code never knew what a week was — it just walks a range from its first day to
+   its last and counts what is in the database — so handing it months needed no
+   new counting logic at all.
+4. The same numbers come back, and the page swaps its wording ("since Monday"
+   becomes "so far this month", "By week" becomes "By month").
+
+**Technical concepts used:**
+- **Date ranges built from the calendar, not from a fixed number of days** —
+  months are 28 to 31 days long, so stepping back "30 days" six times drifts off
+  the first of the month and eventually the labels name the wrong months. The new
+  `monthBuckets` walks real calendar months instead.
+- **A guard against the classic month-maths bug** — asking a computer for "one
+  month after the 31st of January" usually gives you the 2nd or 3rd of March,
+  because the 31st of February does not exist and it quietly rolls over. The new
+  helper always builds the *first* of a month, which has nowhere to roll to.
+  Checked with a test covering that case, leap-year February, and the year
+  boundary.
+- **The choice lives in the web address** — so the page still needs no
+  JavaScript sent to the browser (it stayed at 180 bytes), the view can be
+  bookmarked and reloaded, and a hand-typed nonsense value quietly falls back to
+  the weekly view instead of breaking.
+- **One day-grid component instead of two** — the week strip became a period
+  strip. It is always seven columns wide: a week is one row, a month is five or
+  six rows with the days before the 1st left blank, so it reads as a small
+  calendar. A month drawn as a single row of 31 squares was tried first and the
+  squares were too small to read.
+
+**Roadmap status:** completes "Monthly summary view" in Phase 2 of
+`docs/ROADMAP.md`. Phase 2 now has two items left: the milestone celebration
+(waiting on one decision) and the learning trajectory view (waiting on real
+check-in data).
+
+---
+
+## 2026-09-04 — The spider webs, and a much tighter home page
+
+**What was built:**
+The web decoration around the app was rebuilt so it actually looks like spider
+webs, and the home page was tightened up — it is now about a quarter shorter,
+with far less empty space between the masthead, the elevation figure and the
+Tracks box. Webs now appear in the four corners of the Tracks box, in the four
+corners of the window itself, and hanging from the two dividing lines.
+
+**How it works (flow):**
+1. Every web is drawn from a "seed" — a starting number. The same seed always
+   draws exactly the same web, which matters because these are drawn on the
+   server: a web that came out differently in the browser than on the server
+   would be reported as an error.
+2. A web is built by putting a hub in the corner, running straight threads out
+   from it, and then hanging curved threads between neighbouring ones. The
+   curved threads sag back toward the hub, which is the detail that separates a
+   spider web from a wheel.
+3. The seed decides how many threads, at what angles, and how long each one is.
+   For the Tracks box that variation is switched off, so all four corners match.
+   For the window corners it is turned up, so all four differ.
+
+**Technical concepts used:**
+- **The bug that made them look like triangles** — the hub was being nudged
+  inward from the corner while the threads still ran their full length, so the
+  outer edge of the web fell outside the square it was drawn in and got cut off.
+  What survived the cut was a few long straight lines. Pinning the hub to the
+  corner means the web always fits, so every ring is drawn.
+- **Variation measured against the gap, not the whole quarter-turn** — the
+  earlier version could shove three threads on top of each other and leave a
+  bare wedge next to them, which reads as a handful of lines no matter how many
+  rings cross it.
+- **Decoration that does not take up space** — the webs hanging from the two
+  dividing lines used to reserve 88 pixels of page height each. They now hang
+  outside their own box, so they cost almost no layout while looking the same.
+  That alone was most of the gap above the Tracks panel.
+- **Two long-standing layout bugs in the elevation strip** — its box was coming
+  out 322 pixels tall instead of the intended 192, because the drawing inside it
+  was falling back to its own natural proportions; and a flexible-layout rule
+  meant it refused to shrink to fit however the height was written. Both are
+  fixed, which is the other half of the space saved.
+- **A screenshot tool that now lives in the repo** (`qa/`) — it drives a real
+  browser to take pictures of the app and check nothing overflows the screen
+  width. It had been rebuilt from scratch three sessions running because it was
+  only ever kept in a temporary folder.
+
+**Roadmap status:** no roadmap item — this is the Spider-Verse visual direction
+recorded in `CLAUDE.md`, not a Phase 2 feature.
+
+---
+
 ## 2026-09-03 — The check-in moment: one act, one piece of feedback
 
 **What was built:**

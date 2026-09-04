@@ -3,8 +3,10 @@ import { addDays, dayKey, startOfDay } from "@/lib/day";
 import { EMPTY_STREAK, summariseStreak } from "@/lib/streak";
 import {
   dailyBreakdown,
+  monthBuckets,
   rollUp,
   weekBuckets,
+  type PeriodBucket,
   type PeriodDay,
   type PeriodRollup,
 } from "@/lib/rollup";
@@ -195,14 +197,30 @@ export async function getTrackDetail(id: string) {
   };
 }
 
-/** How many weeks the summary looks back over, including the current one. */
+/** How many periods the summary looks back over, including the current one. */
 export const SUMMARY_WEEKS = 8;
+export const SUMMARY_MONTHS = 6;
 
-export type TrackWeek = {
+/** The two windows the summary can be read over. */
+export type Period = "week" | "month";
+
+/**
+ * How far back each window looks, and how each is built.
+ *
+ * The counts differ on purpose: eight weeks and six months are both roughly
+ * "as far back as is still worth comparing against", and eight months of rows
+ * would push the list past the fold for a view whose point is a quick read.
+ */
+const WINDOW: Record<Period, { count: number; buckets: (count: number, now: Date) => PeriodBucket[] }> = {
+  week: { count: SUMMARY_WEEKS, buckets: weekBuckets },
+  month: { count: SUMMARY_MONTHS, buckets: monthBuckets },
+};
+
+export type TrackPeriod = {
   id: string;
   name: string;
   currentStreak: number;
-  /** This week only. */
+  /** The current period only. */
   completed: number;
   activeDays: number;
   /** True if the track has ever logged anything, at any time. */
@@ -210,12 +228,18 @@ export type TrackWeek = {
 };
 
 /**
- * The weekly summary: one all-tracks series plus this week broken down per
- * track. Reads the same CompletionLog rows everything else does, bucketed by
- * the shared rollup layer rather than by any maths of its own.
+ * The summary over one window: an all-tracks series plus the current period
+ * broken down per track.
+ *
+ * Reads the same CompletionLog rows everything else does, bucketed by the
+ * shared rollup layer rather than by any maths of its own — which is why weeks
+ * and months are the same function rather than two. `rollUp`, `dailyBreakdown`
+ * and `describePeriod` never knew what a week was: they walk a bucket from its
+ * start to its exclusive end, so handing them month buckets is the whole change.
  */
-export async function getWeeklyProgress(now: Date = new Date()) {
-  const buckets = weekBuckets(SUMMARY_WEEKS, now);
+export async function getPeriodProgress(period: Period = "week", now: Date = new Date()) {
+  const window = WINDOW[period];
+  const buckets = window.buckets(window.count, now);
 
   const [tracks, logs] = await Promise.all([
     prisma.track.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, name: true } }),
@@ -224,12 +248,12 @@ export async function getWeeklyProgress(now: Date = new Date()) {
     }),
   ]);
 
-  const weeks = rollUp(
+  const periods = rollUp(
     logs.map((l) => ({ date: l.date, tasksCompletedCount: l.tasksCompletedCount })),
     buckets,
     now,
   );
-  const current = weeks[weeks.length - 1];
+  const current = periods[periods.length - 1];
   const currentDays = dailyBreakdown(
     logs.map((l) => ({ date: l.date, tasksCompletedCount: l.tasksCompletedCount })),
     buckets[buckets.length - 1],
@@ -237,30 +261,37 @@ export async function getWeeklyProgress(now: Date = new Date()) {
   );
 
   const byTrack = groupByTrack(logs);
-  const trackWeeks: TrackWeek[] = tracks.map((track) => {
+  const trackPeriods: TrackPeriod[] = tracks.map((track) => {
     const own = byTrack.get(track.id) ?? [];
-    const thisWeek = rollUp(own, [buckets[buckets.length - 1]], now)[0];
+    const thisPeriod = rollUp(own, [buckets[buckets.length - 1]], now)[0];
     const active = own.filter((log) => log.tasksCompletedCount > 0).map((log) => log.date);
 
+    /*
+      The streak is deliberately not scoped to the period. A streak is a
+      property of the track right now, not of the window being looked at, and
+      truncating it at the first of the month would report a 40-day streak as
+      six.
+    */
     return {
       id: track.id,
       name: track.name,
       currentStreak: streakOf(active).current,
-      completed: thisWeek.completed,
-      activeDays: thisWeek.activeDays,
+      completed: thisPeriod.completed,
+      activeDays: thisPeriod.activeDays,
       everActive: active.length > 0,
     };
   });
 
   return {
-    weeks,
+    period,
+    periods,
     current,
     currentDays,
-    tracks: trackWeeks,
-    /** Nothing has ever been logged, anywhere. Distinct from a quiet week. */
+    tracks: trackPeriods,
+    /** Nothing has ever been logged, anywhere. Distinct from a quiet period. */
     hasAnyHistory: logs.length > 0,
   };
 }
 
-export type WeeklyProgress = Awaited<ReturnType<typeof getWeeklyProgress>>;
+export type PeriodProgress = Awaited<ReturnType<typeof getPeriodProgress>>;
 export type { PeriodDay, PeriodRollup };

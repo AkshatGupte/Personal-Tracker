@@ -30,6 +30,19 @@ export function addDays(date: Date, days: number): Date {
   return moved;
 }
 
+/**
+ * Local midnight on the first of a month, `offset` months from `date`'s.
+ *
+ * The day is always constructed as 1, never carried over from `date`, so the
+ * usual month-arithmetic bug cannot happen here: adding a month to the 31st
+ * gives a date the target month does not have, and `setMonth` silently rolls it
+ * into the month after. Building from day 1 has nowhere to overflow to.
+ */
+export function startOfMonth(date: Date = new Date(), offset = 0): Date {
+  const local = startOfDay(date);
+  return new Date(local.getFullYear(), local.getMonth() + offset, 1);
+}
+
 /** Local yyyy-mm-dd. Sorts and compares as a string, so it doubles as a key. */
 export function dayKey(date: Date): string {
   const local = new Date(date);

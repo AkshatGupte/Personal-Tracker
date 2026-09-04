@@ -5,6 +5,56 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-04 — The summary window is a URL parameter, not component state**
+`/progress` reads weeks; `/progress?period=month` reads months. Chosen over a
+client-side toggle so the page stays a server component — no client bundle, no
+hydration, nothing to keep in sync — and so a window is bookmarkable and
+survives a reload. Anything that is not exactly `month` falls back to weeks, so
+a hand-edited URL cannot produce a broken page.
+
+Weeks look back 8 periods and months 6. Both are roughly "as far back as is
+still worth comparing against"; eight months of rows would push the list past
+the fold on a view whose whole point is a quick read.
+
+**2026-09-04 — Months are calendar months, and never "30 days"**
+`monthBuckets` walks real calendar months. Stepping back a fixed 30 days drifts
+further off the first of the month with each step, and within six buckets the
+labels no longer name the months they contain. The month helper also always
+constructs day 1 rather than carrying the day over, because "one month after 31
+January" resolves to 2 or 3 March through ordinary date arithmetic — building
+from the first has nowhere to overflow to. Covered by a test including leap-year
+February and the year boundary.
+
+**2026-09-04 — A track's streak is not scoped to the summary window**
+In the per-track breakdown the completions are the window's, but the streak is
+the track's current streak, full stop. A streak is a property of the track right
+now, not of the period being looked at; truncating it at the first of the month
+would report a 40-day streak as six, which is worse than useless — it is wrong
+in the direction that discourages.
+
+**2026-09-04 — Symmetry is allowed in the Tracks panel, and nowhere else**
+The four corner webs inside the comic panel are drawn to one regular recipe and
+are exact mirrors. That is deliberate: there it is a frame motif and matching is
+the point. Every other web in the app — the page corners, the dividers — is its
+own shape from its own seed. The two rules exist together on purpose and neither
+should be generalised to the other.
+
+**2026-09-04 — Corner webs put the hub *in* the corner**
+Both earlier attempts inset the hub and fanned the threads back toward the
+corner, which draws a wedge that closes to a point and reads as a triangle. It
+also put the web's outer edge outside its own square, so the viewBox clipped the
+rings away and left only long radials. Hub in the corner, radius equal to the
+box: it always fits, and the concentric rings — not the radials — are what make
+it read as a web.
+
+**2026-09-04 — Web decoration does not reserve layout space**
+The web hanging from a divider is drawn outside its element's box. Reserving its
+full drop cost 88px of page height per divider, twice over on the home page. The
+rule is the section break and carries the meaning; the web is decoration and
+must not push the page apart. It is kept out of the left third of a rule, since
+it overhangs whatever follows and the home page's next section starts with text
+on the left.
+
 **2026-09-03 — The check-in speaks once, and emphasises one measurement**
 
 How the composed check-in moment is built. Recorded because the obvious

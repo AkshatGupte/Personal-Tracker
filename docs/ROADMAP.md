@@ -34,8 +34,10 @@ one is functionally complete, unless explicitly told otherwise.
       say plainly when a check-in *extended a streak* versus merely happened.
       No XP, levels, badges or points; see Explicit Non-Goals
 - [x] Weekly summary view (per-track task counts, streak status) — `/progress`
-- [ ] Monthly summary view — reuses `lib/rollup.ts`; needs only a
-      `monthBuckets` function beside `weekBuckets`
+- [x] Monthly summary view — `/progress?period=month`. `monthBuckets` beside
+      `weekBuckets`; `rollUp`, `dailyBreakdown` and `describePeriod` were
+      already period-agnostic and were not touched. The window is a URL
+      parameter, so the page stays a server component
 - [x] Progress bar components (per Track, per Topic) — the topic stratum meter
       and the completion ring, shipped with the redesign
 - [ ] Milestone detection (e.g. every 10/50/100 tasks) + simple celebratory UI
