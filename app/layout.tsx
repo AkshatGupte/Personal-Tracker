@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Archivo, Bangers, Space_Mono } from "next/font/google";
 import ChromaticDefs from "@/components/spiderverse/ChromaticDefs";
+import AmbientGlitch from "@/components/spiderverse/AmbientGlitch";
 import AmbientLightning from "@/components/spiderverse/AmbientLightning";
+import DimensionalSpots from "@/components/spiderverse/DimensionalSpots";
 import SpiderverseBackground from "@/components/spiderverse/SpiderverseBackground";
-import { WebPageCorners } from "@/components/spiderverse/SpiderWeb";
+import { DimensionalThreads } from "@/components/spiderverse/Threads";
 import "./globals.css";
 
 /**
@@ -65,7 +67,14 @@ export default function RootLayout({
             reason as the atmosphere — once, so no screen has to remember it —
             and after the background so it draws over the rift glows while
             staying behind the content. */}
-        <WebPageCorners />
+        <DimensionalThreads />
+        {/* Voids in the atmosphere, mounted once and — critically — *after* the
+            threads, at the same depth. A spot paints over the rift glows and
+            over the neon structures while staying behind every piece of UI, so
+            it eats the part of the environment it covers and never touches the
+            interface. That occlusion is the whole effect: these are holes in
+            the background, not shapes on top of it. See DimensionalSpots. */}
+        <DimensionalSpots />
         {/* Filter definitions for true chromatic aberration, defined once and
             referenced by url() from GlitchText and the page transition. */}
         <ChromaticDefs />
@@ -75,6 +84,13 @@ export default function RootLayout({
             left rather than behind it. Ambient and uncorrelated with anything
             the user does — see AmbientLightning. */}
         <AmbientLightning />
+        {/* The second ambient effect, on its own independent timer: every
+            10-20s one element somewhere on screen corrupts for about half a
+            second. Mounted beside the lightning rather than inside any screen —
+            it picks its own target out of what is currently rendered, so no
+            component has to offer itself up. The two stagger around each other
+            on collision; see effectClock. */}
+        <AmbientGlitch />
       </body>
     </html>
   );

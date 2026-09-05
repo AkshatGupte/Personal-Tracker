@@ -1,12 +1,19 @@
 import { addDays, dayKey, startOfDay } from "@/lib/day";
+import { HEATMAP_DAYS, HEATMAP_SPAN, HEATMAP_WEEKS } from "@/lib/windows";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const WEEKS = 12;
 
 /**
- * Twelve weeks of activity, one cell per day, read from real CompletionLog
+ * Twelve weeks of activity, one cell per day, read from real TopicActivity
  * rows. An empty history renders as an empty grid, which is the honest state
- * until check-ins are actually recorded.
+ * until activity is actually recorded.
+ *
+ * The span comes from `lib/windows.ts`, which is also where `lib/progress.ts`
+ * reads it to decide how far back to fetch. It used to be a local `WEEKS = 12`
+ * with no relationship to the filter upstream, so the grid drew twelve weeks of
+ * cells whatever the data layer had actually handed it — shortening the
+ * elevation graph's window would have emptied ten of these columns while this
+ * file went on confidently claiming twelve weeks.
  *
  * The grid is one image with a written summary, and the per-day detail is
  * repeated as visually hidden text. Nothing here is available only on hover.
@@ -15,23 +22,23 @@ export default function StreakHeatmap({
   countsByDay,
   scope,
 }: {
-  /** ISO date (yyyy-mm-dd) to check-ins recorded that day. */
+  /** ISO date (yyyy-mm-dd) to distinct leaves worked that day. */
   countsByDay: Record<string, number>;
   scope: string;
 }) {
-  // Local days, from the same helper the completion writes use, so a cell and
-  // the CompletionLog row behind it always mean the same calendar day.
+  // Local days, from the same helper the activity writes use, so a cell and
+  // the TopicActivity row behind it always mean the same calendar day.
   const today = startOfDay();
 
-  // Monday-first grid: walk back to this week's Monday, then back 11 more
-  // weeks so the newest column is the current one.
+  // Monday-first grid: walk back to this week's Monday, then back a further
+  // HEATMAP_WEEKS - 1 so the newest column is the current one.
   const dayOfWeek = (today.getDay() + 6) % 7;
-  const start = addDays(today, -dayOfWeek - (WEEKS - 1) * 7);
+  const start = addDays(today, -dayOfWeek - (HEATMAP_WEEKS - 1) * 7);
 
   const values = Object.values(countsByDay);
   const max = Math.max(1, ...values);
 
-  const columns = Array.from({ length: WEEKS }, (_, week) =>
+  const columns = Array.from({ length: HEATMAP_WEEKS }, (_, week) =>
     Array.from({ length: 7 }, (_, day) => {
       const date = addDays(start, week * 7 + day);
       const key = dayKey(date);
@@ -73,8 +80,8 @@ export default function StreakHeatmap({
 
   const summary =
     total === 0
-      ? `${scope}: no activity recorded in the last 12 weeks.`
-      : `${scope}: active on ${activeDays} of the last 84 days, ${total} check-ins in total.`;
+      ? `${scope}: no activity recorded in the last ${HEATMAP_SPAN}.`
+      : `${scope}: active on ${activeDays} of the last ${HEATMAP_DAYS} days, ${total} activities in total.`;
 
   return (
     <div className="flex flex-col gap-3">
@@ -149,7 +156,7 @@ export default function StreakHeatmap({
             .filter((cell) => !cell.future && cell.count > 0)
             .map((cell) => (
               <li key={cell.key}>
-                {cell.key}: {cell.count} task{cell.count === 1 ? "" : "s"}
+                {cell.key}: {cell.count} activit{cell.count === 1 ? "y" : "ies"}
               </li>
             ))}
           {total === 0 && <li>No activity recorded yet.</li>}

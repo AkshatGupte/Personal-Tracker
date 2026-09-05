@@ -9,22 +9,25 @@ const EMPTY: ActionResult = {};
 type Action = (previous: ActionResult, formData: FormData) => Promise<ActionResult>;
 
 /**
- * One-field create form used for tracks and topics, and ready for tasks.
+ * One-field create form, used for tracks and for top-level topics.
  *
  * Deliberately not autofocused: the form sits in the page rather than in a
  * dialog, and grabbing focus on arrival is disruptive. Focus returns to the
  * field only after a successful add, where it has been earned.
+ *
+ * No placeholder, by request. The field's accessible name is carried entirely
+ * by `aria-label`, which it already was — the placeholder was never doing that
+ * job, so removing it costs nothing a screen reader was relying on.
  */
 export default function InlineCreateForm({
   action,
   label,
-  placeholder,
   submitLabel = "Add",
 }: {
   action: Action;
-  /** Accessible name for the field. */
+  /** Accessible name for the field. `aria-label`, and the field's only name —
+   *  there is no placeholder to fall back on. */
   label: string;
-  placeholder: string;
   submitLabel?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, EMPTY);
@@ -51,10 +54,9 @@ export default function InlineCreateForm({
           ref={inputRef}
           name="name"
           maxLength={80}
-          placeholder={placeholder}
           aria-label={label}
           aria-invalid={state.error ? true : undefined}
-          className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted focus:border-accent aria-invalid:border-sv-red"
+          className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-2 text-sm focus:border-accent aria-invalid:border-sv-red"
         />
         <button
           type="submit"

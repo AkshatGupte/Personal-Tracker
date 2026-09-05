@@ -32,7 +32,7 @@ import { useReducedMotion } from "./useReducedMotion";
  * built from the plates the theme does own plus one pure white.
  */
 
-const PLATES = [
+export const PLATES = [
   "var(--sv-magenta)",
   "var(--sv-cyan)",
   "var(--sv-yellow)",
@@ -41,7 +41,7 @@ const PLATES = [
   "#FFFFFF",
 ];
 
-type Shard = {
+export type Shard = {
   clip: string;
   color: string;
   dx: number;
@@ -58,8 +58,25 @@ type Shard = {
  * Pure random placement clumps: three triangles land on one corner and half the
  * element never fractures at all. One shard per cell, jittered, covers the
  * whole surface while still looking unplanned.
+ *
+ * Exported because `AmbientGlitch` shatters too, and two independent shard
+ * generators would drift apart the first time either was tuned. Two things
+ * differ between the callers, both passed in rather than forked:
+ *
+ * - `plates`. This component mixes the theme's full plate set; the ambient one
+ *   narrows to the three the film's fracture actually reads in.
+ * - `scale`. Triangle reach is a percentage of the element, so the same numbers
+ *   that read as a fracture across a task row read as three flat slabs over an
+ *   80px label — measured, on the ambient effect's first pass. The ambient
+ *   caller shrinks them, which is what turns the cluster dense instead of
+ *   blocky and lets the halftone through between the pieces.
  */
-function buildShards(seed: number, count: number): Shard[] {
+export function buildShards(
+  seed: number,
+  count: number,
+  plates: readonly string[] = PLATES,
+  scale = 1,
+): Shard[] {
   const next = rng(seed);
   const cols = Math.ceil(Math.sqrt(count));
   const rows = Math.ceil(count / cols);
@@ -67,7 +84,7 @@ function buildShards(seed: number, count: number): Shard[] {
   return Array.from({ length: count }, (_, i) => {
     const cx = (((i % cols) + 0.5) / cols) * 100 + (next() - 0.5) * 22;
     const cy = ((Math.floor(i / cols) + 0.5) / rows) * 100 + (next() - 0.5) * 26;
-    const reach = 26 + next() * 34;
+    const reach = (26 + next() * 34) * scale;
 
     const points = Array.from({ length: 3 }, (_, k) => {
       const angle = (Math.PI * 2 * k) / 3 + next() * 1.7;
@@ -77,7 +94,7 @@ function buildShards(seed: number, count: number): Shard[] {
 
     return {
       clip: `polygon(${points.join(", ")})`,
-      color: PLATES[Math.floor(next() * PLATES.length)],
+      color: plates[Math.floor(next() * plates.length)],
       dx: (next() - 0.5) * 12, // ±6px
       dy: (next() - 0.5) * 12,
       rotate: (next() - 0.5) * 10, // ±5deg

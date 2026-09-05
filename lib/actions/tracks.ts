@@ -43,8 +43,10 @@ export async function renameTrack(
 }
 
 /**
- * Deletes a track. Topics, tasks and completion logs beneath it go too —
- * the schema cascades, so this cannot leave orphaned rows behind.
+ * Deletes a track. Its whole topic tree and every activity row beneath it go
+ * too — the schema cascades, so this cannot leave orphaned rows behind. This is
+ * the one place anything is hard-deleted: a topic on its own is soft-deleted so
+ * its history survives, but a deleted track has no history left to belong to.
  *
  * `deleteMany` rather than `delete`, so a repeat is absorbed instead of
  * throwing. `delete` raises P2025 when the row has already gone, which a double

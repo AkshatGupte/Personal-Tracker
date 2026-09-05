@@ -1,11 +1,37 @@
 import { describeTerrain, ridgePath, type Terrain } from "@/lib/terrain";
+import { TERRAIN_SPAN } from "@/lib/windows";
 
 const W = 720;
 const H = 200;
 const STRATA = 7;
 
 /**
- * The elevation profile: cumulative completed tasks over the last 12 weeks.
+ * Right gutter, in viewBox units, between the newest data point and the edge.
+ *
+ * The profile bleeds to the right edge of the window on the home page, and the
+ * newest point is *today* — so with the plot running the full width, today's
+ * marker sat five units from the frame, which is about seven real pixels from
+ * the edge of the screen. The steepest, most recent and most meaningful part of
+ * the curve was the part squeezed against the border, and it read as a graph
+ * running off the page rather than as one that ends.
+ *
+ * The gutter insets the **data** only. The baseline and the strata still run
+ * the full width, so the ground carries on past today — which is the honest
+ * reading of a time axis that ends at now, and keeps the bleed doing the job it
+ * was added for.
+ *
+ * 48 of 720 is 6.7%: about 65px of clearance on a wide monitor and 25px at
+ * 390px wide, at both of which the summit marker and its glow sit clear.
+ */
+const RIGHT_GUTTER = 48;
+const PLOT_W = W - RIGHT_GUTTER;
+
+/**
+ * The elevation profile: cumulative activity over the terrain window.
+ *
+ * The span is `TERRAIN_SPAN` and the caption below the drawing is written from
+ * it, so the words and the plotted range cannot disagree. It was twelve weeks
+ * of hardcoded caption against a twelve-week constant somewhere else.
  *
  * Height is work done. The horizontal strata sit at fixed elevations, so where
  * the climb is steep the ridge crosses several of them within a short span and
@@ -46,8 +72,8 @@ export default function TerrainProfile({
    */
   quiet?: boolean;
 }) {
-  const ridge = ridgePath(terrain.points, W, H);
-  const area = `${ridge} L ${W} ${H} L 0 ${H} Z`;
+  const ridge = ridgePath(terrain.points, PLOT_W, H);
+  const area = `${ridge} L ${PLOT_W} ${H} L 0 ${H} Z`;
   const summit = terrain.points[terrain.points.length - 1];
   const summitY = H - (summit?.y ?? 0) * H;
   const fillId = `terrain-fill-${id}`;
@@ -116,26 +142,46 @@ export default function TerrainProfile({
               {terrain.reached.map((milestone) => (
                 <g key={milestone.value}>
                   {/*
-                    The contour runs the full width so the value set in the
-                    margin and the point it was crossed read as one elevation.
-                    In a row-sized profile there is no margin to label, so the
-                    line is dropped and only the crossing point is marked.
+                    The contour is clipped to the landform, like the strata,
+                    and stops at the point it was crossed.
+
+                    It used to run the full width, unclipped, in hard yellow —
+                    two bright rules straight across an almost empty chart, out
+                    past the reading column and off the side of a bleeding
+                    profile. That read as page chrome rather than as terrain,
+                    and it broke the one rule the rest of this drawing keeps:
+                    **every horizontal line in here lives inside the ground.**
+                    The strata are clipped for exactly that reason; a gridline
+                    floating in empty sky is the only thing that was not.
+
+                    Clipping fixes it at the root rather than by dimming. The
+                    contour now appears only where the ground has actually
+                    reached that level, which is also the only place it says
+                    anything — elevation rises monotonically, so past the
+                    crossing the ground is above it and to the left it had not
+                    got there yet. It can therefore stay legible at 0.55 instead
+                    of being faded into apology.
+
+                    The value stays in the margin as an axis label, and the dot
+                    marks the crossing. In a row-sized profile there is no margin
+                    to label, so the line is dropped and only the dot is drawn.
                   */}
                   {!compact && (
                   <line
+                    clipPath={`url(#${clipId})`}
                     x1="0"
                     y1={H - milestone.y * H}
-                    x2={W}
+                    x2={milestone.x * PLOT_W}
                     y2={H - milestone.y * H}
                     stroke="var(--streak)"
                     strokeWidth="1"
-                    strokeDasharray="3 4"
-                    strokeOpacity="0.75"
+                    strokeDasharray="2 4"
+                    strokeOpacity="0.55"
                     vectorEffect="non-scaling-stroke"
                   />
                   )}
                   <circle
-                    cx={milestone.x * W}
+                    cx={milestone.x * PLOT_W}
                     cy={H - milestone.y * H}
                     r="3.5"
                     fill="var(--streak)"
@@ -159,9 +205,9 @@ export default function TerrainProfile({
                 }}
               />
 
-              {/* Today. */}
+              {/* Today — the end of the data, not the end of the frame. */}
               <circle
-                cx={W - 5}
+                cx={PLOT_W}
                 cy={summitY}
                 r="4"
                 fill="var(--accent)"
@@ -191,7 +237,7 @@ export default function TerrainProfile({
                 : "sv-status absolute inset-0 flex items-center justify-center px-4 text-center font-label text-[0.65rem] uppercase text-muted"
             }
           >
-            {compact ? "No elevation yet" : "No elevation yet \u00b7 completed tasks raise the ground"}
+            {compact ? "No elevation yet" : "No elevation yet \u00b7 working a topic raises the ground"}
           </p>
         )}
       </div>
@@ -199,9 +245,13 @@ export default function TerrainProfile({
       {!compact && terrain.hasData && (
         <div
           aria-hidden="true"
-          className="mt-1.5 flex justify-between pr-4 font-label text-[0.6rem] uppercase tracking-[0.12em] text-muted sm:pr-6"
+          /* Right padding matches RIGHT_GUTTER as a share of the width, so
+             "next N" sits under the end of the curve rather than out in the
+             bleed past it. */
+          className="mt-1.5 flex justify-between font-label text-[0.6rem] uppercase tracking-[0.12em] text-muted"
+          style={{ paddingRight: `${(RIGHT_GUTTER / W) * 100}%` }}
         >
-          <span>12 weeks</span>
+          <span>{TERRAIN_SPAN}</span>
           {terrain.next && <span className="tabular-nums">next {terrain.next}</span>}
         </div>
       )}
@@ -213,7 +263,7 @@ export default function TerrainProfile({
       */}
       {!compact && terrain.reached.length > 0 && (
         <figcaption className="sr-only">
-          {terrain.reached.map((m) => `${m.value} tasks reached.`).join(" ")}
+          {terrain.reached.map((m) => `${m.value} activities reached.`).join(" ")}
           {terrain.next ? ` Next milestone at ${terrain.next}.` : ""}
         </figcaption>
       )}

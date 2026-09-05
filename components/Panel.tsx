@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { WebFrame } from "@/components/spiderverse/SpiderWeb";
+import { ThreadFrame } from "@/components/spiderverse/Threads";
 import { GlitchText } from "@/components/spiderverse/GlitchText";
 
 /**
@@ -76,15 +76,15 @@ export default function Panel({
         )}
 
         <div className="relative min-w-0 p-3 sm:p-4">
-          {/* One web per corner and nothing in between — see WebFrame.
-              Hung off the *content* box rather than the panel box: an absolutely
-              positioned child resolves `inset-0` against the padding box, so
-              this already spans this element edge to edge, padding included.
-              That box starts just under the caption bar and ends at the panel's
-              inner edge, which is what puts the top pair below the bar instead
-              of half-buried under it — with no header height hardcoded here to
-              drift out of sync. */}
-          <WebFrame className="inset-0 text-sv-cyan" />
+          {/* One thread cluster per corner and nothing in between — see
+              ThreadFrame. Hung off the *content* box rather than the panel box:
+              an absolutely positioned child resolves `inset-0` against the
+              padding box, so this already spans this element edge to edge,
+              padding included. That box starts just under the caption bar and
+              ends at the panel's inner edge, which is what keeps the top pair
+              below the bar instead of half-buried under it — with no header
+              height hardcoded here to drift out of sync. */}
+          <ThreadFrame className="inset-0 text-sv-cyan" />
           <div className="relative">{children}</div>
         </div>
       </div>

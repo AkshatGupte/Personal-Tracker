@@ -1,6 +1,10 @@
 // Schema for Rendred. Ground truth is docs/SCHEMA.md — keep the two in sync.
-// Phase 1 covers Track, Topic, Task and CompletionLog. InsightLog (Phase 3)
-// and UserPreferences (Phase 4) are deliberately not modelled yet.
+//
+// A Track holds a recursive tree of Topics, at most 5 levels deep. A Topic with
+// children is a parent and is not actionable; a Topic with no children is a
+// leaf and is the unit of activity. There is deliberately no Task model: a leaf
+// Topic *is* the task, which is what lets the same structure describe a chess
+// opening repertoire and a Spanish curriculum without either being special.
 
 generator client {
   provider = "prisma-client"
@@ -12,108 +16,91 @@ datasource db {
 }
 
 /// A top-level learning goal, e.g. "DSA" or "Spanish".
+///
+/// Carries no cached streak columns. A strict streak breaks through
+/// *inactivity*, and inactivity by definition writes nothing — so a cached
+/// number has no code path that could expire it, and would read as alive days
+/// after it lapsed. Streaks, coverage and totals are all derived from
+/// TopicActivity on read; for a single local user the whole history is a few
+/// hundred rows.
 model Track {
   id   String @id @default(cuid())
   name String
 
-  // Strict streak: a missed day resets currentStreak to 0. No forgiveness.
-  currentStreak Int @default(0)
-  longestStreak Int @default(0)
-
-  // Null until the first task is completed on this track.
-  lastActivityDate DateTime?
-
   createdAt DateTime @default(now())
 
-  topics         Topic[]
-  completionLogs CompletionLog[]
+  topics Topic[]
 }
 
-/// A sub-category within a Track, e.g. "Arrays" or "Graphs".
+/// A node in a Track's topic tree.
+///
+/// The same model is both the branch and the leaf. Whether a node is actionable
+/// is a question about its children, never a stored flag — so a leaf that gains
+/// children stops being actionable the moment they exist, and becomes actionable
+/// again if they are removed, with its own history still attached.
 model Topic {
-  id      String @id @default(cuid())
-  trackId String
-  name    String
+  id       String  @id @default(cuid())
+  trackId  String
+  /// Null for a top-level topic. Otherwise the node this one hangs under.
+  parentId String?
+  name     String
 
-  /// True if this came from the suggested curriculum, false if user-added.
-  isExpected Boolean @default(false)
-
-  /// Explicit order within the track. A curriculum is a sequence, and creation
-  /// order does not survive reordering or regeneration, so ordering is stored
-  /// rather than inferred from createdAt.
+  /// Explicit order among siblings. Shared by the flat and tree views, so a
+  /// reorder in one is a reorder in both. Creation order does not survive a
+  /// move, which is why this is stored rather than inferred.
   position Int @default(0)
 
+  /// 1 for a top-level topic, up to MAX_DEPTH (5). Denormalised so the depth
+  /// rule can be enforced with a single read instead of walking to the root on
+  /// every insert, and rewritten across a whole subtree when one is moved.
+  depth Int @default(1)
+
+  /// Soft delete. Deleted nodes leave current tree and coverage calculations
+  /// immediately but keep their activity rows, so historical views still show
+  /// what happened on the days they were alive.
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
 
-  track Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  tasks Task[]
+  track    Track           @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  parent   Topic?          @relation("TopicChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children Topic[]         @relation("TopicChildren")
+  activity TopicActivity[]
 
   @@index([trackId])
-  @@index([trackId, position])
+  @@index([parentId])
+  @@index([trackId, parentId, position])
 }
 
-/// A persistent recurring learning activity within a Topic, e.g. "Practice
-/// array problems". A task is never permanently completed: it stays available
-/// indefinitely and is checked in once per day. There is deliberately no
-/// one-time task type and no `kind` discriminator — see docs/PRD.md.
-model Task {
+/// One row per topic per day, holding how many times that leaf was worked.
+///
+/// This is the single source of truth for every activity figure in the app —
+/// intensity, coverage, streaks, history. Nothing rolls it up into a second
+/// table: a per-track daily rollup existed under the old model and was pure
+/// derived state that had to be rebuilt whenever anything moved or was deleted.
+///
+/// A count rather than a row per click: the product question is "how much did
+/// this node get worked today", and undo has to decrement the same number the
+/// tiers read. At zero the row is deleted, so presence means activity and no
+/// zero row can be mistaken for a worked day.
+model TopicActivity {
   id      String @id @default(cuid())
   topicId String
-  title   String
 
-  /// Optional: "easy" | "medium" | "hard".
-  difficulty String?
-
-  /// Explicit order within the topic. Same reasoning as Topic.position.
-  position Int @default(0)
-
-  createdAt DateTime @default(now())
-
-  topic    Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  checkIns TaskCheckIn[]
-
-  @@index([topicId])
-  @@index([topicId, position])
-}
-
-/// One row per task per day: the user's statement that they did this activity
-/// today. This is the ground truth the whole product is built on — CompletionLog
-/// is a derived per-track rollup of these rows and can always be rebuilt.
-///
-/// There is no status column. The row's existence *is* the state, so undoing a
-/// check-in deletes the row rather than flipping a flag.
-model TaskCheckIn {
-  id     String   @id @default(cuid())
-  taskId String
-
-  /// Local midnight, normalised through startOfDay() in lib/day.ts — the same
-  /// convention as CompletionLog.date.
+  /// Local midnight, normalised through startOfDay() in lib/day.ts.
   date DateTime
 
-  /// The real time of day. Kept for interest; nothing reads it for logic.
-  createdAt DateTime @default(now())
+  /// Clicks recorded on this node on this day. Always >= 1 while the row
+  /// exists. Stored uncapped even though intensity tiers top out at 5.
+  count Int @default(1)
 
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
 
-  /// One check-in per task per day. Enforced here rather than in application
-  /// code, so a double submit cannot produce two rows for one day.
-  @@unique([taskId, date])
-  @@index([taskId])
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  /// One row per node per day. Enforced here rather than in application code,
+  /// so a double submit cannot produce two rows for one day.
+  @@unique([topicId, date])
+  @@index([topicId])
   @@index([date])
-}
-
-/// One row per track per day, so streaks and weekly/monthly rollups can be
-/// read directly instead of recounting every task each time.
-model CompletionLog {
-  id      String   @id @default(cuid())
-  trackId String
-  date    DateTime
-
-  tasksCompletedCount Int @default(0)
-
-  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
-
-  /// Enforces the "one entry per track per day" rule from docs/SCHEMA.md.
-  @@unique([trackId, date])
-  @@index([trackId])
 }

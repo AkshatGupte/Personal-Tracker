@@ -16,6 +16,8 @@ const fireButton =
 export default function EffectLab() {
   const [shatter, setShatter] = useState(0);
   const [strikes, setStrikes] = useState(0);
+  const [glitches, setGlitches] = useState<string[]>([]);
+  const [glitchCount, setGlitchCount] = useState(0);
 
   /*
     The spawner owns its own state, so the lab counts what it renders rather
@@ -35,6 +37,32 @@ export default function EffectLab() {
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
+
+  /*
+    The same trick for the ambient glitch, plus the one thing worth knowing
+    about it that a screenshot cannot tell you: *what* it picked. Target variety
+    is the property most likely to be wrong — a registry selector that matches
+    one element on the page produces a spawner that looks fine and glitches the
+    same header forever — so the lab records the text of every target it sees.
+  */
+  useEffect(() => {
+    let last = "";
+    const observer = new MutationObserver(() => {
+      const layer = document.querySelector(".sv-glitch-pass");
+      if (!layer) return;
+      const text = (layer.textContent ?? "").trim().slice(0, 28) || "(untitled)";
+      const rect = (layer as HTMLElement).getBoundingClientRect();
+      const key = `${text}@${Math.round(rect.x)},${Math.round(rect.y)}`;
+      if (key === last) return;
+      last = key;
+      setGlitchCount((n) => n + 1);
+      // The log is the last twelve, not all of them — over a long watch the
+      // count is the useful number and the tail is just scroll.
+      setGlitches((seen) => [text, ...seen].slice(0, 12));
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
   const [shards, setShards] = useState(9);
   const [panel, setPanel] = useState(0);
 
@@ -43,9 +71,10 @@ export default function EffectLab() {
       <header>
         <h1 className="font-display text-4xl leading-none">Effect lab</h1>
         <p className={note}>
-          Development only. Both effects in isolation, at the sizes they are used at, so
-          the branching and the colour mix can be judged before they are wired into
-          state changes across the app.
+          Development only. Every effect in isolation, at the sizes it is used at, so the
+          branching, the colour mix and the target variety can be judged before any of it
+          is trusted on a real screen. Two of the three are ambient and arrive on their
+          own — the buttons beside them only force the same spawner to run early.
         </p>
       </header>
 
@@ -75,6 +104,106 @@ export default function EffectLab() {
           <div className="sv-panel h-28" />
           <div className="sv-panel h-28" />
         </div>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      <section className="flex flex-col gap-3">
+        <h2 className={sectionLabel}>Dimensional voids</h2>
+        <p className={note}>
+          The third ambient effect. A void opens somewhere every 9-20 seconds and lives
+          anywhere from a second and a half to twenty-two, depending on which of five
+          archetypes it drew — <em>crawler</em> (quiet, drifts, snaps), <em>rupture</em>{" "}
+          (tears open and throws fragments), <em>swarm</em> (several pieces on independent
+          drifts), <em>corruptor</em> (barely moves, breaks the page around itself), and{" "}
+          <em>blink</em> (gone before you are sure it was there). Each generates its own
+          keyframes, so no two share a timeline.
+        </p>
+        <p className={note}>
+          The thing to judge here is the <em>corruption</em>, not the shape. When one
+          fires, the interface behind it is genuinely displaced, channel-split, torn into
+          bands and sometimes erased outright — that is `backdrop-filter` on the real
+          pixels, not a drawing of a glitch. Press repeatedly and you will mostly see
+          nothing extra: bursts are rate-limited to one every 2.2 seconds however many
+          voids want one, and only the corruptor and the rupture fire strong ones. Fire a
+          dozen, then leave it alone and watch — the contrast between the stillness and
+          the break is the whole effect.
+        </p>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            className={fireButton}
+            onClick={() => window.dispatchEvent(new Event("sv:spot"))}
+          >
+            Open a void
+          </button>
+          <p className="font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+            voids draw behind this page &middot; corruption draws over it
+          </p>
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      <section className="flex flex-col gap-3">
+        <h2 className={sectionLabel}>Ambient glitch</h2>
+        <p className={note}>
+          The second ambient effect, and nothing here triggers it either. It fires every
+          10-20 seconds, picks <em>one</em> element on screen out of its registry — panel
+          captions, section labels, headings, stat numerals, the wordmark — and corrupts
+          only that one: channels split apart, shards break out over it, print flares pop
+          where they cross. It is over in about half a second, against a lightning
+          strike&rsquo;s two. Leave this page alone for a minute and watch the log fill;
+          the point of the log is that the targets should keep changing.
+        </p>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            className={fireButton}
+            onClick={() => window.dispatchEvent(new Event("sv:glitch"))}
+          >
+            Glitch now
+          </button>
+          <p className="font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+            {glitchCount === 0
+              ? "nothing glitched yet"
+              : `${glitchCount} glitched since load`}
+          </p>
+        </div>
+        {/* Deliberately varied targets, so the registry has something to choose
+            between on a page that is otherwise all prose. */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-8 gap-y-4">
+          <div>
+            <p className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted">
+              elevation
+            </p>
+            <p className="mt-1.5 font-mono text-3xl leading-none text-fg" data-sv-glitch>
+              248
+            </p>
+          </div>
+          <div>
+            <p className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted">
+              streak
+            </p>
+            <p className="mt-1.5 font-mono text-3xl leading-none text-streak" data-sv-glitch>
+              31
+            </p>
+          </div>
+          <h3 className="font-display text-2xl leading-none" data-sv-glitch>
+            Data structures
+          </h3>
+          <span
+            className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-sv-cyan"
+            data-sv-glitch
+          >
+            checked in today
+          </span>
+        </div>
+        <ol className="mt-1 flex flex-col gap-0.5 font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+          {glitches.map((target, i) => (
+            <li key={`${target}-${i}`}>
+              {glitchCount - i}. {target}
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* ---------------------------------------------------------------- */}

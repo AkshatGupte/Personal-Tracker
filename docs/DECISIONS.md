@@ -5,6 +5,901 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-05 — `AmbientLightning` rebuilt against a reference: short jags, four generations, four passes**
+Asked to make the lightning match a reference frame — cyan Lichtenberg discharge
+with a hot core and a heavy bloom. **This modifies the lightning system, which an
+earlier brief in this session put off limits;** that scoping constraint is taken
+as superseded by an explicit request to change this specific effect. Nothing else
+about it moved: it is still ambient at 8-18s, still originates on a real border
+and grows along its outward normal, still flickers in hard and fades out slowly.
+
+Photographed side by side, the old figure read as a **bare tree branch**, for
+three separable reasons:
+
+- **Segment geometry.** A trunk of 4-7 jags at 46-72px is a straight line with a
+  couple of kinks. Now 10-14 jags at 19-32px with `wander` 0.85 → 1.4: the same
+  reach, an order more direction change. Fork angles widened from 26-80° to
+  29-95° so branches can leave nearly perpendicular.
+- **Branch depth.** Three generations gives a clean, *countable* tree. A fourth
+  generation of 5-12px capillaries is the level at which the eye stops counting
+  branches and reads electricity. Fork counts also rose at every level (gen1 3-5
+  → 5-8, gen2 1-3 → 2-4).
+- **The neon pair was not enough.** `CLAUDE.md`'s rule is a blurred colour halo
+  under a near-white core, and that is right in principle but produced a thin
+  filament with a faint glow: one pass can be wide *or* intense, not both. Four
+  now — a wide soft bloom (7x, blur 9, 0.55), a tight saturated sheath (2.6x,
+  blur 2.5, 0.95), the `#8FF3FF` core, and `#EAFEFF` heat at 0.42x on strokes
+  over 1.6px wide. The white pass is deliberately restricted to heavy runs;
+  painting it down the capillaries would flatten the taper the self-similarity
+  depends on.
+
+**Cost, measured rather than assumed.** The figure went from ~30 strokes to ~100,
+and at four passes that is ~400 paths per strike. The wide bloom was then
+filtered to strokes over 1.2px — a 0.8px hair grown sevenfold and blurred by nine
+is invisible — which removed roughly a quarter of them. Frame timing with
+strikes on screen then measured identical to the same page with none, at all five
+widths, and 60fps at 768 and below (worth noting because it shows the headless
+renderer is *not* uniformly capped at 30fps, which earlier readings had suggested).
+
+No overflow at any width and no hit-test interference: the strike layer is
+`overflowX: clip`, which the compacted figure makes less load-bearing than
+before, not more.
+
+---
+
+**2026-09-05 — One five-second envelope; size is the clock and corruption is a function of it**
+Asked for a single arc per void — seed small and subtle, grow, destabilise with
+growth, peak with the strongest corruption, collapse — in roughly five seconds.
+
+**The envelope is shared and the archetype is the character played over it.**
+Previously each archetype owned its whole timeline (crawler 14-22s at full size,
+blink 1.5-3s), so "how big is it" carried no information and a burst's strength
+had no relationship to what the void was doing. `growth(t, peak)`,
+`presence(t)` and `unrest(t)` are now the spine, and `envelopePoses` builds the
+common track from a `Character` — peak scale, step count, wobble, spin, cut
+chance, flicker, deform. Each script splices its signature events over that
+(the rupture's tear, the corruptor's three recoils).
+
+**Everything unstable is multiplied by `unrest(t)`**, which is 0 at the seed and
+1 at the peak: positional wobble, rotation, skew, squash, hard-cut probability
+and flicker. Instability rises with size by construction rather than by being
+tuned to match. The silhouette swap rate rides the same curve — `restMs` was
+reinterpreted from `[min, max]` to `[fast at peak, slow at seed]` and is
+interpolated by `unrest`, so it accelerates from ~4fps to ~20 *as* the void
+grows instead of switching at a window boundary.
+
+**Growth accelerates rather than being linear.** A constant rate reads as a
+shape being scaled by something outside it; an accelerating one reads as
+something opening under its own pressure. There is a brief hold at full size
+before the collapse, without which the largest frame is also the first frame of
+the collapse and is never actually seen.
+
+**Corruption strength and size come from one number.** `bursts` was
+`{ at, strength }`; strength was computed from the *scheduled* time while the
+region was drawn at the size taken from the *pose track*, which a spliced recoil
+or a thrash can move a long way. `bursts` is now just `number[]`, and at fire
+time `poseAt` gives the void's real scale, from which both the strength and the
+drawn size are derived. Measured across a dozen bursts afterwards: 4 tear-bands
+and no erasure at a third of full size, 7 bands and the erasure at full size.
+
+*(Honesty note: the specific evidence that first prompted this — "erasure firing
+on a 0.32-scale burst" — turned out to be a faulty detector in the measuring
+script, which matched `brightness` and so counted the `invert(1) brightness(1.35)`
+tear filter as the erasure. The two-sources-of-truth problem was real and the
+fix stands on its own, but the number cited for it was wrong.)*
+
+**The collapse needed three stops, not one.** Written as a single stop eased
+with `EASE.collapse`, it measured 0.8 scale with 3% of the life left — the curve
+is so back-loaded that the whole disappearance happened inside the final ~100ms
+and read as the void being switched off. It now steps down over the last ~700ms,
+keeping a hard cut on the final stop: a hole closing should *end* abruptly, it
+just should not begin abruptly.
+
+**Spawn cadence had to move with it, and this is a consequence rather than a
+preference.** At a five-second life the old 9-20s interval leaves the page empty
+roughly two thirds of the time, which reads as broken rather than restrained.
+Now 4.2-9.5s, preserving the previous presence: usually one void, sometimes two
+or three. `BURST_GAP_MS` went 2200 → 2600 because every void now bursts at least
+once and the corruptor three times, so the rate arriving at that gate is several
+times what it was.
+
+**Blink lost its defining trait and needed a new one.** It was "gone before you
+are sure you saw it", which a shared five-second envelope takes away. Its
+character is now that it is the only archetype whose *unrest starts high* rather
+than arriving with size — it stutters and drops frames while it is still small.
+
+---
+
+**2026-09-05 — Silhouettes get cusps and four families; the tendril becomes branching fractures**
+A screenshot settled it: the void read as a smooth black potato with one
+decorative curl. The behaviour work from the previous pass was fine — the
+*drawing* was the problem, and it had one root cause.
+
+**Catmull-Rom smooths every point it passes through.** With every vertex
+smoothed, a closed loop with ±30% radius jitter is a potato, and no retuning of
+the radii can change that: a torn hole is defined by cusps and notches, and the
+generator could produce neither. `closedSpline` now takes a per-vertex `sharp`
+flag and collapses the control point onto any vertex marked sharp, giving that
+one a hard corner while its neighbours stay round. One outline can now carry a
+smooth ink bulge and a splintered point at once.
+
+**Four silhouette families** — `blot` (deep notches bitten out), `tear` (a thin
+rip with a hard point at each end, `squash` down to 0.2), `splinter` (a cluster
+of long spikes), `shatter` (12-16 alternating in/out points, most of them
+angular). Drawn independently of the behaviour archetype, so a crawler can be a
+jagged shatter and a corruptor a long tear — 4 shapes x 5 behaviours rather than
+5 things.
+
+**The tendril is gone.** `buildTendril` drew one smooth quadratic curve, which
+is exactly what made the void read as a decorated shape. `buildCrack` replaces
+it: straight `L` runs, forking twice, tapering hard to hairlines — the reasoning
+`AmbientLightning` already records, that a fracture turns sharply and a curve
+reads as a ribbon. **Deliberately not shared with the lightning**, which is off
+limits this pass and wants different numbers anyway; if they are ever unified,
+exporting `grow` and `forkPoints` is the move.
+
+Bursts gained fractures whipping out across the interface plus ink chips. That
+is the pass the eye tracks as *movement* — the warp bends what is there and the
+shards colour it, but neither travels.
+
+**Every void now bursts at least once.** Crawler was a 45% chance of one weak
+burst, so the most common archetype usually drifted for twenty seconds doing
+nothing; that was the biggest single contributor to "decorative". The global
+2.2s gate is what keeps corruption occasional, not archetypes being silent.
+
+**Two failures, both only visible in a picture:**
+- **The first splinter was a symmetrical star.** An independent per-vertex spike
+  probability distributes spikes evenly around the ring. They are now chosen as
+  a small clustered index set, so one side gets three points and the other none.
+- **The first burst fractures were a dead shrub.** `growCrack`'s `length` is the
+  first *jag*, not the branch's reach — each jag is 0.7 of the last, so a branch
+  runs ~2.5x the value passed, before forks. Passing a figure scaled as a total
+  gave 600px branches 11px thick over a 273px burst.
+
+**Fracture count is scaled to piece radius** (1 under 26px, 3 over 46px). It
+reads right — a 20px fragment with three branches longer than itself is a bug —
+and it bounds the path count, which an uncapped swarm would have pushed past 700
+stroke elements.
+
+**Measured, not assumed:** 416 paths across three voids costs nothing detectable
+— and the readings that looked like a regression were the headless rasteriser
+fluctuating, since three consecutive *baseline* probes on the same page swung
+33ms/50ms/50ms while the with-voids probes held steady at 33.4ms. A single
+measurement against a single baseline would have produced a confident wrong
+conclusion in either direction.
+
+**A QA note:** `holdBurst`'s timeout went from 14s to 50s. Bursts cannot be
+forced — spawning caps at three live voids, a crawler holds a slot for up to 22
+seconds, and the 2.2s gate drops any burst landing too close to the last — so
+the check was intermittently failing on a working effect.
+
+---
+
+**2026-09-05 — The voids corrupt the backdrop; behaviour is archetypes, and each instance writes its own keyframes**
+The first pass was directionally right and too static — dark shapes drifting,
+every one behaving identically. Two structural changes, not a retune.
+
+**1. Each piece generates its own `@keyframes` at spawn**, injected into a single
+`<style>` and removed with the void. The old version shared five global
+keyframes and varied durations and offsets, which is *why* every void behaved
+the same: a slow creep and a hard positional cut cannot come out of one shared
+curve at different speeds. CSS allows `animation-timing-function` **inside a
+keyframe stop**, so one generated track holds eased drift, `steps(1,end)` snaps
+and a frantic passage in sequence — several time scales in one animation, still
+compositor-only, still nothing ticking per frame. The silhouette boil is
+authored the same way instead of looped: ~6fps at rest, ~18 while failing.
+Verified in QA that every animated element runs a distinct track (72/72 unique).
+
+**2. Five hand-written archetypes** — crawler, rupture, swarm, corruptor, blink —
+each with its own piece count, life length, pose script and burst schedule.
+Randomising one script's numbers gives variations on one behaviour; these are
+five behaviours. Weighted so the quiet one is commonest and the loudest rarest.
+
+**3. Corruption is `backdrop-filter` on the real pixels.** A void at `-z-10`
+physically cannot corrupt text painted above it, so a burst is a second,
+transient layer at `z-30` — where `AmbientLightning` and `AmbientGlitch` already
+live. The void layer itself stays behind all UI as required. Passes: an
+`feTurbulence`→`feDisplacementMap` warp (the only thing in CSS that can move
+already-rendered pixels), channel separation in `ChromaticDefs`' language but
+defined separately so that shared file is not retuned, tear slices, an outright
+erasure, and shards imported from `GlitchShatter` rather than reinvented.
+
+**Restraint:** one burst per 2.2s globally however many voids want one; only the
+corruptor and rupture fire strong ones; measured at 3.5% of viewport; 200-520ms.
+
+**Three bugs that all read as correct code and were only found by photographing
+the effect. Worth recording because each produced a confidently passing check:**
+
+- **`VoidFilters` was rendered inside the burst block**, so the `<filter>` defs
+  entered the document in the same commit as the elements referencing them by
+  `url(#...)`. Measured mid-run, `#sv-void-warp` did not exist at all — every
+  burst drew its shards and erasure with *no displacement whatsoever*, and the
+  check still reported "10 backdrop-filtered layers". The defs now mount with
+  the voids, which exist for seconds before any burst.
+- **The clip path was in the piece's box units (up to 370) while the burst
+  element was clamped to 310px.** `path()` has no transform of its own, so the
+  silhouette was oversized and offset and the warp was masked to a region that
+  no longer matched the hole. The region is now exactly `piece.box`; reach is
+  set by the warp's own scale instead.
+- **The warp was clipped to the void's own outline** — and the void is opaque
+  black sitting directly behind it, so it was faithfully warping black into
+  black. It now scales to 2.6× so it bites the *neighbourhood*, keeping the
+  anomaly's outline as the mask shape.
+
+Two more found the same way: the shard cluster at `buildShards`' own scale
+reached 30% of the region and read as broken glass thrown over the panel, so it
+was cut to accents; and the erasure at 62% of the event covered the displacement
+underneath it for almost the whole burst, so it is now the shortest pass — gone,
+then back but wrong, then right.
+
+**A QA lesson worth keeping.** Freezing a transient needs the *animation* paused
+and seeked, not just its removal timer dropped: the first held-burst screenshot
+showed a completely clean page because the animation had run to its `opacity: 0`
+end state while the element sat there. And the uniqueness check read the
+`animation` shorthand's first token — Chrome serialises the name **last**, so it
+was comparing durations and reporting three "unique tracks" that were three
+lifetimes.
+
+**Left as it is:** the corruption layer draws above the content. That is not a
+loosening of "keep the layer behind the UI" — the voids still are. It is the
+only position from which something painted in front of a void can be corrupted
+at all, and it is `pointer-events: none`, `aria-hidden`, mutates nothing, and
+was verified not to take a single hit out of 154 sampled points while a real
+link stayed clickable underneath it.
+
+---
+
+**2026-09-05 — Dimensional voids are a background-occlusion effect, not a particle layer**
+Asked to borrow The Spot's dimensional-patch animation language — explicitly the
+behaviour of the holes, not the character, and with no Spider-Man imagery of any
+kind. `components/spiderverse/DimensionalSpots.tsx`, mounted once in the layout.
+
+**The whole design rests on where it is mounted, not on how the shapes are
+drawn.** It goes immediately *after* `DimensionalThreads`, at the same `-z-10`
+depth, so a void paints over the rift glows and the neon structures and under
+every piece of UI. That occlusion is what makes it a hole: the fill is flat
+`#000` against a `#0a0a0f` ground, so over bare background a void is a
+barely-perceptible darkening and it only becomes unmistakable where there was
+something lit for it to swallow. Draw the same shapes *over* the interface, or
+on a layer with nothing behind it, and they are black circles floating on a page
+— which is the failure the brief named.
+
+A consequence worth writing down, because it means this can never be a
+legibility risk: every text colour in this theme is light on dark, and a void is
+pure black, so it can only ever *raise* contrast for anything in front of it.
+Combined with `pointer-events: none` and sitting behind all content, there is no
+arrangement in which it hides or blocks anything. 154 hit-tests per page per
+width confirm the layer is never what is under the cursor.
+
+**Restraint is in the cadence, not in the opacity.** Two live voids on mobile
+and three on desktop, 11-24s apart, drifting under 50px across a 15-25s life —
+slower than the glows behind them. The constant motion is only the edge boil and
+a slow squash-stretch; a uniform pulse was rejected as reading like a heartbeat.
+The hard positional cut is the one sharp event and about one void in six gets
+one. `--sv-cyan`/`--sv-magenta` appear only as a 0.1-opacity 1px rim on about
+half of them, which is integration with the existing palette rather than a new
+colour, and there is no glow or blur anywhere in the file.
+
+**The boil is three cels, and that is a deliberate rejection of the smoother
+option.** An SVG `<filter>` with turbulence would give a rougher edge and would
+be a per-pixel pass over a moving element forever, on a layer the size of the
+viewport — `CLAUDE.md` already warns about filters over large subtrees. Instead
+each void builds three complete drawings of itself and hard-cuts between them at
+about 7fps, which is what hand-drawn animation does and why it reads as ink.
+Same reasoning as `GlitchText`'s discrete frames: a library cannot help with a
+thing defined by *not* interpolating. No dependency was added.
+
+**Not added to `effectClock`.** That clock exists to stop two *flashes* landing
+in one loud moment. A void lives twenty seconds and is ambient presence rather
+than an event, so there is no pile-up to prevent, and a third kind would mean
+rewriting the clock's two-way `other` lookup for nothing.
+
+**Absent under reduced motion, not frozen.** The atmosphere layers hold their
+neutral pose because they are scenery; a transient's neutral pose is a permanent
+black smear parked over the interface, which is the same conclusion
+`AmbientLightning` and `AmbientGlitch` both reached.
+
+**Two faults that only screenshots would have caught, recorded because both
+looked correct in the code:**
+- Sizing chose the SVG box and let the blob be whatever fitted inside it. But
+  `VIEW_SCALE` reserves room for tendrils and bleed, so a "170px void" drew 87px
+  of hole and the layer read as specks. The diameter of the *ink* is the number
+  worth choosing; the box is derived from it.
+- Placement biased x and y away from centre independently. At 62% per axis that
+  puts both at an extreme 38% of the time, so voids pile into the four corners
+  rather than spreading along the edges — three stacked in the bottom-right of
+  the very first screenshot. Now one randomly chosen axis is pushed out and the
+  other left free. Independent per-axis bias is not the same as edge bias, and
+  the difference is invisible until you look.
+
+**Verified:** 1560/1280/390/320 on home and track, with the maximum number of
+voids forced. No horizontal overflow (the layer is `fixed` + `overflow: hidden`,
+so a void can hang off the frame without ever creating a scroll container —
+`AmbientLightning` had to solve this the harder way because a strike must stay
+free to run off the top). Saved as `qa/spots-check.mjs` rather than left in the
+scratchpad: it was written twice, having been lost with a session in between,
+and that is the fourth browser check this project has lost that way.
+
+---
+
+**2026-09-05 — The terrain window is 14 days, and it is no longer the heatmap's window too**
+`TERRAIN_DAYS` was 84 and did two jobs: it set the elevation graph's span, and
+`windowStart()` in `lib/progress.ts` built the row filter from it for *both* the
+terrain and `countsByDay` — the series the consistency heatmap renders.
+`StreakHeatmap` meanwhile carried its own unrelated `const WEEKS = 12` and drew
+84 cells regardless. So the two were coupled in the data layer and independent in
+the view, which is the worst of both: shortening the graph would have left the
+heatmap drawing a full twelve-week grid with ten weeks of it blank, and nothing
+in either file would have looked wrong.
+
+Both spans now live in **`lib/windows.ts`**, named after the question they
+answer, and `windowStart(days)` takes the span rather than assuming one. The
+heatmap reads `HEATMAP_WEEKS` from the same file `lib/progress.ts` reads
+`HEATMAP_DAYS` from, so the grid and the filter behind it are one number.
+
+**14 days, not 21.** The request was "around 15, ideally whole weeks". Against
+the activity actually in the database (25 rows spanning 2026-08-29 to 09-04), 21
+days leaves ~62% of the frame as empty run-up before the first data point and 14
+leaves ~36%. Two weeks also says itself cleanly in a caption. Lengthen it when
+there is history to fill it — that is a judgement about the data, and it is one
+line.
+
+Every caption that names a span is now derived: `TERRAIN_SPAN` / `HEATMAP_SPAN`
+via `spanLabel()`, which says whole weeks in weeks and anything else in days. The
+"12 weeks" strings in `TerrainProfile`, both Consistency sublabels,
+`describeTerrain` and the heatmap's aria summary were all hand-typed and had to
+be found by grep — deriving them is what stops that recurring.
+
+`getLeafHistory`'s `days` parameter defaulted to `TERRAIN_DAYS` and is now
+required. It had the same fault in miniature: shortening the graph would have
+quietly shortened the per-topic history strip too. Its one caller already passed
+28 explicitly.
+
+**Left open, deliberately, and flagged rather than fixed:** `terrain.peak` is
+the total *inside the window*, and it is what the home page's headline
+"Elevation" numeral and the track page's `TrackStat` both render. `CLAUDE.md`
+says elevation "only rises". At 84 days that was quietly untrue and effectively
+unobservable; at 14 days it becomes visible — with the current data, elevation
+will drop from 52 to about 49 in roughly five days as 2026-08-29 ages out. This
+is a change in what a headline figure *means*, not a rescale of a drawing, so it
+was out of scope for a request to rescale the graph. The fix, if wanted, is to
+compute elevation as an all-time cumulative total and let the graph plot only its
+window — which needs a baseline offset in `buildTerrain`, because the curve would
+no longer start from zero.
+
+"Check-ins over 12 weeks" on the home page became "activities over 2 weeks" in
+the same pass. `check-in` was the once-daily Task tick and Tasks are gone; the
+figure is a count of `TopicActivity`, which is per node per day and uncapped.
+
+**Verified:** home and track at 1560 / 1280 / 390 / 320 — no horizontal overflow
+at any width, caption "2 weeks" at all four. The decoupling was tested rather
+than reasoned about: a 35-day-old row planted in a scratch *copy* of `dev.db`
+appeared in the heatmap (7 active days to 8) and did not appear in the terrain
+(52 over two weeks, unchanged). Run against an isolated copy of the tree on
+:3488 with its own database, because the user's own server held :3000 — per
+`qa/README.md`, and per the handoff's warning about killing it.
+
+---
+
+**2026-09-05 — The terrain reserves a right gutter; the data insets, the ground does not**
+`bleed-r` runs the profile to the window's right edge, and the newest point is
+today — so `cx={W - 5}` put today's marker roughly 7px from the screen edge, with
+the steepest and most recent part of the curve crushed against it.
+
+`RIGHT_GUTTER = 48` (6.7% of the 720-unit box) now backs the plot off. The
+important part is *what* it insets: `PLOT_W` drives the ridge, the area fill, the
+milestone contours and dots, and today's marker — but **not** the baseline or the
+strata, which still span the full width. The ground continuing past today is the
+honest reading of a time axis that ends at now, and it keeps `bleed-r` doing the
+job it was added for instead of being undone.
+
+Measured after: 60 / 51 / 23 / 19px of clearance at 1560 / 1280 / 390 / 320.
+
+**A testing failure worth recording, because it produced a confident wrong
+answer.** A 320px overflow on the tree view was investigated by a script that
+took the track id from the wrong argv slot, so the browser measured
+`/tracks/x?view=tree` — a 404 page — and reported no overflow across 120 frames.
+The clean result was from a page that does not exist. The same argv slip has now
+happened four times in this project's QA scripts; the fix is to have the script
+assert the page it landed on before measuring it, not to be more careful.
+
+The overflow is real and remains open: `TopicTree`'s per-node control row is
+`shrink-0`, and at 320px with five levels of indentation it pushes 4px past the
+viewport. Out of scope for the graph fix; recorded rather than silently patched.
+
+---
+
+**2026-09-05 — Neon is a colour pair, not a brightness**
+The structures were stroked in one faint cyan and read as muted teal outlines.
+Raising the opacity alone would have made them brighter lines, not lit ones.
+
+They now use the pairing `AmbientLightning` already uses: a wide blurred halo in
+`--sv-cyan` under a thin `#8FF3FF` filament. The saturated halo around a
+near-white core is what the eye reads as a tube with light inside it; a
+single-colour outline at any opacity stays a line. No colour entered the palette
+— `#8FF3FF` is the same value the discharge core has used all along, and the
+halo takes the token from the caller's text colour.
+
+Depth survived the brightening because the near/far split was raised
+proportionally rather than flattened: front faces strongest, back faces and
+connecting edges weaker. Panel-corner structures stay the most restrained of the
+set — they are inside the reading area, so they take the same treatment at a
+fraction of the strength.
+
+---
+
+**2026-09-05 — The unit is a structure, and the composition is placed by hand**
+The lattice pass was rejected as "many random polygon shapes". It was: a
+space-filling field of small cells on a jittered grid. Two things changed.
+
+**The unit is now a wireframe solid, not a cell.** Near face, a smaller far face
+displaced to one side, edges joining corresponding corners. The far face is
+scaled *as well as* displaced — displacing alone gives two stacked outlines,
+while converging edges are what the eye reads as perspective. Vertex jitter is
+±15% of the radius: enough that it is not a regular hexagon, restrained enough
+that it still reads as a considered shape rather than the blob heavy jitter
+produces.
+
+**The composition is a hand-written list of five positions, not a generator.**
+This is the actual correction. A seeded scatter produces an even distribution
+however carefully it is tuned — "a few dominant structures with smaller ones
+around them" is a composition, which is a decision, and no amount of density
+tuning turns a distribution into one. Solids sit outside 22-78% horizontally,
+where a centred `max-w-5xl` column lives; threads cross that band and the panels
+occlude them anyway.
+
+**Threads terminate at structure centres and are painted first**, so each one
+disappears under the solid it arrives at. Ending a thread at a vertex would need
+the structure's on-screen geometry at layout time and would look like a graph
+edge touching a node — the exact reading being avoided. Several runs have an
+endpoint outside 0-100 so they leave the frame; a thread that stops at the edge
+reads as a line that ended.
+
+**Neon is two strokes, never a filter.** A wide blurred faint pass plus a thin
+bright core, the same construction `AmbientLightning` uses. A `<filter>` over a
+full-viewport group is a per-pixel pass over the whole screen for a static
+drawing, and `CLAUDE.md` already warns about filters applied over large subtrees.
+
+**Stroke widths under `vectorEffect="non-scaling-stroke"` are screen pixels, not
+viewBox units.** The threads shipped invisible on the first render because 0.16
+was written for a 0-100 box and rendered as a sixth of a pixel. Worth
+remembering: the failure looks like a deliberate composition, not like a bug.
+
+---
+
+**2026-09-05 — Webs replaced by a thread lattice; `SpiderWeb.tsx` deleted**
+The orb webs are gone everywhere — viewport, panel corners, section rules and the
+empty state — replaced by `components/spiderverse/Threads.tsx`. The old file was
+deleted rather than left beside the new one, per "remove the old spiderweb visual
+entirely"; the four consumers (`layout`, `Panel`, `page`, `TopNav`) changed by an
+import line and a tag name each, nothing else.
+
+**Every stroke is a straight segment, and that is the rule to hold.** A web is a
+hub, radials and sagging rings; the Spider-Society lattice is straight struts
+meeting at vertices around irregular cells. There is deliberately not one
+quadratic command left in the file, and adding a curve would start walking the
+drawing back toward what it replaced. Verified against the rendered HTML: zero
+`Q` commands in the page.
+
+**What keeps it from reading as a network graph** — the likeliest failure mode,
+since "nodes joined by edges" is what this geometry becomes if under-specified:
+cells enclose area (a graph does not), neighbours differ 2-3x in scale, each cell
+carries its own opacity so depth is lit as well as sized, cells overlap so their
+edges cross into one interlocked structure, cells are randomly skipped so the
+seeding grid never surfaces, and long spans cross each field edge to edge to say
+the structure continues past the frame.
+
+**Struts join vertex to vertex, never centre to centre.** Joining centres draws
+lines *through* the cells and produces exactly the spoked hub the webs had.
+
+**Placement is the readability mechanism, not opacity.** The two main fields are
+tall bands in the left and right margins — the only ground a centred column
+reliably leaves free — and each is density-biased toward the screen edge so it
+thins as it approaches the content rather than stopping at a hard line that would
+show its own boundary. On a narrow viewport there is no free margin, so the bands
+narrow to 72px and the corner clusters drop out entirely.
+
+**This reverses part of the previous pass, deliberately.** That one pushed the
+webs off-frame so they cropped; this brief asks for threads kept within the
+viewport. A lattice reaching the edges is not the same thing as a large structure
+chopped in half — cells cut by the frame are cells that carry on, which is what
+the reference does.
+
+Panel clusters are 92px, not the 120 first tried: at 120 the top and bottom
+clusters visibly crossed a track row on a narrow viewport, which is the "dense
+clusters obscuring content" the brief rules out.
+
+---
+
+**2026-09-04 — The viewport webs are cropped, three not four, plus edge strands**
+Reported as feeling like "decorative corner stickers", which was fair: four
+complete quarter-discs, one per corner, each ending neatly inside the frame.
+
+Three changes, and the first two matter more than they sound:
+
+- **Cropped.** Each web is now larger than its corner and pushed outward past
+  it, so the frame cuts the hub and inner rings away and only the outer sweep
+  arcs in. A web that terminates inside the viewport is an object placed on the
+  page; one that runs off it is part of a space that continues.
+- **Three, not four.** Dropping one is what stops the arrangement resolving into
+  a border motif, however differently each is seeded — and it is the cheapest
+  way to reduce what sits behind the interface. Bottom-left is bare because the
+  content column runs longest down the left.
+- **Edge strands.** `WebStrands` draws a few sagging anchor lines running in
+  from an edge with sparse cross-links. Real webs are built from bridge lines
+  before any spiral, and they are what makes the space read as webbed rather
+  than as cornered. Links are deliberately sparse: a full ladder becomes a net,
+  and a net in the background is the busyness this pass was reducing.
+
+Two constraints that shaped the implementation:
+
+- **Rotation is small — 6 to 12 degrees — and turns about the hub.** The web is a
+  quarter-disc anchored in a right angle; a large rotation swings it off the
+  corner it is attached to and bares the very angle it should fill, because
+  cropping hides the near edge and not the far one. `transform-origin` is set to
+  the anchored corner so it pivots where it is attached.
+- **Outward shift is a fraction of the element's own size, not pixels.** These
+  are resized in CSS for narrow viewports, and a fixed pixel offset does not
+  follow — the same crop has to hold at every size, which a percentage
+  translation gives for free and a second set of hand-written numbers would not.
+
+Scope held deliberately: `WebFrame` (panel corners), `WebDivider` (section
+rules) and `WebLoader` are untouched. The divider webs do hang into content and
+are arguably the busiest webbing on the page, but reserving less height for them
+changes layout, which was explicitly out of scope.
+
+---
+
+**2026-09-04 — Every horizontal line in the terrain lives inside the ground**
+Reported as "the yellow lines look really out of place", and they did. The
+milestone contours ran `x1=0 → x2=W` unclipped at 0.75 opacity in full `--streak`
+yellow. On a bleeding profile that is the entire viewport, so two hard yellow
+rules crossed the whole page, out past the reading column, over a chart that is
+mostly empty at seven days of data.
+
+Dimming them was the obvious fix and the wrong one. The real defect was that they
+broke a convention the rest of the drawing already keeps: the strata are clipped
+to the landform, and the milestone contour was the only horizontal line allowed
+to float in empty sky. It is now clipped to the same path, and additionally stops
+at the crossing point — past which it states nothing, since elevation rises
+monotonically and the ground is above that level from then on.
+
+Because clipping removes the cause, the line can stay legible (0.55) rather than
+being faded into apology. `CLAUDE.md`'s rule is unchanged and still holds:
+milestones are drawn only where actually crossed, in `streak` yellow. This makes
+that more literally true than it was.
+
+---
+
+**2026-09-04 — One model for branch and leaf; no Task table**
+A Topic with live children is a parent; one with none is a leaf and is the unit
+of activity. Leaf-ness is **derived, never stored** — that is what lets a leaf
+gain children, stop being actionable, and become actionable again later with its
+own history still attached, without a migration or a `kind` column.
+
+The old `Task`, `TaskCheckIn` and `CompletionLog` tables were dropped outright.
+The brief said there was no meaningful data to preserve and asked for a reset
+rather than a compatibility layer, and the reset was consented to explicitly
+(Prisma's CLI refuses `migrate reset` without it).
+
+**2026-09-04 — No rollup table; every figure derives from TopicActivity**
+`CompletionLog` was a per-track daily rollup that had to be rebuilt whenever
+anything was deleted or moved — `recomputeDays`, `affectedDays` and the whole of
+`lib/completion.ts` existed to keep derived state honest. Deriving on read
+instead means a move or a soft delete changes what the figures *mean* without a
+single row being rewritten to keep up. `Track.currentStreak` / `longestStreak` /
+`lastActivityDate` went for the same reason plus a stronger one: a strict streak
+lapses through inactivity, which writes nothing, so a cached streak has no code
+path that could ever expire it.
+
+For one local user the whole history is a few hundred rows, so the read cost of
+deriving is not a consideration.
+
+**2026-09-04 — A count per node-day, not a row per click**
+Undo has to decrement the same number the intensity tiers read, and the product
+question is "how much was this worked today". At zero the row is **deleted**
+rather than left at 0: presence means activity, and a zero row would be
+indistinguishable from a worked day in every query that reads presence — the
+streak most of all.
+
+`increment` is correct here, unlike the old check-in, which was a set-membership
+question and had to be recomputed to stay idempotent. A click *is* an increment;
+re-running it is meant to add another.
+
+**2026-09-04 — Depth is denormalised, and rewritten across a moved subtree**
+Every insert and move checks depth, and walking to the root each time would make
+the commonest write the most expensive. The cost is that a stale value silently
+permits a six-level tree, since every later check reads it — so the move rewrites
+the whole subtree's depths inside the same transaction as the move itself.
+
+The move check is `parent.depth + subtreeHeight(node)`, not the moved node alone.
+Checking only the node would happily push its grandchildren past the limit; the
+test suite asserts exactly that case.
+
+**2026-09-04 — Three coverage measures, never conflated**
+- Leaf intensity is its own count.
+- Parent coverage is distinct *direct* children worked, so hammering one child
+  does not move it — coverage is breadth, and touching one corner repeatedly is
+  not breadth. A child that is itself a parent counts as worked when anything
+  beneath it was.
+- Track coverage is computed across all leaves at once, **not** as an average of
+  the top-level topics' coverage. Averaging would weight a topic holding two
+  leaves the same as one holding twenty.
+
+**2026-09-04 — The flat view lists leaves, not top-level topics with children**
+The brief said to keep the flat view as default and adapt it "from Tasks to
+Topics". The literal adaptation — topics listed, each expanding to its children —
+is the old two-level shape and cannot express five levels: a leaf four deep has
+nowhere to appear. So the flat view is every actionable leaf in tree order, each
+carrying its ancestry as a breadcrumb. It works at any depth and answers the
+question the app is actually opened for: what can I work on right now.
+
+Reordering is offered only in the tree view. Flat rows are leaves gathered from
+all over the tree, so two adjacent rows are usually not siblings and "move up"
+would mean nothing there. The order set in the tree is what the flat list sorts
+by, so the two views never disagree.
+
+**2026-09-04 — Green enters the palette, for exactly one signal**
+`CLAUDE.md` said the palette has no green and that reaching for one reintroduces
+the retired motif system. The brief asked for green as the activity colour and
+scoped it — everything else keeps its meaning. Taken as intended and applied
+narrowly: `--activity-1..5` are green and nothing else is; cyan still means done,
+magenta volume, yellow consistency. `CLAUDE.md` was updated rather than left
+contradicting the code.
+
+The ramp is solved, not picked. Every tier clears 4.5:1 against whichever of
+paper or ink sits on it — by at least 6.4:1 — and `--activity-N-fg` carries which,
+so no component decides. The heatmap deliberately stays on the yellow/magenta
+consistency ramp: consistency is a different signal and `CLAUDE.md`'s rule for it
+is unchanged.
+
+**2026-09-04 — The check-in beat was removed, not rewired**
+`CheckInBeat` and `CheckInReport` composed the tick, the report line and one
+emphasised numeral into a single moment, and published from the task row. With
+tasks gone nothing could fire them, and a provider that cannot fire is worse than
+none. The streak-milestone celebration went with them: `milestoneCrossed` and its
+test suite are intact and nothing calls them. If it returns it belongs on the
+first activity of a day.
+
+**2026-09-04 — Prisma writes DateTime as TEXT; the seed wrote INTEGER**
+Recorded because it cost real time and would have shipped silently. SQLite has no
+date type and orders values by **type class before value**, so every INTEGER sorts
+below every TEXT. The seed wrote `getTime()` milliseconds; Prisma binds an ISO
+string. Rows read back through Prisma perfectly and matched *nothing* on any
+`date: { gte: ... }` filter.
+
+Only one place in the app filters dates in the database rather than in
+JavaScript — the per-leaf history — so everything else looked correct and that one
+panel showed an empty state that read like a legitimate "no data yet".
+`prisma/seed.mjs` now asserts both the type and that a range filter matches every
+row it just wrote, and fails the seed rather than let it regress.
+
+---
+
+**2026-09-04 — The task form is disclosed, and stays open after a successful add**
+`NewTaskForm` now renders a trigger until pressed. The state is local to that
+component, so `TopicRow` is unchanged.
+
+Two sub-decisions worth pinning:
+
+- **It does not collapse after an add.** The component already cleared and
+  refocused so several tasks could be entered in a row, and that is the one
+  repeated action on this screen; auto-closing would charge a press per task.
+  Escape and an explicit Cancel are the ways out.
+- **It autofocuses on open**, which the sibling create forms deliberately do
+  *not* do on mount. The rule those follow is "do not steal focus on arrival";
+  nothing opens this one but a deliberate press, so the objection does not
+  apply and not focusing would just cost a click.
+
+The *topic* create form on the same page was left open, because only the task
+form was in scope. It is now the only always-open empty field on the screen,
+which is worth revisiting if the disclosed pattern is kept.
+
+**2026-09-04 — Never kill Next by process-name pattern; check the port**
+Recorded because it caused real disruption. Three times this session a
+`next dev` was treated as a stale orphan and killed by matching
+`[n]ode_modules/.bin/next`, and `.next` was cleared under it. It was the user's
+own server on **:3000** — the session's own servers were on 3477/3488 — and the
+"orphan" kept reappearing because they kept restarting it.
+
+`qa/README.md` warns that a plain `pgrep -f next` matches the shell running it.
+The bigger hazard is the one it did not state: the pattern also matches a server
+somebody else is using. Resolve the port first
+(`ss -lptnH "sport = :<port>"`), kill by that pid, and never `rm -rf .next`
+without knowing that nothing else is serving from it.
+
+Where a change has to be verified while another server holds the project's
+`.next`, copy the working tree to the scratch directory, symlink `node_modules`,
+and run there on its own port. That is how this change was tested.
+
+---
+
+**2026-09-04 — Input placeholders removed; `aria-label` was always the name**
+The three `placeholder` hints are gone (`InlineCreateForm` for tracks and
+topics, `NewTaskForm` for tasks), and the `placeholder` prop was deleted from
+`InlineCreateForm` rather than left accepting an unused string. The dead
+`placeholder:text-muted` utility went with them.
+
+No accessibility cost: every one of these inputs already carried an `aria-label`
+and that is still their accessible name. A placeholder is not a label and these
+were never doing that job.
+
+Separately worth recording, because it was live for a while: the task hint read
+`e.g. Solve: Two Sum`, which is verbatim the example `CLAUDE.md` gives for what
+a Task must **never** be — the file's opening section contrasts "Practice array
+problems" against exactly that string. The empty-state prose and the `.sv-status`
+readouts were left alone; only the typed-field hints were in scope.
+
+**2026-09-04 — The glitch is now the longer of the two ambient effects**
+Second enlargement and second extension, both requested. `PAD_X` went 30/0.5/130
+to 45/0.7/180 and `PAD_Y` 24/1.2/90 to 36/1.7/120; the split moved from half the
+cap height (capped 18) to two thirds (capped 24); `hold` went from 900-1900ms to
+1900-2900ms, so an event runs 2.38-3.63s. Measured 2.77-3.18s.
+
+The duration relationship with `AmbientLightning` has now fully inverted. The
+original brief made this effect ~600ms *because* a strike is 1.5-2.5s and the
+two were meant to read as different species; it is now the longer of the pair.
+Recorded rather than argued: it was asked for twice, in two separate steps, and
+the second step was taken with the first one's consequence already stated.
+
+Worth knowing for the next change: `hold` is the only number a longer event
+needs. Shard cycles, channel-jitter iterations and flare spread are all derived
+from it, so none of them has to be touched again.
+
+---
+
+**2026-09-04 — The glitch holds for 1-2s, and gives up the duration tell**
+Requested directly. `hold` is now 900-1900ms and the fade 350-600ms, so an event
+runs 1.38-2.63s against the previous 510-780ms.
+
+This knowingly spends the thing the original 600ms bought. The brief set that
+number so the glitch and a lightning strike could not be mistaken for one
+another — "two distinct animation species, not similar-length twins" — and at
+1.4-2.6s against a strike's 1.5-2.5s they are exactly that. They still separate
+on everything else, and the shared clock still keeps their onsets at least a
+second apart, but with both running ~2s the two can now be on screen together,
+which the stagger was originally sized to prevent. Widening `COLLISION_MS` from
+1000 to ~2500 would restore full separation if that turns out to matter; it was
+left alone rather than changed unasked.
+
+**2026-09-04 — A longer hold had to be an active hold, not a freeze**
+Stretching the timings alone would have left a static image pasted over a word
+for two seconds. The original structure was "in, sit still, out", which reads as
+one snap at 600ms and as a sticker at 2000ms. Three layers therefore changed:
+
+- **Channel copies** loop `sv-glitch-jitter` through the hold, wandering around
+  the offset the ramp settled on. Each channel has its own period — 190/230/270,
+  pairwise coprime — for the same reason the background's rift glows drift on
+  37/43/29s: harmonic periods visibly re-align, and a predictable glitch is a
+  loop playing rather than something going wrong.
+- **Shards** cycle `sv-shard` for as many iterations as the hold allows instead
+  of playing once. Per-shard durations already vary, so the cluster shimmers
+  rather than strobing in unison.
+- **Flares** are spread along the hold instead of bunched into its first 260ms,
+  and there are more of them (4-8) to cover the longer span.
+
+The shards' exit is a second animation, `sv-shard-out`, declaring opacity only.
+A cycle ending is not the event ending, so the fade has to be able to land
+part-way through one; because a CSS animation affects nothing it does not name,
+`sv-shard` keeps driving transform underneath and the pieces are still moving as
+they dim.
+
+**2026-09-04 — Measurement probes must wait for an idle frame**
+Both spawners fire on their own every 8-20s, so any probe watching for
+`.sv-glitch-pass` or `svg.sv-strike` can measure an ambient event instead of the
+one it forced. This produced a negative event duration and two phantom stagger
+failures before it was spotted; the stagger is 5/5 once the probe waits for
+idle. Noted in `qa/README.md` because it will happen again.
+
+---
+
+**2026-09-04 — The glitch's geometry is derived from the target, in four places**
+Reported as "too small to notice", and it was: the field was the glyph bounds
+plus a flat 6px, so a 27x16 section label produced a 39x28 event.
+
+The fix was not one number. Four separate quantities had each been tuned against
+one example and were wrong on any other size — the field padding, the channel
+split, the shard travel, and the flare size. All four now derive from the target
+(padding from its extent with a floor, split and travel from its cap height,
+flares from the cluster box). Ratios and floors are in `PAD_X` / `PAD_Y`,
+`SHARD_INSET` and the `split` expression.
+
+**2026-09-04 — The cluster and the spread are two different boxes**
+Enlarging the field alone made it worse, twice over, and both regressions are
+worth recording because either would come back on the next tuning pass:
+
+- Shard reach is a *percentage* of the box, so growing the box grew the shards
+  with it and the cluster reverted to three flat slabs — the exact thing the
+  0.58 scale had been introduced to fix, undone by a change at the other end.
+- Shards are laid one per grid cell across whatever box they are given, so
+  handing them the enlarged field scattered them over empty margin and the
+  result read as confetti around a word.
+
+So the effect now works at two extents. The channel copies and flares take the
+full field, because that spread is what makes the event visible from across the
+page; the shards are inset back onto the glyphs plus a halo. The halftone wash
+moved inside the cluster too — across the full field it had a hard rectangular
+edge sitting in empty margin, which was the only straight line anywhere in the
+effect and read as a box drawn around it.
+
+**2026-09-04 — Cyan is weighted twice in the glitch's shard plates**
+Magenta and red are adjacent, so an even draw across magenta / cyan / red /
+white put two thirds of a cluster in the same warm register. Invisible at the
+original size, obvious once clusters got large enough to have real area. Cyan
+carries the separation, so it gets a second slot. This is a weighting inside the
+existing four plates, not a new colour.
+
+---
+
+**2026-09-04 — `AmbientGlitch` is a third effect, not a variant of the shatter**
+The brief asked for a random screen glitch "following the same behavioral
+pattern as VenomLightning" and explicitly distinct from `GlitchShatter`. Built
+that way: a separate component with its own spawner, mounted in the layout.
+`GlitchShatter` is untouched and still fires deterministically on check-in and
+track creation.
+
+The two do share geometry. `buildShards` is exported from `GlitchShatter` and
+imported here, with two parameters added (`plates`, `scale`) so neither caller
+is stuck with the other's tuning. The brief asked for the reuse and it was the
+right call anyway — two shard generators would have drifted the first time
+either was tuned.
+
+**2026-09-04 — The glitch's third channel is magenta, not green**
+The reference frame and the brief both describe red / cyan / **green** channel
+copies. `CLAUDE.md` states the palette has no green and that reaching for one
+reintroduces the retired motif system, and the brief's own shard-colour section
+already accepts that constraint. So the split is red / cyan / magenta — three
+distinct prints, still heavier than `GlitchText`'s two-plate 2-7px split, at
+5-10px. Flagged to the user rather than decided silently; reversing it is one
+entry in `CHANNELS`.
+
+**2026-09-04 — A target is measured by its text, not its box**
+The first version measured `getBoundingClientRect()` on the candidate element
+and rejected anything wider than 620px to avoid full-page targets. In this
+layout every block-level heading and section label spans the whole reading
+column, so all of them were rejected and the spawner ended up with a single
+eligible element per page — which it then glitched every single time, while
+looking entirely functional.
+
+Targets are now measured with a `Range` over their contents, which gives the
+tight glyph extent. That fixed the selection bug and is also more faithful to
+the reference: the film fractures the character, not the rectangle around him.
+
+**2026-09-04 — The registry excludes controls, containers and bright grounds**
+Three filters, each added after watching the effect do something wrong:
+- **Controls**, checked in both directions. `.font-label` is the interface's
+  label voice and therefore also sits on every button, so the primary CTAs were
+  swept in; and `closest()` alone let a `<label>` wrapping its own slider
+  through, which got fractured with the control live underneath.
+- **Containers.** `.font-label` on the nav `<ul>` made the effect treat
+  "HomeProgressInsightssoon" as one label. The rule is "two or more text-bearing
+  children makes it a row"; requiring text as a *direct* child was tried first
+  and wrongly rejected single labels that wrap their string in one span.
+- **Bright grounds**, measured up the ancestor chain. Every layer composites
+  with `screen`, so over the yellow CTA the whole event saturated to a white
+  smear. The threshold is 0.45 luminance: the magenta caption plate (0.34) stays
+  a target because panel captions are the headline case, cyan and yellow (0.7+)
+  never are.
+
+Also: `GlitchText` roots return their string tripled from `textContent`, because
+its two duplicate layers are `aria-hidden` rather than absent. Text is read with
+those and `.sr-only` stripped.
+
+**2026-09-04 — The two ambient spawners stagger, and the lightning needed a fix
+to do it**
+Neither effect is suppressed and they are not synced; a shared module records
+when each last fired, and either postpones itself 300-600ms if the other went
+off within a second.
+
+Wiring this up exposed a real bug in `AmbientLightning`. Its concurrency cap
+lived inside the `setStrikes` updater, so a flag set in there to report "a
+strike was accepted" was still false when the dispatch returned — React batches
+the updater. The glitch spawner was reading "no lightning fired" from a tick
+that had just fired one, and the two staggered apart on only two runs in five.
+The cap now lives in a ref and is decided synchronously: five runs in five.
+
+---
+
 **2026-09-04 — The lightning is ambient, and correlates with nothing**
 It first shipped wired to the ADD press and to elevation rising. Both triggers
 are removed and the component is now a single spawner mounted in the layout,

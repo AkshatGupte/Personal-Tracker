@@ -8,14 +8,25 @@ they are not already in context.
 ## Project Summary
 
 A gamified personal learning tracker. Users create their own learning goals
-("Tracks", e.g. DSA, Spanish, Guitar) and break them into Topics and Tasks.
+("Tracks", e.g. DSA, Spanish, Guitar) and break them into a **recursive tree of
+Topics**, at most 5 levels deep.
 
-**A Task is a persistent recurring activity, never a one-time item** —
-"Practice array problems", not "Solve: Two Sum". It stays available
-indefinitely and is **checked in once per day**; the check-in creates the
-historical record, and the Task itself is never permanently completed. There is
-no one-time task type and none is planned. The daily check-in is the product's
-core loop and is meant to feel worth repeating.
+**There is no Task model, and this replaced one.** A Topic with children is a
+parent and is not actionable; a Topic with no children is a **leaf**, and a leaf
+is the unit of activity. Neither is a stored flag — both are questions about
+whether the node currently has children, so a leaf that gains children stops
+being actionable and becomes actionable again if they are removed, keeping its
+own history throughout.
+
+**Activity is a per-node, per-day count, not a once-a-day check-in.** Clicking a
+leaf records one activity for that node today; clicking again records another,
+and undo takes the most recent one back. This reverses the earlier rule that a
+Task was "checked in once per day" — that model, and the Task/TaskCheckIn/
+CompletionLog tables behind it, were removed outright rather than migrated.
+
+Nothing here ever finishes: a leaf is a recurring activity and has no terminal
+state. Working a leaf is the product's core loop and is meant to feel worth
+repeating.
 
 The app shows weekly/monthly progress rollups and streaks (Duolingo-style
 dopamine loop), plus an LLM-generated coverage analysis that flags gaps or
@@ -88,8 +99,17 @@ Raw plates are also available for treatments that are about ink rather than
 meaning: `--sv-magenta`, `--sv-cyan`, `--sv-yellow`, `--sv-purple`, `--sv-red`,
 `--sv-ink`, and the fixed split pair `--sv-split-a` / `--sv-split-b`.
 
-**This palette has no green.** "Done" is cyan. If you find yourself reaching
-for a green, you are reintroducing the retired system.
+**This palette has one green, and it means exactly one thing: activity
+intensity.** Everything the no-green rule was originally written about still
+holds — "done" is cyan, volume is magenta, consistency is yellow — and reaching
+for green anywhere *else* is still reintroducing the retired motif system.
+
+Contribution intensity is a signal none of the existing three can carry: magenta
+already means volume, and reusing it would make "how much" and "how broadly" the
+same colour. So `--activity-1` through `--activity-5` are green, and nothing
+else is. The ramp is solved rather than picked: every tier clears 4.5:1 against
+whichever of paper or ink sits on it, by at least 6.4:1, and `--activity-N-fg`
+carries which, so no component decides for itself.
 
 Every text/background pair must clear **4.5:1** against the *composited*
 ground — the rift glows lighten the background, so measure, do not assume.
@@ -98,7 +118,7 @@ ground — the rift glows lighten the background, so measure, do not assume.
 
 | Role | Family | Treatment |
 |---|---|---|
-| Everything: UI, headings, labels, metadata, body, buttons, navigation, measurements, and all user-generated Track/Topic/Task names | Bangers | `font-sans` / `font-display` / `font-comic` / `font-mono` all resolve to it |
+| Everything: UI, headings, labels, metadata, body, buttons, navigation, measurements, and all user-generated Track and Topic names | Bangers | `font-sans` / `font-display` / `font-comic` / `font-mono` all resolve to it |
 
 This reverses the earlier rule, which reserved Bangers for the wordmark and set
 everything else in Archivo with Space Mono for figures. **The user asked for the
@@ -134,7 +154,7 @@ being asked.
 - **Radius is gone. Everything is square, including controls.** The old rule
   gave controls `3px` to mean "interactive"; the user flagged the residual
   rounding twice as reading corporate, so `border-radius: 0` is now universal —
-  buttons, inputs, the check-in tick and the focus ring included. Interactivity
+  buttons, inputs, the activity cell and the focus ring included. Interactivity
   is carried by fill and hover instead.
 - **Cards and shadows are back, but only as comic devices.** The old "no cards,
   no shadows" rule is retired. What is *still* banned is the soft blurred
@@ -143,7 +163,7 @@ being asked.
   error), never a blur.
 - `Panel` has two registers and the choice carries hierarchy:
   - `variant="band"` (default) — mono label in the gutter, separation by rule
-    and space. The workhorse. Topics and Tasks stay here.
+    and space. The workhorse. The topic tree and the leaf list stay here.
   - `variant="comic"` — 2px ink border, solid caption box, hard registration
     plate, halftone. Reserved for the level that should dominate a screen, and
     **spent at most once per screen**. A page where everything is a comic panel
@@ -151,9 +171,9 @@ being asked.
 
 **Hierarchy (do not flatten this):**
 - Track — strongest visual presence (comic panel)
-- Topic — secondary (band)
-- Task — highly readable and usable above all
-- Check-in — the strongest interaction feedback in the app
+- Topic (parent) — secondary (band)
+- Leaf — highly readable and usable above all
+- Recording activity — the strongest interaction feedback in the app
 - Progress — visually connected, never noisy
 
 **The atmosphere — global, background-only, always-on:**
@@ -169,7 +189,7 @@ being asked.
   layer renders behind it and the page looks flat black.
 
 **The terrain metaphor — unchanged, and still the product's signature:**
-- Elevation is cumulative check-ins read from `CompletionLog`; it only rises.
+- Elevation is cumulative activity summed from `TopicActivity`; it only rises.
 - Pace emerges from geometry — strata at fixed elevations bunch on a steep climb.
 - Milestones are drawn only where actually crossed, in `streak` (yellow).
 - No completions means a flat baseline and a plain statement, never a fake curve.
@@ -187,20 +207,22 @@ active state; it is no longer the button fill.
 2. Consistency — streak count and heatmap, `streak` (yellow)
 3. Checked in today — `positive` (cyan), resets with the day
 
-Nothing here finishes: a recurring activity has no terminal state. Any ratio
-reads "how many of today's activities are checked in", never "how many tasks
+Nothing here finishes: a leaf is a recurring activity and has no terminal state.
+Any ratio reads "how much of this was worked today" — coverage — never "how many
 are finished".
 
 **Milestones exist on two of these signals and must not be crossed over.**
 `STREAK_MILESTONES` (7/14/30/60/100 consecutive days) belongs to consistency and
-is yellow; `ELEVATION_MILESTONES` (10/50/100/250/500 cumulative check-ins)
+is yellow; `ELEVATION_MILESTONES` (10/50/100/250/500 cumulative activities)
 belongs to volume and is drawn on the terrain. Neither is called plain
 `MILESTONES`, precisely so they cannot be reached for interchangeably.
 
-A crossed streak milestone is celebrated by restyling the check-in report line
-that already exists — a solid `streak` caption box — and by throwing the streak
-numeral's existing misregistration harder. It is not a new surface, and adding
-a modal, toast or confetti for it would be.
+A crossed streak milestone **is currently not celebrated at all.** It used to
+restyle the check-in report line and throw the streak numeral's misregistration
+harder; both belonged to the check-in beat, which the restructure removed with
+tasks. `milestoneCrossed` still exists in `lib/streak.ts` and nothing calls it.
+If it is brought back, it belongs on the first activity of a day — and it is
+still a *description* of the streak, never a modal, toast or confetti.
 
 No XP, levels, points or badges. The comic theme is not a licence to add them,
 and neither is a milestone: a milestone is a *description of the streak*, not a
@@ -214,7 +236,7 @@ nothing is stored.
 - Each instance randomises its own first delay so several never sync into a
   chorus.
 - Glitch belongs on headers, labels and CTAs. **Never on body copy, and never
-  on a Track/Topic/Task name.**
+  on a Track or Topic name.**
 - Halftone reads as texture at 4-8% opacity. Above that it is noise over the
   interface.
 - The true chromatic aberration filters (`#sv-chromatic`, `#sv-chromatic-heavy`)
@@ -223,7 +245,10 @@ nothing is stored.
   `animation-fill-mode: both` its start state applies during any delay before
   the animation runs, leaving the entire page ghosted and unreadable.
 
-**Two signature effects, both transients, both for moments of change only:**
+**Three ambient/transient effects.** Two of them arrive on their own and mean
+nothing; the third is feedback. `AmbientGlitch` was added after this section was
+written — see `docs/DECISIONS.md` — and it is a sibling of the lightning, not of
+the shatter.
 - `AmbientLightning` — a Lichtenberg discharge breaking off the interface's own
   borders. Mounted once in the layout, above the content. **Ambient and
   deliberately uncorrelated with anything the user does:** it arrives on its own
@@ -244,9 +269,18 @@ nothing is stored.
   - One strike at a time, rarely two. Its layer is `overflow-x: clip`, because a
     520px canvas centred near a narrow viewport's edge otherwise widens the
     document.
+- `AmbientGlitch` — the film's full corruption, on one element at a time. Ambient
+  like the lightning: every 10-20s it picks a single target from a registry of
+  headers, labels, numerals and the wordmark, splits its text into three offset
+  channel copies, breaks a shard cluster over it and pops print flares, then
+  fades. It holds 2-3s and runs 2.4-3.6s end to end — longer than a strike, which
+  reverses the original intent that the two be told apart by length; that was
+  asked for explicitly, twice. It shares `buildShards` with `GlitchShatter` and
+  nothing else.
 - `GlitchShatter` — the film's fracture: 6-12 clip-path triangles in the plate
   colours, knocked out of register and snapped back over 220-360ms. This is the
-  app's "that landed" confirmation, on check-in and on creating a track. It is
+  app's "that landed" confirmation, on recording activity and on creating a
+  track or topic. It is
   **not** a replacement for `GlitchText`, which stays for resting text accents;
   the two are different devices and both are wanted.
 - Neither may go on an idle element, and neither fires on a *negative* change —
@@ -257,10 +291,16 @@ nothing is stored.
   elsewhere.
 
 **Motion:** every animation must name the state change it reports.
-- The check-in is the one interaction allowed to feel like an event: the tick's
-  magenta and cyan plates scissor apart and snap back over 320ms. It is keyed
-  to the *transition* into checked, never to the resting state — otherwise
-  every revalidation replays it and the whole list twitches.
+- Recording activity is the one interaction allowed to feel like an event: the
+  count moves optimistically and a shatter fires on the press. It fires on a
+  recorded click and never on an undo — a negative change is stated, not
+  celebrated.
+- **The check-in beat is gone.** `CheckInBeat` and `CheckInReport` composed the
+  tick, the report line and one emphasised numeral into a single moment. They
+  published from the task row, and the restructure removed tasks; a provider
+  nothing can fire is worse than none, so they went with it. The streak-milestone
+  celebration went too — `STREAK_MILESTONES` still exists in `lib/streak.ts` and
+  nothing renders it.
 - The route transition (`app/template.tsx`) is a 180ms transform+opacity cut.
   Fast enough to read as a cut, never as loading.
 - Always `prefers-reduced-motion` aware. Reduced motion must keep the theme's
@@ -284,18 +324,26 @@ registration plates.
 See `docs/SCHEMA.md` for the full schema. Core hierarchy:
 
 ```
-Track → Topic → Task → TaskCheckIn
-                   ↘ (rolled up per day) → CompletionLog
+Track → Topic (recursive, max depth 5) → TopicActivity (one row per node per day)
 ```
 
-`TaskCheckIn` is the ground truth: one row per Task per day, meaning "I did
-this today". `CompletionLog` is a per-track daily rollup of those rows and is
-always rebuildable from them. A Task carries **no completion state of its own**
-— "checked in today" is a question about `TaskCheckIn` for the current day, not
-a column, and it does not persist into tomorrow.
+`TopicActivity` is the single source of truth for every activity figure —
+intensity, coverage, streaks, history. **There is no rollup table beside it**:
+the old `CompletionLog` was derived state that had to be rebuilt whenever
+anything moved or was deleted, and deriving on read instead means a move or a
+soft delete changes what the figures mean without a row being rewritten.
 
-Streaks are tracked per-track and are **strict** (a missed day resets the
-streak to 0 — no streak freezes, no forgiveness logic).
+Three signals, deliberately distinct — see `lib/tree.ts`:
+- **Leaf intensity** — that node's own count today; tiers 0/1/2/3/4/5+, stored uncapped.
+- **Parent coverage** — distinct *direct* children worked today / total. Clicking
+  one child repeatedly does not move it.
+- **Track coverage** — distinct active leaves / total leaves, across all leaves at
+  once (never an average of per-topic coverage).
+
+Deleting a Topic is a **soft delete**: it leaves current calculations at once and
+keeps its history. A parent cannot be deleted while it has children. Streaks are
+per-track and **strict** (a missed day resets to 0 — no freezes, no forgiveness),
+and a day counts as active only when a *current* leaf was worked.
 
 ## LLM Usage Rules
 

@@ -6,6 +6,1055 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-05 — The lightning redrawn against a reference frame
+
+**What was built:**
+The ambient lightning was compared against a still from the film and came up
+short in a specific way: it looked like a bare tree branch. Long straight runs,
+four or five forks, and a thin bright filament with a faint halo. It now looks
+like a discharge.
+
+**Three things changed:**
+1. **Short jagged segments instead of long straight ones.** The trunk ran 4-7
+   segments of 46-72 pixels — which is a straight line with a couple of kinks.
+   It is now 10-14 segments of roughly half that length, wandering much harder.
+   Same overall reach, far more angularity.
+2. **A fourth level of branching.** There were three; the reference's
+   extremities dissolve into a haze of very short hairs rather than ending in
+   three countable twigs. That fourth level is the point at which the eye stops
+   counting branches and starts reading it as electricity. There are also more
+   forks at every level, and they come off at wider angles.
+3. **Four drawing passes instead of two.** It was one blurred cyan pass under a
+   pale core, which gives a thin bright line with a faint glow. It is now a wide
+   soft bloom, a tight saturated cyan sheath, the pale core, and white heat down
+   the middle of the heaviest runs only. A single blurred pass can be wide or
+   intense but not both — splitting it is what gives the bolt depth and makes it
+   read as a thick channel rather than a drawn line.
+
+**How it works (flow):** unchanged — a strike still arrives on its own every
+8-18 seconds, still starts on a real border of the interface and grows away from
+it, still flickers in hard and fades out slowly. Only what gets drawn changed.
+
+**One thing watched carefully:** the new figure draws far more lines — about 400
+per strike against roughly 30 before. The widest blurred pass was then limited
+to the heavy runs only, since a hair less than one and a half pixels wide, grown
+sevenfold and blurred by nine, contributes nothing an eye can find. After that
+the frame rate with strikes on screen was measured as identical to the page with
+none, at every width.
+
+**Technical concepts used:**
+- A fourth generation in the branch generator, with the same tapering rule at
+  each level — which is what makes the figure self-similar
+- Layered glow passes at different widths and blurs, rather than one
+
+**Verified:** strikes fired at 1560, 1280, 768, 390 and 320 pixels wide, several
+at once — more than the effect ever allows itself. No sideways scrolling at any
+width, the strike layer never sits under the cursor, and frame timing is
+unchanged from a page with no lightning. The dimensional voids were re-checked
+on the same pages and are unaffected.
+
+**Roadmap status:** no roadmap item — a visual-system change.
+
+---
+
+## 2026-09-05 — Every void now lives the same five-second arc
+
+**What was built:**
+A void used to open at full size and stay there for however long its behaviour
+said — anywhere from a second and a half to twenty-two seconds. Now every one of
+them lives the same shape of life, in about five seconds:
+
+1. It seeds **very small and very faint** — about 15% of its final size at a
+   third opacity. On the page it is barely a smudge.
+2. It **grows steadily**, getting more solid as it goes.
+3. It gets **less stable the bigger it gets**. The shape redraws itself about
+   four times a second when it is small and nearly twenty times a second at
+   full size, and the wobbling, skewing and jumping all scale up with it.
+4. It **peaks**, briefly, at its largest — and this is where the corruption is
+   strongest: the heaviest distortion, the most tearing, the black lightning and
+   the sparks.
+5. It **collapses** and is gone.
+
+**The corruption now follows the size, not the clock.** How hard a burst hits,
+how large it is drawn, and whether it fires the strongest passes at all are
+*all* read from how big the void actually is at that instant. A young void gets
+a small, quiet flicker; a peaked one gets everything. Measured across a dozen
+bursts: at a third of full size, 4 tear-bands and no erasure; at full size, 7
+bands and the erasure pass.
+
+**How it works (flow):**
+1. A void opens and picks one of the five behaviours as before.
+2. All five now play their character *over* one shared growth curve rather than
+   owning their own timeline — the crawler is the calm version of the arc, the
+   rupture tears past its own peak two-thirds through, the corruptor puts three
+   escalating bursts along it, and so on.
+3. Everything unstable in the effect is multiplied by how far up the curve the
+   void has got, so instability and size rise together by construction rather
+   than by being tuned to match.
+4. Its bursts are scheduled at points on that curve; when one fires, the app
+   reads the void's real current size and builds the corruption from it.
+
+**Something that had to change alongside it:** with lives dropping from 14-22
+seconds to 5, the old spawn interval of one void every 9-20 seconds would have
+left the page empty about two thirds of the time. Voids now arrive every 4-9.5
+seconds, which keeps the same feeling of presence as before — usually one on
+screen, sometimes two or three, occasionally none.
+
+**Two things caught by measuring rather than watching:**
+- The first collapse was invisible. It was written as a single heavily-eased
+  step, and measured at 80% of full size with only 3% of the life left — so the
+  entire disappearance happened in the last hundred milliseconds and read as the
+  void being switched off. It now folds down over about seven hundred.
+- The intensity of a burst and the size it was drawn at were coming from two
+  different places, so they could disagree. Both now come from one number.
+
+**Technical concepts used:**
+- One shared growth curve driving size, opacity, instability, redraw rate and
+  corruption strength — so they cannot drift apart from each other
+- An accelerating rather than constant growth rate, which reads as something
+  opening under its own pressure instead of being scaled by something outside it
+
+**Verified:** the arc was measured, not eyeballed — one void stepped through
+nine points of its life reported 4801ms total, scale rising 0.15 → 1.11, opacity
+0.35 → 1, and a visible fold at the end. Home and track at 1560, 1280, 768, 390
+and 320: no sideways scrolling, neither layer ever under the cursor, a real link
+still clickable during corruption, the page returning exactly to its previous
+state, all five behaviours present, and nothing at all under reduced motion.
+
+**Roadmap status:** no roadmap item — a visual-system change.
+
+---
+
+## 2026-09-05 — The voids are torn holes with fractures, not blobs with a tendril
+
+**What was built:**
+A screenshot made the problem obvious: a void looked like a smooth black potato
+with one thin curl hanging off it. Decorative, not dimensional. Three things
+changed, and the shape one mattered most.
+
+**1. The outlines can now have corners.** The shape was drawn with a curve that
+smooths *every* point it passes through, which is why no amount of adjusting the
+numbers ever stopped it being a rounded blob — a torn hole is defined by its
+sharp points and the notches bitten out of it, and the old shape could not
+produce either. Selected points are now marked as corners and the curve is told
+to keep them sharp.
+
+**2. Four different kinds of shape**, so two voids on screen are not the same
+drawing at different sizes:
+- **blot** — a rounded mass with deep notches bitten out of it
+- **tear** — a long thin rip with a hard point at each end
+- **splinter** — angular, with a cluster of long spikes on one side
+- **shatter** — many alternating in-and-out points; a hole that broke
+
+**3. The single decorative tendril is gone, replaced by branching fractures.**
+Black cracks now run out of the edge in straight jagged runs that fork twice and
+taper to hairlines — the same reasoning the app's lightning uses, which is that a
+crack turns sharply and a smooth curve reads as a ribbon.
+
+**And the bursts got teeth.** When a void corrupts the page it now also whips
+black fractures out across the interface and throws off small chips of ink and
+colour, on top of the distortion that was already there. Every void is now
+guaranteed at least one of these moments — previously more than half of the most
+common type just drifted for twenty seconds and never did anything, which was
+the single biggest reason the layer read as decoration.
+
+**How it works (flow):**
+1. A void opens and draws one of the four shape families and one of the five
+   behaviours, independently — so a "quiet drifter" might be a jagged shatter or
+   a long tear.
+2. It writes its own animation, including its own sequence of shape changes.
+3. At its scheduled moments, a temporary layer above the app distorts what is
+   behind it, whips fractures across it, and throws sparks — then removes itself.
+4. Nothing is left behind and nothing is ever clickable.
+
+**Two mistakes worth recording, both caught by looking at pictures:**
+- The first spiky shape came out as a symmetrical star, because each point was
+  given an independent chance of being a spike and that spreads them evenly
+  around the ring. Spikes are now chosen as a small cluster, so one side of the
+  shape has three points and the other has none.
+- The first burst fractures were enormous — the length being passed in was the
+  length of the *first segment*, not the reach of the whole branch, which is
+  about two and a half times larger before the forks are added. At full strength
+  that drew 600-pixel branches eleven pixels thick, and the screenshot looked
+  like a dead shrub laid over the page.
+
+**Technical concepts used:**
+- Collapsing a curve's control point onto a point to make a hard corner — the
+  one-line change that turns a blob into a tear
+- A recursive branch generator with hard tapering, for the fractures
+- Fracture count scaled to the size of the piece, which both looks right (a tiny
+  fragment should not have three branches) and bounds how much is drawn
+
+**Verified:** home and track at 1560, 1280, 768, 390 and 320. No sideways
+scrolling anywhere, neither layer ever sits under the cursor (154 hit-tests per
+page per width), a real link stays clickable while corruption is on screen, the
+page returns exactly to its previous state, all five behaviours appear, and
+reduced motion renders nothing. Frame cost was measured three times against
+three baselines on the same page and is indistinguishable from having no voids
+at all — the numbers that looked like a slowdown turned out to be the test
+renderer itself fluctuating, since the baseline moved the same way.
+
+**Roadmap status:** no roadmap item — a visual-system change.
+
+---
+
+## 2026-09-05 — The voids now corrupt the interface around them
+
+**What was built:**
+The black voids added earlier were, fairly, too safe — they drifted and boiled
+but they were decorations. They now behave like dimensional anomalies: each one
+has a genuinely different personality, and when one fires it **breaks the
+rendering of the real interface around it** for a fraction of a second before
+everything snaps back.
+
+**Five personalities, not five sets of random numbers.** A void draws one of
+five behaviours when it opens:
+
+- **Crawler** — quiet, drifts slowly, occasionally cuts to a new position
+  without crossing the space between. The most common, and the reason the
+  others feel sudden.
+- **Rupture** — sits still, tears itself wide open, throws fragments outward,
+  thrashes, and collapses. Over in about six seconds.
+- **Swarm** — was never one hole: four to six pieces wandering on their own
+  paths that drift apart and come back together.
+- **Corruptor** — barely moves at all. Instead it breaks the page around itself
+  two to four times, hard.
+- **Blink** — arrives, changes shape faster than you can read it, and is gone in
+  under two seconds. Often reappears nearby, so it reads as one thing hopping.
+
+**The corruption is real, not a drawing of corruption.** When a void fires, the
+actual pixels of the app behind it are affected: the interface is physically
+dragged out of shape, its colour channels are pulled apart into red/blue
+fringes, horizontal bands of it are shoved sideways, and occasionally a
+void-shaped patch of the app is simply erased for a moment before returning.
+The screenshots taken while testing show the progress graph's own line bent into
+a wobble and the background structures dragged out of true.
+
+**How it works (flow):**
+1. A void opens on its own every 9-20 seconds and picks one of the five
+   behaviours. Nothing you do triggers it.
+2. It writes its **own** animation from scratch — its own path, its own timing,
+   its own sequence of shape changes. Two voids never share a timeline.
+3. That script also says when this particular void will corrupt the page, and
+   how hard.
+4. At those moments a second, temporary layer appears **above** the app for
+   200-520ms and distorts what is behind it, then removes itself.
+5. Nothing is changed permanently. The layer never receives clicks, and the app
+   underneath is untouched the whole time.
+
+**The restraint, which took as much work as the effect:** only one corruption
+can happen every 2.2 seconds no matter how many voids want one; only the
+corruptor and the rupture fire strong ones; the affected area was measured at
+3.5% of the screen; and the whole thing is over before you could point at it.
+Most of the time the page is completely clean and the voids are just sitting
+there.
+
+**Three bugs found by photographing the effect rather than reading the code —
+all three looked completely correct as written:**
+- The filter definitions were created in the same instant as the elements using
+  them, so they did not exist yet. Every burst was drawing its fragments with no
+  distortion behind them at all.
+- The distortion was being masked to a shape measured in different units than
+  the box it was applied to, so it was cropped and offset away from the hole.
+- The distortion was aimed at the void itself — which is solid black — so it was
+  faithfully distorting black into black. It had to be aimed at the area
+  *around* the hole instead.
+
+**Technical concepts used:**
+- `backdrop-filter` — a CSS feature that filters whatever is rendered behind an
+  element, which is what makes this real corruption of the real app rather than
+  a picture of corruption
+- An SVG displacement filter — drags pixels out of position, the only thing
+  available that can actually move something already drawn
+- Per-instance generated CSS animations — each void writes its own keyframes, so
+  a slow drift and a hard jump can live in one timeline
+- The app's existing fracture shards, imported from the check-in effect rather
+  than reinvented, so a burst belongs to the same visual family
+- `prefers-reduced-motion` — the whole thing renders nothing at all
+
+**Verified:** home and track pages at 1560, 1280, 768, 390 and 320 pixels, with
+the maximum number of voids forced open. No sideways scrolling anywhere; 154
+hit-tests per page per width confirmed neither layer is ever what sits under the
+cursor; a real link was confirmed clickable *while* corruption was on screen;
+the page's text, position, colour and filters were compared before and after and
+were identical; all five behaviours were observed; every animated element was
+confirmed to be running its own unique animation; and with reduced motion on,
+nothing renders. Frame timing during a burst was indistinguishable from the same
+page with no voids at all.
+
+**Roadmap status:** no roadmap item — a visual-system change, in the
+Spider-Verse direction `CLAUDE.md` sets out.
+
+---
+
+## 2026-09-05 — Dimensional voids: small holes punched in the background
+
+**What was built:**
+Small irregular black shapes now open in the background every so often, sit
+there for twenty seconds or so, and close. They are borrowed from the way The
+Spot's dimensional patches behave in *Across the Spider-Verse* — hand-drawn ink
+that crawls, breathes and occasionally breaks apart. There is no character and
+no Spider-Man imagery; only the animation language of the holes.
+
+The goal was that they read as **"reality has small holes in it"** rather than
+"there are black circles floating around", and almost all of the work went into
+that one distinction.
+
+**How it works (flow):**
+1. A void opens on its own every 11-24 seconds. Nothing you do triggers one, and
+   nothing it does means anything — it is weather, like the lightning and the
+   glitch already on the page.
+2. It is drawn into the background layer, immediately **on top of** the drifting
+   glows and the cyan multiverse structures, and **underneath** every part of the
+   interface. So a void that drifts across one of those glowing shapes eats the
+   part of it that it covers, while the app itself is never covered by anything.
+3. It sits there. The constant motion is only a slow squash-and-stretch and a
+   hand-drawn edge wobble; it travels less than 50 pixels in its whole life,
+   which is slower than the glows already behind it.
+4. When it closes, one time in six it breaks into two or three fragments where it
+   was, and one time in five it closes here and reopens a little way off — so it
+   reads as the same hole moving or failing, not as unrelated shapes appearing.
+5. About one in six also gets a single hard "jump": it is in one place, then
+   another, then back, with nothing drawn in between. That is the dimensional
+   feeling, and it is rare on purpose.
+
+**Why it can never make the app harder to read:** every piece of text in this
+app is light on a dark background, and a void is pure black. Putting one behind
+the interface can only make the ground *darker*, which raises contrast rather
+than lowering it. Combined with sitting behind everything and ignoring the mouse
+entirely, there is no arrangement in which a void hides or blocks anything.
+
+**Two things found by looking at screenshots rather than by reasoning:**
+- The first version sized the drawing box instead of the ink inside it, which
+  quietly halved every void — a "170px spot" drew 87px of actual hole and the
+  whole layer read as specks.
+- The first version also nudged the horizontal and vertical position away from
+  the centre independently, which sounds the same as "keep them near the edges"
+  and is not: it made all four corners far more likely than the edges, and three
+  voids promptly stacked in the bottom-right corner of the first screenshot.
+
+**Technical concepts used:**
+- Plain CSS animation and hand-generated SVG shapes — no animation library and
+  no new dependency, matching the rest of the theme
+- Three complete drawings of each shape swapped at about 7 frames a second,
+  which is how hand-drawn animation gets its "boil"; a smooth computed wobble
+  looks like software, three redrawings look like ink
+- Only opacity and movement are animated, so the browser can hand the whole
+  thing to the graphics card and none of it costs page performance
+- `prefers-reduced-motion` — the effect renders nothing at all, rather than
+  freezing, because a half-open hole frozen in place is just a black smear
+
+**Verified:** home and track pages at 1560, 1280, 390 and 320 pixels wide, with
+the maximum possible number of voids forced open at each. No sideways scrolling
+anywhere; 154 hit-tests per page per width all confirmed the layer is never what
+sits under the cursor; the layer confirmed to paint after the atmosphere and
+before the UI; and with reduced motion switched on, nothing renders at all. The
+check is saved as `qa/spots-check.mjs` rather than thrown away, because this is
+the fourth browser check in this project to be lost with a session.
+
+**Roadmap status:** no roadmap item — a visual-system addition, in the
+Spider-Verse direction `CLAUDE.md` sets out.
+
+---
+
+## 2026-09-05 — The elevation graph now covers two weeks, not twelve
+
+**What was built:**
+The elevation graph was drawing a twelve-week span against about a week of real
+activity. Nine tenths of it was flat empty ground and everything that had
+actually happened was crushed into a near-vertical spike jammed against the
+right-hand edge — it read as a broken chart rather than as progress. It now
+covers **two weeks**, so the climb spreads across most of the frame and looks
+like the thing it is describing.
+
+The consistency heatmap below it keeps its full twelve weeks, unchanged.
+
+**Why two weeks and not three:** two weeks is the whole number of weeks closest
+to a fortnight, so the caption reads as a span a person actually thinks in. With
+the activity currently in the database, three weeks would have left about 62% of
+the graph as empty run-up before the first day of data; two weeks leaves about
+36%. When there is more history to fill a longer frame, lengthening it is one
+line.
+
+**How it works (flow):**
+1. Two spans are now written down separately, in a new file `lib/windows.ts`:
+   the elevation graph's fourteen days, and the heatmap's twelve weeks.
+2. When a page loads, the part of the app that reads the database works out two
+   cut-off dates from those, instead of one.
+3. Activity newer than the graph's cut-off feeds the graph. Activity newer than
+   the heatmap's — much older, much more of it — feeds the heatmap.
+4. Every caption that names a span ("2 weeks" under the graph, "12 weeks" on the
+   Consistency panels, and the descriptions read aloud by screen readers) is
+   now generated from those two numbers rather than typed out by hand, so the
+   words and the drawing cannot disagree again.
+
+**The trap this avoided, because it is the kind that looks fine and is not:**
+One setting was quietly doing two jobs. The graph's span *also* decided how far
+back the app fetched activity for the heatmap — while the heatmap had its own,
+completely separate "draw twelve weeks of squares" instruction. Shortening the
+graph by editing that one number would have left the heatmap drawing all 84 of
+its squares with ten weeks of them permanently blank, because the data behind
+them had been thrown away before it ever arrived. The two are now separate
+settings that cannot be confused for one another.
+
+**One consequence worth knowing about:** the big "Elevation" figure counts
+activity *inside the graph's window*. Over twelve weeks that was hard to notice;
+over two weeks it means the number will start going down as activity ages out of
+the fortnight — around five days from now, with the current data. That is a
+change in what that headline number means and it was not part of this request,
+so it has been left alone and written up in `docs/DECISIONS.md` rather than
+silently redesigned.
+
+**Also fixed:** the sentence under the Elevation figure said "check-ins over 12
+weeks". "Check-in" was the old once-a-day tick on a Task, and Tasks no longer
+exist — the app counts activity on leaf topics, several of which can land on the
+same topic on the same day. It now reads "activities over 2 weeks".
+
+**Technical concepts used:**
+- One small file naming every "how far back do we look" span, with the reason
+  each is the length it is — so the next window added cannot borrow a number
+  chosen for something else
+- Captions written from the constants instead of typed out, which is what stops
+  the words and the data drifting apart
+- A required argument instead of a defaulted one on the per-topic history strip,
+  which had been silently inheriting the graph's span
+
+**Verified:** home page and track page at 1560, 1280, 390 and 320 pixels wide —
+no sideways scrolling at any of them, and the caption reads "2 weeks" at all
+four. The decoupling was proved rather than assumed: a 35-day-old activity row
+was planted in a *copy* of the database, and the heatmap picked it up (8 active
+days instead of 7) while the graph correctly ignored it (still 52 over two
+weeks). `./qa/run-tests.sh` passes all three suites; type checking and linting
+are clean. Checked against a throwaway copy of the app on its own port and its
+own copy of the database, so the running app and the real data were untouched.
+
+**Roadmap status:** no roadmap item — a correctness and legibility fix to Phase
+2 work already shipped.
+
+---
+
+## 2026-09-05 — The elevation graph no longer runs off the edge of the screen
+
+**What was built:**
+The graph in the page header stretches to the right edge of the window by
+design, and the newest point on it is *today* — so today's marker was sitting
+about seven pixels from the edge of the screen. The steepest, most recent and
+most meaningful part of the curve was exactly the part squeezed against the
+border, and it read as a graph running off the page.
+
+The data now stops short of the edge. Today's marker sits 60px in on a wide
+monitor and 19px in at the narrowest size checked.
+
+**How it works (flow):**
+1. The drawing reserves a gutter down its right-hand side, and the curve, the
+   milestone markers and today's dot are all plotted into the narrower space
+   that leaves.
+2. The baseline and the horizontal strata still run the full width, so the
+   *ground* carries on past today while the *data* ends. That is the honest
+   reading of a timeline that ends at now, and it keeps the full-bleed look the
+   header was designed around.
+3. The caption underneath ("12 weeks" / "next 100") was pulled in by the same
+   proportion, so "next 100" sits under the end of the curve rather than out
+   past it.
+
+**Technical concepts used:**
+- A single reserved width used everywhere the data is plotted, so the curve, the
+  markers and the caption cannot drift apart from each other
+
+**Verified:** measured today's marker at four window widths — 60px, 51px, 23px
+and 19px clear of the edge, against about 7px before. No sideways scrollbar on
+the home page at any of them, and the numbers on screen are unchanged.
+
+**Roadmap status:** none. A visual correction, requested directly.
+
+**Found while checking, and NOT fixed:** at a 320px-wide window the *tree view*
+of a track pushes 4px past the screen, because the row of buttons beside each
+topic (`+ Inside / Rename / Move / ↑ / ↓ / Delete`) is set never to shrink, and
+five levels of indentation leave it no room. That is a separate fault in the
+tree view, not in the graph, and it was left alone because this request was
+specifically about the graph.
+
+---
+
+## 2026-09-05 — The multiverse structures are properly neon now
+
+**What was built:**
+Only the outlines changed — the shapes and their placement are exactly as they
+were. They were being drawn in a single faint cyan, which on a near-black page
+reads as a muted teal line rather than as anything lit.
+
+They are now drawn the way the app already draws its lightning: a wide, blurred,
+saturated cyan halo underneath, and a thin near-white filament on top. That
+pairing is what makes a line look like a glowing tube instead of a drawn edge —
+a single colour at any brightness is still just a line.
+
+**How it works (flow):**
+1. Every outline is stroked twice. The first pass is wide, blurred and in the
+   app's cyan; the second is thin and in a pale cyan that is almost white.
+2. Near faces get the strongest version, far faces and the connecting edges a
+   weaker one, so the depth of each structure is lit as well as drawn.
+3. Everything was brightened to match — the structures roughly doubled in
+   strength and the connecting threads went up with them.
+
+**Kept restrained where it matters:** the small structures inside panel corners
+sit *inside* the reading area, so they take the same treatment at a fraction of
+the strength.
+
+**No new colour:** the pale filament is the same value the lightning already
+uses, and the halo is the existing cyan token. Nothing was added to the palette.
+
+**Verified:** wide monitor, laptop and phone — no sideways scrollbar on any, no
+console errors, content still readable on all three. Checked home, progress and
+a track page. Full suite re-run: 72 browser checks and three logic suites, all
+passing.
+
+**Roadmap status:** none. A visual adjustment, requested directly.
+
+---
+
+## 2026-09-05 — Multiverse threads redone as defined structures, not a field of cells
+
+**What was built:**
+A second pass on the threads. The first attempt was structurally right — straight
+edges, no spiderwebs — but it filled the margins with *many* small similar
+shapes, which reads as texture rather than as anything in particular. The film
+puts a handful of large, clearly-defined shapes on screen and runs long glowing
+lines between them.
+
+So there are now **five structures on the whole page**, not a field: one clearly
+dominant on the left, two on the right, two small ones in the corners. Long neon
+threads run between them and carry on past the edges of the screen.
+
+**What gives each one an identity:** every structure is drawn as a solid seen at
+an angle, not as a flat outline. It has a near face, a smaller far face pushed
+off to one side, and edges joining their corners — so the eye reads it as a
+three-dimensional cell you are looking into. A flat polygon has no near and no
+far; that is the whole difference between "a shape" and "a structure".
+
+**The threads are drawn behind the structures**, so a thread arriving at one
+disappears underneath it and reads as passing into it rather than stopping at
+its edge. Several threads run off the side of the screen instead of stopping,
+which is the only thing in the picture that can say the structure continues
+outside the window.
+
+**The neon:** each line is drawn twice — a wide blurred faint pass for the glow
+and a thin bright pass for the crisp core. Near faces are drawn brightest, far
+faces and connecting edges dimmer, so depth is lit as well as drawn. Same cyan
+as before; nothing from the reference's orange was used.
+
+**A bug worth recording:** the connecting threads were invisible on the first
+render. Their width was written as a fraction of the drawing's own coordinate
+space, but these strokes are set to keep a fixed screen thickness — so the
+number was being read as a sixth of a pixel. The structures appeared,
+unconnected, which looked like a composition choice rather than a fault.
+
+**Also adjusted:** the small structures inside panel corners were dimmed once the
+neon core got brighter, so they sit behind the row rather than in front of it.
+
+**Verified:** wide monitor, laptop and phone — no sideways scrollbar on any, the
+two smallest structures correctly drop out on the phone. Checked home, progress
+and a track page, and confirmed the whole page still renders zero curved
+decorative strokes. Full suite re-run: 72 browser checks and three logic suites,
+all passing.
+
+**Roadmap status:** none. A visual redesign, requested directly.
+
+---
+
+## 2026-09-05 — Spider webs replaced by multiverse threads
+
+**What was built:**
+The spider webs are gone from the whole app and a "multiverse threads" system has
+taken their place, based on the Spider-Society lattice from the film.
+
+The difference is structural rather than a restyle. A spider web has a centre,
+straight lines radiating out from it, and curved rings sagging between them. The
+lattice in the reference has none of those: it is long *straight* struts meeting
+at corners, enclosing irregular many-sided cells at very different sizes, with
+more cells behind them fading into the dark. So the new drawing has no centre, no
+rings and no curves anywhere — the whole app now renders zero curved decorative
+strokes, which was checked rather than assumed.
+
+**Where it shows:**
+1. **Around the whole page** — two tall lattices down the left and right margins,
+   plus two smaller clusters at opposite corners. The margins are the only space
+   the layout reliably leaves free, which is what lets the threads be dense
+   enough to read as a structure without ever sitting behind a sentence.
+2. **In panel corners** — a much sparser fragment than the old webs, suggesting
+   the lattice continuing behind the interface.
+3. **Hanging from section rules** — a small run of threads instead of the old
+   half-web.
+4. **The empty state** — a fragment of lattice with nothing in it, keeping the
+   same slow breathing animation it already had.
+
+**What makes it look like a dimension rather than a network diagram:**
+- Cells enclose space; a diagram is dots joined by lines. Enclosed areas are what
+  the eye reads as depth.
+- Neighbouring cells differ in size by two or three times, and each is drawn at
+  its own brightness — so some read as near and some as far.
+- Cells overlap and their edges cross, so the field reads as one interlocked
+  structure instead of separate shapes that happen to sit near each other.
+- Cells are skipped at random, so the invisible grid they were placed on never
+  becomes visible.
+- A few long lines run right across each field, entering and leaving, which says
+  the structure carries on past the edge of the screen.
+
+**Technical concepts used:**
+- Seeded randomness — the same seed always draws the same lattice, which is
+  required because these render on the server and a genuinely random drawing
+  would not match what the browser then draws
+- `preserveAspectRatio="slice"` — lets each field cover its box at any screen
+  shape instead of being letterboxed into a strip
+
+**Colours unchanged:** the same cyan, the same faintness. None of the orange or
+yellow from the reference image was brought across.
+
+**Preserved:** the section rules reserve exactly the same height as before, so no
+page moved by a pixel. Lightning, glitch effects and the background atmosphere
+are untouched.
+
+**Verified:** looked at it on a wide monitor, a laptop and a phone — no sideways
+scrollbar on any, the corner clusters correctly drop out on the phone, and the
+side lattices narrow to hug the edges. Checked home, progress and a track page.
+Re-ran the full suite afterwards: 72 browser checks and three logic suites, all
+passing.
+
+**Roadmap status:** none. A visual replacement, requested directly.
+
+---
+
+## 2026-09-04 — The background webs read as webbing, not corner stickers
+
+**What was built:**
+A visual refinement to the spider webs sitting behind the whole app. They used
+to be four complete quarter-webs, one tucked neatly into each corner of the
+screen. Four of the same thing in four corners reads as a border pattern, and a
+web that stops tidily inside the frame reads as a sticker someone placed there.
+
+Now there are three, each bigger than the space it has and pushed out past its
+corner so the screen cuts it off. What you see is part of a larger web that
+carries on off-screen. Each is turned slightly, by a different amount, so they
+do not look like copies of one shape.
+
+The fourth corner is deliberately left bare — that is what stops the arrangement
+resolving back into a frame, and it is also the simplest way to have less sitting
+behind the interface.
+
+**New: strands running in from the edges.** Two small groups of silk threads now
+run inward from the left and right edges, tied to each other here and there with
+short cross-links. Real webs have long anchor lines like these before they have
+any spiral, and they are what makes a space feel webbed rather than decorated at
+the corners.
+
+**How it works (flow):**
+1. The web layer sits behind everything and is cropped by the edges of the
+   screen, so pushing a web outward hides its middle and leaves the outer sweep.
+2. Each web is turned about its own anchor point rather than its centre, so it
+   pivots where it is attached instead of swinging away and leaving the corner
+   bare.
+3. How far each web is pushed out is expressed as a *proportion of its own size*
+   rather than a number of pixels, so when the webs shrink on a phone the same
+   fraction is cropped and they still look right.
+4. The right-hand strand group is hidden on narrow screens, where the content
+   fills the full width and it would sit directly behind the interface.
+
+**Technical concepts used:**
+- CSS percentage translation — resolves against the element's own size, which is
+  what makes the cropping survive the responsive resize without a second set of
+  hand-written numbers
+- `transform-origin` set to each web's anchored corner, so rotation pivots on the
+  hub
+
+**Deliberately not touched:** the webs inside panels and the ones hanging from
+section rules. Those are different elements with their own reasons, and changing
+them would have meant changing panels and spacing, which was out of scope.
+
+**Verified:** looked at it on a wide monitor, a laptop and a phone; no sideways
+scrollbar at any of them, and the right-hand strand group correctly disappears on
+the phone. Re-ran the full suite afterwards — 72 browser checks and three logic
+suites, all passing.
+
+**Roadmap status:** none. A visual refinement, requested directly.
+
+---
+
+## 2026-09-04 — The yellow milestone lines no longer cross the page
+
+**What was built:**
+A visual fix. The dashed yellow lines marking elevation milestones used to run
+all the way across the graph — and because the graph bleeds off the right edge of
+the screen, they ran right across the whole page. They were bright, they escaped
+the column everything else lines up in, and with only a week of data the graph is
+mostly empty, so those two lines were the loudest thing in it.
+
+They now appear only *inside* the ground, so in practice you see a small yellow
+number on the left at the milestone's height and a yellow dot where you actually
+crossed it, with nothing stretched between them.
+
+**Why that particular fix:** every other horizontal line in that graph — the rock
+strata — is already clipped to the shape of the ground. The milestone line was
+the one exception, and a line floating in empty sky is what made it read as page
+furniture rather than as part of the landscape. Clipping it the same way fixes
+the cause rather than just dimming it, which is why it can stay clearly legible
+instead of being faded almost to nothing.
+
+The line also now stops at the point the milestone was crossed. Past that point
+it said nothing anyway: elevation only ever rises, so once you are above a level
+you stay above it.
+
+**Technical concepts used:**
+- SVG `clipPath` — the same one the strata already use, so both are clipped to
+  the same landform shape and cannot drift apart
+
+**Verified:** re-ran the full suite after the change — 72 browser checks and
+three logic suites, all passing — and looked at the graph on both the home page
+and a track page.
+
+**Roadmap status:** none. A visual correction, requested directly.
+
+---
+
+## 2026-09-04 — Tasks replaced by a nested Topic tree, with contribution tracking
+
+**What was built:**
+The biggest change so far. "Tasks" no longer exist. Instead, a Track holds a
+**tree of Topics** that can contain other Topics, up to five levels deep. A Topic
+with nothing inside it is the thing you actually work on; a Topic with things
+inside it is a heading, and shows how much of its contents you covered.
+
+Working something is now a **count**, not a tick. Click it once, it counts once;
+click it five times, it counts five. There is an undo for the most recent click.
+The colour goes from dark green to bright green across five steps, and stops
+getting brighter after five even though the real number keeps going up.
+
+**How it works (flow):**
+1. You open a Track. By default you get the **flat view**: a plain list of every
+   workable topic in the track, with the path above it ("Arrays › Two pointers")
+   so two things called "BFS" are still telling apart.
+2. A **Tree** toggle switches to the full hierarchy, where headings can be
+   collapsed and each one shows "2/3 today" — how many of its direct contents
+   you touched.
+3. Clicking a leaf's green square records an activity. The number changes
+   immediately, before the save finishes, so it feels instant; if the save fails
+   the number goes back and an error appears.
+4. That click is stored as one row per topic per day, with a count. Everything
+   else in the app — streaks, the ring, the graph, the history table — is worked
+   out from those rows when the page loads. Nothing is stored twice.
+5. You can rename, move and reorder topics. Moving checks two things before
+   allowing it: you cannot move something inside itself, and the whole branch you
+   are moving has to still fit inside five levels.
+6. Deleting a heading that still has things inside it is refused. Deleting a
+   workable topic hides it but keeps its history, so the record of days you
+   worked it stays visible.
+
+**Three different measurements, kept deliberately separate:**
+- **A leaf's intensity** — how many times *that one thing* was worked today.
+- **A heading's coverage** — how many of its direct contents were worked, not how
+  many times. Clicking one child ten times does not make the heading look more
+  covered, because that is not breadth.
+- **A track's coverage** — how many workable topics were touched, out of all of
+  them. Two of eight is 25%, however many clicks those two got.
+
+**Technical concepts used:**
+- A **self-referencing table** (a Topic row can point at another Topic as its
+  parent) — this is what makes unlimited nesting possible with one table
+- A stored `depth` number on each row — so the five-level rule can be checked
+  with one lookup instead of walking up the tree every time; it is rewritten for
+  the whole branch when something moves
+- **Soft delete** (a `deletedAt` date instead of removing the row) — so history
+  survives deletion
+- **Optimistic updates** (React's `useOptimistic`) — the count changes on the
+  click and the server catches up; if the server refuses, the number reverts on
+  its own
+- Database-enforced "one row per topic per day", so a double-click cannot create
+  two rows
+
+**What was removed:** the `Task`, `TaskCheckIn` and `CompletionLog` tables, and
+the check-in "beat" that composed the tick, the report line and the flashing
+number into one moment. That machinery was published from the task row, and with
+tasks gone nothing could trigger it. The streak-milestone celebration went with
+it — the maths is still there and still tested, but nothing shows it.
+
+**A bug worth recording, because it nearly shipped invisibly:** the example data
+wrote dates as numbers while the app writes them as text. SQLite sorts all
+numbers before all text regardless of value, so every "activity since this date"
+query silently matched nothing — and only one panel in the whole app used one, so
+everything else looked perfect. The seed now writes dates the same way the app
+does and fails loudly if it ever doesn't.
+
+**Verified:** 68 checks in total. The tree rules (depth, cycles, coverage,
+tiers) have a new logic suite of 46 assertions; the app itself was driven in a
+real browser for the rest — creating four levels of nesting, being refused a
+sixth *with the client-side guard deliberately bypassed*, refusing a cycle,
+reordering, moving a branch and confirming its depths and history followed it,
+being refused a parent delete, soft-deleting a leaf and finding it still in the
+history marked deleted, and checking every number on screen against the same
+figures computed independently in SQL.
+
+**Roadmap status:** new Phase 2 item, marked [x] in `docs/ROADMAP.md`. Several
+earlier Phase 1 and Phase 2 items are now marked superseded there rather than
+deleted, since they record what was actually built at the time.
+
+---
+
+## 2026-09-04 — "Add new task" is a button now, not a box sitting open
+
+**What was built:**
+Every topic used to show an empty task box permanently, so a track with two
+topics showed two identical empty boxes and the page read as a form to fill in
+rather than as a list of what you are learning. Now each topic shows a small
+"+ Add new task" link instead, and the box only appears when you ask for it.
+
+**How it works (flow):**
+1. A topic shows "+ Add new task" and nothing else.
+2. Click it → the name box, the difficulty dropdown and the Add button appear,
+   with the cursor already in the name box so you can type straight away.
+3. Type a name, click Add → the task is created and appears in the list.
+4. The box **stays open** and empties itself, so you can type the next task
+   immediately. Adding tasks is the one thing here anyone does several times in
+   a row, and closing after each one would cost a click per task.
+5. Press Escape, or click Cancel, to put it away again.
+
+**Technical concepts used:**
+- The open/closed state lives inside the task form itself, so nothing else on
+  the page had to change to support it
+- `aria-expanded` on the trigger — tells a screen reader whether the form it
+  controls is currently showing
+- Focus is moved into the box on open and back to the trigger on close, so
+  someone using only a keyboard is never dropped somewhere unexpected
+
+**Verified:** drove the whole sequence in a real browser against a copy of the
+database — no box on load, two triggers (one per topic), click opens and focuses
+the field, typing a name and pressing Add creates the task and shows it in the
+list, the field clears and stays open, and Escape closes it and returns focus to
+the trigger. The created task was confirmed in the database. No console errors.
+
+**Still open:** the *topic* box at the top of the same page still sits open
+permanently, and is now the only always-open empty box on the screen. Left as-is
+because only the task box was asked about.
+
+**Roadmap status:** none. An interaction change, requested directly.
+
+---
+
+## 2026-09-04 — Bigger glitch, another second on it, and the input hints are gone
+
+**What was built:**
+Two things. The glitch effect grew again and now runs about a second longer, and
+the grey example text inside the three "add" boxes is gone.
+
+**The glitch:**
+- The area it fractures across grew by roughly a third in each direction. A
+  small label like "Elevation" now breaks apart over about 126x86 pixels,
+  against 96x62 before.
+- The three coloured copies pull further apart to match — about two thirds of
+  the letter height rather than half — so they stay as far apart relative to the
+  bigger space they now have.
+- It holds for about a second longer: the fade now starts at two to three
+  seconds instead of one to two, and a whole event lasts roughly 2.4 to 3.6
+  seconds. Measured on the running app: 2.8 to 3.2 seconds.
+
+Nothing else needed changing for the longer hold. The shards take as many cycles
+as fit, the wandering copies take as many turns, and the sparkles spread along
+whatever length the hold is — so the duration is a single number and everything
+follows it.
+
+**Worth stating plainly:** this effect is now *longer* than a lightning strike,
+where it started out deliberately much shorter so the two could never be
+confused. That trade was made knowingly and on request; it has now gone past
+"same length" to "the glitch is the longer one".
+
+**The placeholder text:**
+The three boxes you type into had grey example text in them — "e.g. DSA,
+Spanish, Guitar" for a new track, "e.g. Arrays, Graphs, Present tense" for a new
+topic, "e.g. Solve: Two Sum" for a new task. All three are removed, and the
+now-unused setting that carried them was removed from the shared form component
+rather than left dangling.
+
+This costs nothing for screen readers: each box already had a proper hidden name
+("Track name", "Topic name", "Task title"), so the example text was never what
+identified the field.
+
+**One thing worth knowing:** the task box's example was "e.g. Solve: Two Sum",
+which is the exact example `CLAUDE.md` uses for what a Task must *never* be — it
+says a Task is a repeating activity like "Practice array problems", not a
+one-time item like "Solve: Two Sum". So that hint had been teaching the wrong
+idea; it is gone either way.
+
+**Technical concepts used:**
+- `aria-label` (a hidden name attached to a form field for screen readers) —
+  already present on all three boxes, which is why the visible hints could go
+- Removing the unused `placeholder` input from the shared create-form component,
+  rather than passing an empty string, so nothing is left half-wired
+
+**Verified:** the effect still switches off entirely under reduced motion, still
+never overlaps itself, and still causes no sideways scrollbar at 1440, 1280, 390
+or 320 pixels wide. The track box confirmed to still report its name correctly
+with no visible hint.
+
+**Roadmap status:** none. Visual tuning and a copy removal, both requested
+directly.
+
+---
+
+## 2026-09-04 — The glitch now lingers for a second or two
+
+**What was built:**
+The glitch effect holds much longer. It used to be over in about six-tenths of a
+second — a blink. It now stays corrupted for one to two seconds and then fades
+away over another half-second, so you get time to actually look at it.
+
+**How it works (flow):**
+1. The three coloured copies of the text pull apart as before, over about a
+   tenth of a second.
+2. Then, instead of sitting frozen, they keep *wandering* — jumping around the
+   position they landed in, in small discrete steps, for the whole hold. Each of
+   the three copies wanders on its own timing, and the three timings are chosen
+   so they never fall back into step with each other.
+3. The coloured triangles no longer play once and vanish. Each one keeps
+   breaking out and snapping back for as long as the hold lasts, every piece on
+   its own rhythm, so the cluster shimmers rather than sitting still.
+4. The white sparkles are now spread out across the whole hold instead of all
+   popping in the first fraction of a second, so there is something catching the
+   light throughout.
+5. When the fade starts, everything dims out together — but the pieces are still
+   moving as they go, rather than freezing first and then fading.
+
+**Why the extra work:** simply making the hold longer would have produced a
+still picture pasted over a word for two seconds. A glitch that stops glitching
+is a sticker. Keeping the plates disagreeing for the whole hold is what the
+extra timing machinery buys.
+
+**One thing given up, deliberately:** the original spec made this effect short
+*specifically* so it could never be confused with a lightning strike — two
+different kinds of thing should not last the same time. At one to two seconds
+they now do occupy the same range, and the two can be on screen together. They
+still start at least a second apart, and they still look nothing alike.
+
+**Technical concepts used:**
+- Looping animations with deliberately mismatched timings (190/230/270
+  milliseconds, which share no common factor) — the same trick the background
+  glows already use, so the pattern never visibly repeats
+- A separate fade animation layered over the top of the looping one — in CSS an
+  animation only affects the properties it names, so the fade can control
+  brightness while the loop underneath keeps controlling movement
+- Sparkle timings spread along the hold rather than clustered at its start
+
+**Verified:** measured lifetimes of 1.5 to 2.3 seconds from a clean start, and
+confirmed the pieces genuinely keep moving through the hold rather than
+freezing. Reduced motion still disables it, it still never overlaps itself, and
+there is still no sideways scrollbar at 1440, 1280, 390 or 320 pixels wide. An
+80-second unattended run: seven glitches, gaps of 8 to 14 seconds, no errors.
+
+**Roadmap status:** none. Visual tuning, requested directly.
+
+---
+
+## 2026-09-04 — Making the glitch big enough to actually see
+
+**What was built:**
+No new feature — the glitch effect from the entry below, resized. As first
+built it was correct but too small to notice: it fitted itself to the letters
+plus six pixels, so glitching a small label like "Elevation" happened inside a
+box about the size of a postage stamp and read as a smudge rather than as the
+screen corrupting. It now breaks out well past whatever it lands on.
+
+**How it works (flow):**
+1. The area the glitch plays in is no longer the words plus a fixed margin. It
+   grows with the target and has a generous floor, so even the smallest label
+   gets an event roughly three times its own size.
+2. How far the three coloured copies of the text pull apart is now tied to how
+   big that text is — about half the height of the letters — instead of a fixed
+   number of pixels that was too much on small type and invisible on large.
+3. The triangles were then *concentrated back onto the words*. Scattering them
+   over the whole enlarged area made the effect look like confetti around a
+   label rather than a label breaking apart, so the coloured pieces cover the
+   text plus a halo while the split copies and the sparkles use the full area.
+4. There are more triangles now, and each is smaller relative to the area, which
+   is what keeps it reading as a fracture rather than as a few flat slabs.
+
+**Technical concepts used:**
+- Sizes derived from the target rather than hard-coded — the same change made in
+  four places (the glitch area, the colour split, how far pieces fly, and how
+  big the sparkles are), because each one had been tuned against a single
+  example and then broke on a different-sized one
+- Two nested areas rather than one, so the pieces and the colour copies can be
+  concentrated and spread respectively without either fighting the other
+- A small colour weighting: cyan appears twice in the list of shard colours,
+  because magenta and red are neighbours and an even draw between the three
+  made large clusters come out as one red mass
+
+**Verified:** re-checked everything from the entry below at the new size —
+reduced motion still disables it, still never overlaps itself, event still
+lasts under 0.8 seconds, and still no sideways scrollbar at 1440, 1280, 390 or
+320 pixels wide. The two ambient effects still stagger apart, five runs in five.
+
+**Roadmap status:** none. Visual tuning, requested directly.
+
+---
+
+## 2026-09-04 — A second kind of weather: the screen glitch
+
+**What was built:**
+A new ambient effect that makes one thing on screen briefly *corrupt*, the way
+the film does when a character starts falling apart: the text tears into three
+mis-coloured copies, a cluster of coloured triangles breaks out over it, and a
+few sharp white sparkles pop where the pieces cross. It picks its own victim —
+a heading, a small label, a number, the "Rendred" wordmark — fires roughly every
+ten to twenty seconds, and is gone again in about two-thirds of a second.
+Everything else on screen is left completely alone while it happens.
+
+This is a sibling of the lightning, not of the check-in shatter. The lightning
+and this are both weather: they arrive on their own and mean nothing. The
+check-in shatter is unchanged and still means "that worked".
+
+**How it works (flow):**
+1. A timer in the layout waits a random ten to twenty seconds.
+2. When it goes off, the effect looks at what is currently on screen and builds
+   a list of things worth glitching — panel captions, section labels, headings,
+   numbers, the wordmark. It skips buttons, sliders and text boxes on purpose:
+   a glitch over a control you are about to press reads as the control breaking.
+3. It picks one at random and measures where that item's *words* actually sit —
+   not the invisible box around them, which in this layout is usually the whole
+   width of the page. It then grows that area outwards to give the glitch room
+   to break out of.
+4. It draws its own layer on top at exactly that spot. Nothing about the real
+   text is touched, so it stays readable underneath the whole time.
+5. Three copies of the text appear in red, cyan and magenta, offset apart by
+   about half the height of the letters. Then ten to sixteen triangles snap in
+   over them. Then three to six four-pointed sparkles pop, slightly staggered.
+6. It holds for a moment and then everything slides back into place and fades.
+   The whole thing lasts between half a second and eight-tenths of a second —
+   deliberately about a third as long as a lightning strike, so the two never
+   feel like the same event.
+7. If your system is set to reduce motion, none of this ever starts.
+
+**Technical concepts used:**
+- Reused the check-in shatter's triangle generator rather than writing a second
+  one — it grew two settings (which colours, and how big the pieces are) so both
+  effects can share it without either being stuck with the other's tuning
+- A shared "clock" both ambient effects check before firing — if the other one
+  went off in the last second, this one waits a few hundred milliseconds so they
+  do not pile into one busy moment
+- Browser `Range` measurement — how the effect finds where the actual letters
+  are, rather than the empty column around them
+- A brightness check on whatever the text is sitting on — the effect adds light,
+  so on an already-bright surface it would wash out to a white smear; anything
+  that bright is skipped
+- CSS keyframes and `clip-path` only, no animation library, matching how the two
+  existing effects were built
+
+**Verified:** driven for 90 seconds with nobody touching it — seven glitches,
+six different targets, gaps of 8 to 19 seconds, zero errors. Also checked: it
+never runs under reduced motion, never overlaps itself even when fired five
+times in a row, and adds no sideways scrollbar at 1440, 1280, 390 or 320 pixels
+wide.
+
+**Roadmap status:** none. This is visual work, requested directly; it does not
+belong to a roadmap phase and nothing in `docs/ROADMAP.md` changed.
+
+---
+
 ## 2026-09-04 — The lightning became weather
 
 **What was built:**

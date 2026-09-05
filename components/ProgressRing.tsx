@@ -4,7 +4,7 @@ import { useState } from "react";
 
 /**
  * Circular completion ring, drawn as SVG so it can animate its own stroke on
- * load. Shows real task completion — never an invented XP or level number.
+ * load. Shows real coverage — never an invented XP or level number.
  *
  * On a *change* it advances from the length it was already showing rather than
  * wiping to empty and redrawing. Redrawing was the one animation on this page
@@ -16,7 +16,7 @@ import { useState } from "react";
 export default function ProgressRing({
   completed,
   total,
-  label = "Task progress",
+  label = "Coverage",
 }: {
   completed: number;
   total: number;
@@ -58,8 +58,8 @@ export default function ProgressRing({
           role="img"
           aria-label={
             total === 0
-              ? `${label}: no tasks yet.`
-              : `${label}: ${completed} of ${total} tasks complete, ${percent} percent.`
+              ? `${label}: nothing to work on yet.`
+              : `${label}: ${completed} of ${total} worked, ${percent} percent.`
           }
         >
           <circle
@@ -77,7 +77,7 @@ export default function ProgressRing({
           {percent > 0 && (
             <circle
               /*
-                Keyed by the value so finishing a task re-runs the draw: the
+                Keyed by the value so working a leaf re-runs the draw: the
                 ring visibly advances to its new length instead of snapping.
               */
               key={percent}
@@ -112,7 +112,7 @@ export default function ProgressRing({
       </div>
 
       <p aria-hidden="true" className="font-label text-[0.65rem] uppercase leading-relaxed tracking-[0.14em] tabular-nums text-muted">
-        <span className="text-fg">{completed}</span> of <span className="text-fg">{total}</span> tasks
+        <span className="text-fg">{completed}</span> of <span className="text-fg">{total}</span> worked
       </p>
     </div>
   );

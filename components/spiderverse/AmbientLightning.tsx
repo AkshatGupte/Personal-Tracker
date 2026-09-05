@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { collidesWithOther, markEffect, STAGGER_MS } from "./effectClock";
 import { r1, rng } from "./rng";
 import { useReducedMotion } from "./useReducedMotion";
 
@@ -98,53 +99,86 @@ function buildFigure(seed: number, outward: number) {
   const next = rng(seed);
   const strokes: Stroke[] = [];
 
-  // Generation 0. The trunk barely tapers — it is the channel everything else
-  // hangs off, and a trunk that thinned as fast as its branches would leave the
-  // figure with no spine.
+  /*
+    Generation 0. The trunk barely tapers — it is the channel everything else
+    hangs off, and a trunk that thinned as fast as its branches would leave the
+    figure with no spine.
+
+    **Short jags, many of them.** This ran 4-7 segments of 46-72px, which is a
+    near-straight line with a couple of kinks: photographed against the
+    reference it read as a bare tree branch rather than a discharge. A real
+    channel changes direction constantly and travels a long way doing it, so the
+    segment count roughly doubled and each one is now about half as long. Same
+    total reach, an order more angularity.
+  */
   const trunkAngle = outward + (next() - 0.5) * 0.7;
   const trunk = grow(
     next,
     [0, 0],
     trunkAngle,
-    46 + next() * 26,
-    2.6,
-    4 + Math.floor(next() * 4), // 4-7
+    19 + next() * 13,
+    4.4,
+    10 + Math.floor(next() * 5), // 10-14
     strokes,
-    0.85,
-    0.94,
-    0.93,
+    1.4,
+    0.988,
+    0.978,
   );
 
-  // Generation 1.
-  const gen1Count = 3 + Math.floor(next() * 3); // 3-5
+  // Generation 1. More forks than before, and shorter: the reference's density
+  // comes from the number of branches, not from their length.
+  const gen1Count = 5 + Math.floor(next() * 4); // 5-8
   for (const at of forkPoints(next, trunk, gen1Count)) {
     const side = next() < 0.5 ? -1 : 1;
     const branch = grow(
       next,
       trunk[at],
-      trunkAngle + side * (0.45 + next() * 0.85),
-      30 + next() * 20,
-      1.9,
-      2 + Math.floor(next() * 3), // 2-4
+      trunkAngle + side * (0.5 + next() * 1.15),
+      18 + next() * 16,
+      2.5,
+      3 + Math.floor(next() * 3), // 3-5
       strokes,
-      0.95,
+      1.05,
     );
 
     // Generation 2 — the level that makes it read as a Lichtenberg figure
     // rather than a bolt with a couple of forks.
-    const gen2Count = 1 + Math.floor(next() * 3); // 1-3
+    const gen2Count = 2 + Math.floor(next() * 3); // 2-4
     for (const sub of forkPoints(next, branch, gen2Count)) {
       const subSide = next() < 0.5 ? -1 : 1;
-      grow(
+      const twig = grow(
         next,
         branch[sub],
-        trunkAngle + subSide * (0.7 + next() * 1.1),
-        14 + next() * 12,
-        1.0,
-        2 + Math.floor(next() * 2), // 2-3
+        trunkAngle + subSide * (0.7 + next() * 1.2),
+        11 + next() * 10,
+        1.4,
+        2 + Math.floor(next() * 3), // 2-4
         strokes,
-        1.1,
+        1.25,
       );
+
+      /*
+        Generation 3 — the capillaries.
+
+        The reference is *feathery*: the extremities dissolve into a haze of
+        very short hairs rather than ending in three visible twigs. Two
+        generations gave a clean, countable tree; this is the level at which the
+        eye stops counting branches and starts reading it as electricity.
+      */
+      if (next() < 0.75) {
+        for (const tip of forkPoints(next, twig, 1 + Math.floor(next() * 2))) {
+          grow(
+            next,
+            twig[tip],
+            trunkAngle + (next() < 0.5 ? -1 : 1) * (0.9 + next() * 1.4),
+            5 + next() * 7,
+            0.8,
+            1 + Math.floor(next() * 2), // 1-2
+            strokes,
+            1.5,
+          );
+        }
+      }
     }
   }
 
@@ -206,12 +240,31 @@ export default function AmbientLightning() {
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const nextId = useRef(0);
+  /*
+    How many strikes are live, decided synchronously.
+
+    The cap used to be applied inside the `setStrikes` updater, which is the
+    natural place for it — until the shared effect clock needed to know, in the
+    same tick, whether a strike had actually been accepted. React batches that
+    updater, so a flag set inside it is still false when the dispatch returns,
+    and the glitch spawner was reading "no lightning fired" from a tick that had
+    just fired one. Measured: the two staggered apart on only two runs in five.
+  */
+  const live = useRef(0);
 
   useEffect(() => {
     if (reduced) return; // Disabled outright, not slowed.
     let alive = true;
 
     const spawn = () => {
+      // The ambient glitch runs on its own independent timer, so every few
+      // minutes the two coincide. Neither is suppressed — one just gets out of
+      // the other's way by a few hundred ms. See effectClock.
+      if (collidesWithOther("lightning")) {
+        timers.current.push(setTimeout(spawn, STAGGER_MS()));
+        return;
+      }
+
       const edges = collectEdges();
       if (edges.length === 0) return;
 
@@ -231,19 +284,21 @@ export default function AmbientLightning() {
         fade,
       };
 
-      setStrikes((current) => {
-        // One at a time, and rarely two. More than that stops reading as an
-        // occasional fluctuation and starts reading as a storm.
-        if (current.length >= 2) return current;
-        if (current.length === 1 && Math.random() > 0.18) return current;
-        return [...current, strike];
-      });
+      // One at a time, and rarely two. More than that stops reading as an
+      // occasional fluctuation and starts reading as a storm.
+      if (live.current >= 2) return;
+      if (live.current === 1 && Math.random() > 0.18) return;
+
+      live.current += 1;
+      // Only a strike that actually drew counts as something to stagger around.
+      markEffect("lightning");
+      setStrikes((current) => [...current, strike]);
 
       timers.current.push(
-        setTimeout(
-          () => setStrikes((c) => c.filter((s) => s.id !== strike.id)),
-          FLICKER_MS + hold + fade + 60,
-        ),
+        setTimeout(() => {
+          live.current = Math.max(0, live.current - 1);
+          setStrikes((c) => c.filter((s) => s.id !== strike.id));
+        }, FLICKER_MS + hold + fade + 60),
       );
     };
 
@@ -272,6 +327,7 @@ export default function AmbientLightning() {
       window.removeEventListener("sv:lightning", force);
       timers.current.forEach(clearTimeout);
       timers.current = [];
+      live.current = 0;
     };
   }, [reduced]);
 
@@ -311,13 +367,43 @@ export default function AmbientLightning() {
           }}
           fill="none"
         >
-          <g style={{ filter: "blur(3px)", opacity: 0.75 }}>
+          {/*
+            Three passes, not two: a wide soft bloom, a saturated cyan sheath,
+            and a hot core.
+
+            The pair this replaced — one blurred cyan pass at 3.6x under a
+            `#8FF3FF` core — gave a thin bright filament with a faint halo. In
+            the reference the bolt is a *thick* channel: a broad cyan glow, a
+            solid cyan body inside it, and white heat down the middle of the
+            heaviest runs. Splitting the glow into a far wide/soft pass and a
+            near tight/bright one is what produces that depth; a single blurred
+            pass can be wide or intense but not both.
+          */}
+          {/* The wide bloom skips the capillaries. A 0.8px hair grown to 5.6px
+              and blurred by 9 contributes nothing an eye can find, and the
+              third generation is most of the stroke count — measured at ~400
+              paths per strike before this, against ~30 for the old two-pass
+              figure. */}
+          <g style={{ filter: "blur(9px)", opacity: 0.55 }}>
+            {strike.strokes
+              .filter((s) => s.width > 1.2)
+              .map((s, i) => (
+                <path
+                  key={`b${i}`}
+                  d={s.d}
+                  stroke="var(--sv-cyan)"
+                  strokeWidth={s.width * 7}
+                  strokeLinecap="round"
+                />
+              ))}
+          </g>
+          <g style={{ filter: "blur(2.5px)", opacity: 0.95 }}>
             {strike.strokes.map((s, i) => (
               <path
                 key={`g${i}`}
                 d={s.d}
                 stroke="var(--sv-cyan)"
-                strokeWidth={s.width * 3.6}
+                strokeWidth={s.width * 2.6}
                 strokeLinecap="round"
               />
             ))}
@@ -326,6 +412,22 @@ export default function AmbientLightning() {
             {strike.strokes.map((s, i) => (
               <path key={`c${i}`} d={s.d} stroke="#8FF3FF" strokeWidth={s.width} strokeLinecap="round" />
             ))}
+          </g>
+          {/* White heat, on the heavy runs only. Painting it down the
+              capillaries too would flatten the taper that makes the figure
+              read as self-similar. */}
+          <g>
+            {strike.strokes
+              .filter((s) => s.width > 1.6)
+              .map((s, i) => (
+                <path
+                  key={`h${i}`}
+                  d={s.d}
+                  stroke="#EAFEFF"
+                  strokeWidth={s.width * 0.42}
+                  strokeLinecap="round"
+                />
+              ))}
           </g>
         </svg>
       ))}

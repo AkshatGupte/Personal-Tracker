@@ -1,80 +1,84 @@
 # Data Schema
 
-Database: SQLite via Prisma. This is the ground-truth schema — Claude Code
-should generate the actual `schema.prisma` file from this and keep it in
-sync if changes are made.
+Ground truth for `prisma/schema.prisma` — keep the two in sync.
+
+**Superseded once, deliberately.** This file used to describe Track → Topic →
+Task → TaskCheckIn → CompletionLog. Tasks are gone: a Topic tree replaced them,
+and a leaf Topic *is* the unit of activity. Nothing was migrated — see
+`docs/DECISIONS.md`.
+
+## The shape, in one line
+
+```
+Track → Topic (recursive, max depth 5) → TopicActivity (one row per node per day)
+```
+
+A Topic with live children is a **parent**: it is not actionable and has no
+activity of its own. A Topic with no live children is a **leaf**: it is the only
+thing that can be worked. Neither is a stored flag — both are questions about
+whether the node currently has children, which is what lets a leaf become a
+parent and back again without any migration of its history.
 
 ## Entities
 
 ### Track
-Represents a top-level learning goal (e.g. "DSA", "Spanish").
+A top-level learning goal, e.g. "DSA" or "Spanish".
 
 | Field | Type | Notes |
 |---|---|---|
 | id | string (cuid) | primary key |
-| name | string | e.g. "DSA" |
+| name | string | |
 | createdAt | datetime | |
-| currentStreak | int | strict streak count, resets to 0 on missed day |
-| longestStreak | int | best streak ever, for motivation display |
-| lastActivityDate | date? | null until the first completion; used to compute streak resets |
+
+**No cached streak columns**, and this is deliberate. A strict streak breaks
+through *inactivity*, and inactivity writes nothing — so a cached number has no
+code path that could expire it and would read as alive days after it lapsed.
+Streaks, coverage and totals are derived from TopicActivity on every read.
 
 ### Topic
-A sub-category within a Track (e.g. "Arrays", "Graphs").
+A node in a Track's tree. The same model is both branch and leaf.
 
 | Field | Type | Notes |
 |---|---|---|
 | id | string (cuid) | primary key |
-| trackId | string | foreign key → Track |
-| name | string | e.g. "Arrays" |
-| isExpected | bool | true if part of the LLM-suggested curriculum, false if user-added ad hoc |
+| trackId | string | FK → Track, cascade |
+| parentId | string? | null for a top-level topic; FK → Topic, cascade |
+| name | string | |
+| position | int | explicit order among siblings; shared by both views |
+| depth | int | 1..5, denormalised so the limit is one read to enforce |
+| deletedAt | datetime? | soft delete; the row and its history survive |
 | createdAt | datetime | |
 
-### Task
-A **persistent recurring learning activity** within a Topic — "Practice array
-problems", "Read about binary trees". A Task is never permanently completed: it
-stays available indefinitely and is checked in once per day. There is no
-one-time task type and no `kind` discriminator; recurring is the only model.
+`depth` is denormalised on purpose: every insert and move checks it, and walking
+to the root each time would make the commonest write the most expensive. It is
+rewritten across the whole moved subtree inside the move's transaction — a stale
+value there silently permits a six-level tree, since every later check reads it.
+
+### TopicActivity
+One row per topic per day, holding how many times that leaf was worked. **The
+single source of truth for every activity figure in the app.**
 
 | Field | Type | Notes |
 |---|---|---|
 | id | string (cuid) | primary key |
-| topicId | string | foreign key → Topic |
-| title | string | |
-| difficulty | string? | optional: easy / medium / hard |
-| position | int | explicit order within the Topic; appended as max+1 |
-| createdAt | datetime | |
+| topicId | string | FK → Topic, cascade |
+| date | datetime | local midnight, via `startOfDay()` in `lib/day.ts` |
+| count | int | ≥ 1 while the row exists; stored uncapped |
+| updatedAt | datetime | |
 
-**`status` and `completedAt` are removed.** They modelled a terminal state a
-recurring activity never reaches: a single timestamp cannot hold "done Monday
-*and* Tuesday", and it was overwritten on each new check-in. Whether a Task was
-done on a given day is a question for `TaskCheckIn`.
+Unique on `(topicId, date)`, enforced in the database so a double submit cannot
+produce two rows for one day.
 
-### TaskCheckIn
-One row per Task per day. This is the record the whole product is built on:
-the user's statement that they did this activity today.
+A **count**, not a row per click: the product question is "how much was this
+worked today", and undo has to decrement the same number the tiers read. At zero
+the row is **deleted** rather than left at 0 — presence means activity, and a
+zero row would be indistinguishable from a worked day in every query that reads
+presence, the streak above all.
 
-| Field | Type | Notes |
-|---|---|---|
-| id | string (cuid) | primary key |
-| taskId | string | foreign key → Task |
-| date | date | local midnight, same convention as CompletionLog |
-| createdAt | datetime | the actual time of day, kept for interest only |
-
-A check-in is created and deleted, never toggled through a status field — the
-row's existence *is* the state. Undoing today's check-in deletes today's row
-and leaves every earlier row untouched.
-
-### CompletionLog
-One row per day per track — a rollup of that day's `TaskCheckIn` rows, so
-streaks and weekly/monthly rollups can be read without recounting check-ins
-every time. Unchanged in shape: only what it is computed *from* changes.
-
-| Field | Type | Notes |
-|---|---|---|
-| id | string (cuid) | primary key |
-| trackId | string | foreign key → Track |
-| date | date | one entry per track per day |
-| tasksCompletedCount | int | count of tasks completed that day |
+There is deliberately **no per-track daily rollup table**. The old CompletionLog
+was pure derived state that had to be rebuilt whenever anything was deleted or
+moved; deriving instead means a move or a soft delete changes what the figures
+mean without a single row being rewritten to keep up.
 
 ### InsightLog (Phase 3)
 Stores generated LLM remarks so they're not regenerated unnecessarily and
@@ -98,97 +102,63 @@ so past insights remain viewable.
 ## Relationships
 
 ```
-Track 1---N Topic 1---N Task 1---N TaskCheckIn
-Track 1---N CompletionLog
-Track 1---N InsightLog (optional)
+Track  1───n  Topic
+Topic  1───n  Topic      (self, via parentId; max depth 5)
+Topic  1───n  TopicActivity
 ```
 
-`TaskCheckIn` is the ground truth for activity. `CompletionLog` is a derived
-per-track daily rollup of it and can always be rebuilt from it.
+Deleting a **Track** cascades and hard-deletes everything under it — that is the
+only hard delete in the app, because a deleted track leaves no history anything
+could still belong to. Deleting a **Topic** is a soft delete and is refused
+while it has live children.
 
-All child relations use **cascade delete** — deleting a Track removes its
-Topics, Tasks and CompletionLogs, so "delete Track" cannot leave orphans.
+## Constraints & Defaults
 
-## Constraints & Defaults (as implemented)
-
-Added when the schema was built; recorded here so this file matches
-`prisma/schema.prisma`.
-
-| Where | Rule | Why |
-|---|---|---|
-| CompletionLog | `@@unique([trackId, date])` | enforces the "one entry per track per day" rule above |
-| Track | `currentStreak`, `longestStreak` default `0` | a new track starts with no streak |
-| Track | `lastActivityDate` nullable | nothing has been completed yet |
-| Topic | `isExpected` defaults `false` | topics are user-added unless the curriculum marks them |
-| TaskCheckIn | `@@unique([taskId, date])` | one check-in per task per day — the rule the whole model rests on, enforced by the database rather than by application code |
-| CompletionLog | `tasksCompletedCount` defaults `0` | |
-| all | `createdAt` defaults to now | |
-| Topic, Task, CompletionLog | index on the foreign key | keeps per-track lookups cheap |
-| TaskCheckIn | index on `taskId`, and on `date` | per-task history and per-day rollups are the two read shapes |
-| Topic, Task | `position` defaults `0`, composite index with the parent id | ordered reads without a sort |
-
-**Ordering note:** Topics and Tasks are ordered by `position` with `createdAt`
-only breaking ties. Order is stored rather than inferred from creation time,
-because a generated curriculum is a sequence and creation order does not
-survive editing or regeneration. Nothing reorders rows yet; the field exists so
-that ordering is not retrofitted later.
-
-**Type note:** SQLite has no dedicated date or enum type. All `date`/`datetime`
-fields are stored as `DateTime`, and `difficulty` is a plain string validated in
-application code.
-
-**Cascade note:** `TaskCheckIn` cascades from `Task`. Deleting a Task therefore
-erases its history, and the days it contributed to must be recomputed — see the
-deletion rule in Key Logic Notes.
-
-**Phase note:** Track, Topic, Task, TaskCheckIn and CompletionLog all exist in
-`prisma/schema.prisma`. InsightLog (Phase 3) and UserPreferences (Phase 4) are
-documented below and deliberately not modelled yet.
+- **Max depth is 5.** A depth-5 node cannot receive children. Enforced in
+  `lib/tree.ts` (`canAddChild`, `canMove`), applied by the server actions, and
+  additionally hidden in the UI. The UI hiding is a courtesy; the server check
+  is the rule, because a rendered page describes a tree that may since have
+  changed.
+- **A move must not create a cycle.** Checked by walking *down* from the moving
+  node: a node cannot be moved into its own descendant.
+- **A move must fit entirely.** The check is `parent.depth + subtreeHeight(node)`,
+  not the moved node alone — checking only the node would happily push its
+  grandchildren past the limit.
+- **A parent cannot be deleted while it has live children.** Refused rather than
+  cascaded: cascading would take a whole subtree, and every leaf's history with
+  it, on one click.
+- **Only a leaf can receive activity**, re-checked on every write.
+- **Soft-deleted nodes** leave current tree and coverage calculations
+  immediately and keep their activity rows for historical views.
+- `position` is rewritten as a dense `0..n-1` sequence for the whole sibling
+  group on reorder, never swapped — rows can share a position, and swapping two
+  equal numbers is a no-op that looks like a broken button.
+- **Dates are stored the way Prisma writes them: ISO strings.** SQLite has no
+  date type and orders by type class before value, so integer-millisecond rows
+  silently match nothing on any `date >= ...` filter. `prisma/seed.mjs` asserts
+  this rather than trusting it.
 
 ## Key Logic Notes (not schema, but affects it)
 
-- **Streak calculation:** on each check-in, recompute today's `CompletionLog`
-  row for that track, then rebuild the streak from the full set of active days.
-  The displayed streak is derived on read (see below), because inactivity
-  writes nothing and so no write path could ever catch a lapse.
-- **Who owns what:** `TaskCheckIn` owns the ground truth — one row means "this
-  activity was done on this day". `CompletionLog` owns the per-track daily
-  rollup of those rows. `Track.currentStreak` / `longestStreak` /
-  `lastActivityDate` are a cache of what `CompletionLog` implies. Each layer is
-  rebuildable from the one below it, and nothing is stored that could be
-  derived without cost.
-- **A Task has no completion state of its own.** "Checked in today" is a
-  question about `TaskCheckIn`, answered per render for the current day. It is
-  not a column, and it does not persist into tomorrow.
-- **The per-track ratio changes meaning.** It was "how many of this track's
-  tasks are finished", which for a recurring activity is either meaningless or
-  permanently 100%. It becomes **"how many of today's activities have been
-  checked in"** — a figure that starts at zero each morning and is the point of
-  the daily loop. Every place showing `N / M done` reads this instead.
-- **Today's row is a rollup, earlier rows are frozen:** on check-in, undo or
-  deletion, today's `CompletionLog` row is recomputed by counting today's
-  `TaskCheckIn` rows for that track. Earlier days are never rewritten, so a
-  streak that was earned stays earned. Counts are recomputed, never
-  incremented, which makes repeat clicks and retries harmless.
-- **Deleting a Task erases its history.** Check-ins cascade, so a deleted Task
-  takes its past days with it. Every `CompletionLog` day that task contributed
-  to is now wrong, not just today's. Either recompute the affected days from
-  the surviving check-ins, or decide deliberately that history is frozen and
-  keep the rows — **this is an open decision and must be settled before the
-  check-in engine is written**, because the two answers need different code.
-- **A day with no completions has no row.** Zero-count rows are deleted rather
-  than stored, so a row always means real activity.
-- **`date` is always local midnight.** `@@unique([trackId, date])` compares the
-  whole `DateTime`, so every write normalises through the shared `startOfDay()`
-  helper in `lib/day.ts`; reads use the same helper. Day boundaries are local,
-  not UTC — see `docs/DECISIONS.md`.
-- **The displayed streak is recomputed from `CompletionLog` on read.**
-  Inactivity writes nothing, so a lapse cannot be caught by a write; deriving
-  it on read is what makes the strict reset actually appear.
-- **Coverage gap detection:** compare the set of `Topic.name` where
-  `isExpected = true` and none of whose Tasks has ever been checked in, against
-  the full expected list. "Untouched" now means no `TaskCheckIn` has ever
-  existed for any task under that topic — which is a stronger and more useful
-  signal than the old "no task marked complete", because it also exposes topics
-  that were started and then abandoned. This is plain code — no LLM call needed for the comparison
-  itself, only for generating the expected list and the final remark text.
+Three different questions, three different answers. Conflating them is the easy
+mistake, and `lib/tree.ts` keeps them apart:
+
+- **Leaf intensity** = that node's own count today. Tiers are fixed: 0 neutral,
+  1-4 their own tier, 5+ the top tier. The stored count is never capped.
+- **Parent coverage** = distinct *direct* children worked today / total direct
+  children. Clicking one child five times does not move it — the figure is
+  breadth, and touching the same corner repeatedly is not breadth. A child that
+  is itself a parent counts as worked when anything beneath it was worked.
+- **Track coverage** = distinct active leaves / total leaves, computed across all
+  leaves at once. Deliberately *not* an average of the top-level topics'
+  coverage, which would weight a topic holding two leaves the same as one holding
+  twenty.
+
+**A day is active when at least one *current* leaf received activity.** Rows
+belonging to deleted nodes, or to nodes that have since gained children, stay in
+history but cannot hold a streak up — otherwise deleting the last thing you ever
+worked on would leave the streak it earned standing.
+
+Streaks remain **strict and per-track**: a missed day resets to 0, with no
+freezes and no forgiveness. `summariseStreak` in `lib/streak.ts` was not changed
+by the restructure; only what feeds it did.

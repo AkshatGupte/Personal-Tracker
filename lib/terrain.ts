@@ -1,20 +1,30 @@
 /**
  * Terrain maths for the progress visualisation.
  *
- * Elevation is cumulative check-ins. Nothing here invents a value: every
- * point comes from CompletionLog rows, and a track with no logged completions
- * produces an explicitly empty terrain rather than a fabricated curve.
+ * Elevation is cumulative activity. Nothing here invents a value: every point
+ * comes from TopicActivity rows, and a track with nothing recorded produces an
+ * explicitly empty terrain rather than a fabricated curve.
  *
  * Pure functions, no rendering, so the mapping can be reasoned about on its own.
  * Day boundaries come from lib/day, so the window here lines up exactly with
- * the days streaks and CompletionLog rows are keyed by.
+ * the days streaks and TopicActivity rows are keyed by.
  */
 
 import { addDays, dayKey, startOfDay } from "@/lib/day";
+import { TERRAIN_DAYS, TERRAIN_SPAN } from "@/lib/windows";
 
-export const TERRAIN_DAYS = 84; // 12 weeks
+/*
+  The window itself lives in `lib/windows.ts`, beside the heatmap's, because
+  the two must be able to differ. This file used to own the only number, and
+  `lib/progress.ts` reached for it to filter the rows feeding *both* the terrain
+  and the heatmap — so the graph's span and the heatmap's data were one setting
+  wearing two hats. Re-exported here so callers of the terrain maths still have
+  it to hand.
+*/
+export { TERRAIN_DAYS };
+
 /**
- * Cumulative check-in totals worth marking on the terrain.
+ * Cumulative activity totals worth marking on the terrain.
  *
  * **These are volume milestones, and they are not the streak milestones in
  * `lib/streak.ts`.** The two answer different questions and the theme keeps
@@ -24,7 +34,9 @@ export const TERRAIN_DAYS = 84; // 12 weeks
  */
 export const ELEVATION_MILESTONES = [10, 50, 100, 250, 500] as const;
 
-export type DayLog = { date: Date; tasksCompletedCount: number };
+/** One day's activity total for whatever scope is being drawn — a single
+ *  track, or every track at once. Fed from TopicActivity; nothing stores it. */
+export type DayLog = { date: Date; count: number };
 
 export type TerrainPoint = {
   /** 0 at the oldest day, 1 at today. */
@@ -69,7 +81,7 @@ export function buildSeries(
   const totals = new Map<string, number>();
   for (const log of logs) {
     const key = dayKey(log.date);
-    totals.set(key, (totals.get(key) ?? 0) + log.tasksCompletedCount);
+    totals.set(key, (totals.get(key) ?? 0) + log.count);
   }
 
   const end = startOfDay(today);
@@ -155,14 +167,14 @@ export function ridgePath(points: TerrainPoint[], width: number, height: number)
 /** Plain-language summary used as the text alternative for the drawing. */
 export function describeTerrain(terrain: Terrain, scope: string): string {
   if (!terrain.hasData) {
-    return `${scope}: no check-ins in the last 12 weeks, so there is no elevation to show yet.`;
+    return `${scope}: nothing recorded in the last ${TERRAIN_SPAN}, so there is no elevation to show yet.`;
   }
   const milestone = terrain.reached.length
     ? ` Milestones reached: ${terrain.reached.map((m) => m.value).join(", ")}.`
     : "";
   const upcoming = terrain.next ? ` Next milestone at ${terrain.next}.` : "";
   return (
-    `${scope}: ${terrain.peak} check-ins over the last 12 weeks, ` +
+    `${scope}: ${terrain.peak} activities over the last ${TERRAIN_SPAN}, ` +
     `${terrain.thisWeek} in the last 7 days.${milestone}${upcoming}`
   );
 }

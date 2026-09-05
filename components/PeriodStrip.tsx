@@ -48,7 +48,7 @@ export default function PeriodStrip({
     Magenta, not the heatmap's yellow, and the two are not inconsistent.
 
     This strip shares the heatmap's cell geometry but answers a different
-    question: it sits under "this week, N tasks completed" and encodes *volume*
+    question: it sits under "this week, N activities" and encodes *volume*
     across the days of one period. The twelve-week heatmap under "Consistency"
     encodes whether the days were kept at all. Same grammar, different signal,
     so the hue follows the signal.
@@ -67,7 +67,7 @@ export default function PeriodStrip({
   const summary =
     total === 0
       ? `${scope}: nothing completed so far this ${label}.`
-      : `${scope}: ${total} task${total === 1 ? "" : "s"} completed on ${done.length} day${
+      : `${scope}: ${total} activit${total === 1 ? "y" : "ies"} on ${done.length} day${
           done.length === 1 ? "" : "s"
         } this ${label}.`;
 
@@ -110,7 +110,7 @@ export default function PeriodStrip({
                 : {
                     ...cellStyle(level(day.count)),
                     // Today is named by an outline rather than by a brighter
-                    // fill, which would read as "more tasks".
+                    // fill, which would read as "more activity".
                     ...(day.isToday ? { outline: "1px solid var(--positive)" } : {}),
                   }
             }
@@ -122,7 +122,7 @@ export default function PeriodStrip({
       <figcaption className="sr-only">
         {done.length === 0
           ? `No days with completions yet this ${label}.`
-          : done.map((d) => `${d.key}: ${d.count} task${d.count === 1 ? "" : "s"}.`).join(" ")}
+          : done.map((d) => `${d.key}: ${d.count} activit${d.count === 1 ? "y" : "ies"}.`).join(" ")}
       </figcaption>
     </figure>
   );

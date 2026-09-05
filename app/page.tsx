@@ -1,6 +1,6 @@
 import InlineCreateForm from "@/components/InlineCreateForm";
 import { GlitchText } from "@/components/spiderverse/GlitchText";
-import { WebDivider, WebLoader } from "@/components/spiderverse/SpiderWeb";
+import { ThreadDivider, ThreadVoid } from "@/components/spiderverse/Threads";
 import Panel from "@/components/Panel";
 import StreakHeatmap from "@/components/StreakHeatmap";
 import TerrainProfile from "@/components/TerrainProfile";
@@ -8,12 +8,13 @@ import TopNav from "@/components/TopNav";
 import TrackRow from "@/components/TrackRow";
 import { createTrack } from "@/lib/actions/tracks";
 import { getHomeProgress } from "@/lib/progress";
+import { HEATMAP_SPAN, TERRAIN_SPAN } from "@/lib/windows";
 
 // Reads the database on every request, so the page always reflects live data.
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const { rows, totalTasks, completedTasks, terrain, countsByDay, bestStreak } =
+  const { rows, totalLeaves, workedLeaves, terrain, countsByDay, bestStreak } =
     await getHomeProgress();
 
   return (
@@ -55,9 +56,16 @@ export default async function Home() {
           </div>
 
           <p className="max-w-[34ch] text-sm leading-relaxed text-muted">
+            {/*
+              "Activities", not "check-ins". A check-in was a once-a-day tick on
+              a Task, and Tasks are gone — the figure above is a count of
+              recorded activity on leaf topics, several of which can land on the
+              same node on the same day. The span is read from the window rather
+              than written out, so it follows the graph beside it.
+            */}
             {terrain.hasData
-              ? `check-ins over 12 weeks, ${terrain.thisWeek} in the last 7 days`
-              : "check-ins so far. Check in to something and the ground rises."}
+              ? `activities over ${TERRAIN_SPAN}, ${terrain.thisWeek} in the last 7 days`
+              : "activities so far. Work a topic and the ground rises."}
           </p>
 
           {bestStreak > 0 && (
@@ -76,7 +84,7 @@ export default async function Home() {
           322px at full column width — nearly twice the 12rem intended, and most
           of the empty space above the Tracks panel. Pinning the *wrapper* to a
           fixed height instead only moved the problem: the chart still claimed
-          100% of it and squeezed the "12 weeks / next 100" caption out of the
+          100% of it and squeezed the "2 weeks / next 100" caption out of the
           bottom of the figure, straight onto the divider rule below.
 
           A definite height on the chart does not work either: the chart box is
@@ -108,7 +116,7 @@ export default async function Home() {
           baseline does not land on this rule and read as one merged line —
           the terrain bleeds past the container, so the two would join up into a
           single stroke running the full width of the window. */}
-      <WebDivider seed={0xd93a} />
+      <ThreadDivider seed={0xd93a} />
 
       <div>
         {/* Tracks are the loudest surface on this page: the comic panel is spent
@@ -119,19 +127,15 @@ export default async function Home() {
           label="Tracks"
           action={
             <span className="font-label text-[0.6rem] font-bold uppercase tabular-nums tracking-[0.12em]">
-              {totalTasks === 0 ? (
-                <span className="sv-status">no tasks yet</span>
+              {totalLeaves === 0 ? (
+                <span className="sv-status">nothing to work on yet</span>
               ) : (
-                `${completedTasks} / ${totalTasks} today`
+                `${workedLeaves} / ${totalLeaves} today`
               )}
             </span>
           }
         >
-          <InlineCreateForm
-            action={createTrack}
-            label="Track name"
-            placeholder="e.g. DSA, Spanish, Guitar"
-          />
+          <InlineCreateForm action={createTrack} label="Track name" />
 
           {rows.length === 0 ? (
             <div className="py-8">
@@ -141,7 +145,7 @@ export default async function Home() {
                 coming on its own. The sentence still carries the meaning — the
                 drawing never has to be read to understand the screen.
               */}
-              <WebLoader
+              <ThreadVoid
                 className="mt-4"
                 label="A Track is one learning goal, like DSA, Spanish or guitar."
               />
@@ -155,8 +159,11 @@ export default async function Home() {
           )}
         </Panel>
 
-        {/* Consistency, kept visually separate from volume. */}
-        <Panel label="Consistency" sublabel="12 weeks">
+        {/* Consistency, kept visually separate from volume — and on its own,
+            longer window. A habit is not visible over a fortnight, so this
+            stays at twelve weeks while the terrain above shortened to two;
+            both spans are named in lib/windows.ts. */}
+        <Panel label="Consistency" sublabel={HEATMAP_SPAN}>
           <StreakHeatmap countsByDay={countsByDay} scope="All tracks" />
         </Panel>
       </div>

@@ -29,7 +29,7 @@ export type PeriodBucket = {
 };
 
 export type PeriodRollup = PeriodBucket & {
-  /** Tasks completed in the period. */
+  /** Activity recorded in the period. */
   completed: number;
   /** Distinct days with at least one completion. Separates spread from bursts. */
   activeDays: number;
@@ -90,7 +90,7 @@ export function totalsByDay(logs: DayLog[]): Map<string, number> {
   const totals = new Map<string, number>();
   for (const log of logs) {
     const key = dayKey(log.date);
-    totals.set(key, (totals.get(key) ?? 0) + log.tasksCompletedCount);
+    totals.set(key, (totals.get(key) ?? 0) + log.count);
   }
   return totals;
 }
@@ -176,7 +176,7 @@ export function describePeriod(period: PeriodRollup, scope: string): string {
     return `${scope}: nothing completed.`;
   }
   return (
-    `${scope}: ${period.completed} task${period.completed === 1 ? "" : "s"} completed ` +
+    `${scope}: ${period.completed} activit${period.completed === 1 ? "y" : "ies"} ` +
     `across ${period.activeDays} of ${period.elapsedDays} day${period.elapsedDays === 1 ? "" : "s"}.`
   );
 }

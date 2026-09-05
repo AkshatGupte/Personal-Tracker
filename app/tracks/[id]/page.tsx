@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { CheckInBeatProvider } from "@/components/CheckInBeat";
 import InlineCreateForm from "@/components/InlineCreateForm";
+import LeafHistory, { historyDays } from "@/components/LeafHistory";
+import LeafList from "@/components/LeafList";
 import Panel from "@/components/Panel";
 import ProgressRing from "@/components/ProgressRing";
 import StreakHeatmap from "@/components/StreakHeatmap";
 import TerrainProfile from "@/components/TerrainProfile";
 import TopNav from "@/components/TopNav";
-import TopicRow from "@/components/TopicRow";
+import TopicTree from "@/components/TopicTree";
 import TrackStat from "@/components/TrackStat";
 import { createTopic } from "@/lib/actions/topics";
-import { getTrackDetail } from "@/lib/progress";
+import { getLeafHistory, getTrackDetail, type TrackNode } from "@/lib/progress";
+import { HEATMAP_SPAN } from "@/lib/windows";
 
 export const dynamic = "force-dynamic";
 
@@ -25,24 +27,44 @@ export async function generateMetadata({
   return { title: track ? `${track.name} · Rendred` : "Rendred" };
 }
 
+/** Every node in the track, flattened — the move control's destination list. */
+function flattenNodes(nodes: TrackNode[]): TrackNode[] {
+  return nodes.flatMap((node) => [node, ...flattenNodes(node.children)]);
+}
+
 export default async function TrackPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const { id } = await params;
+  const { view } = await searchParams;
   const track = await getTrackDetail(id);
   if (!track) notFound();
 
-  // createTopic takes the track id first, so bind it to match the form action
-  // signature the shared create form expects.
-  const addTopic = createTopic.bind(null, track.id);
+  // 28 days, named here rather than borrowed from another window: this is a
+  // per-row strip, and a month of 3px cells is about as much as one row can
+  // carry and still have a date readable out of it.
+  const HISTORY_DAYS = 28;
+  const history = await getLeafHistory(track.id, HISTORY_DAYS);
+
+  /*
+    The view lives in the URL rather than in component state, which keeps this
+    page a server component — the whole tree and its coverage are computed on
+    the server, and lifting the toggle into React would drag all of that across
+    the boundary to decide which of two lists to render.
+  */
+  const isTree = view === "tree";
+  const allNodes = flattenNodes(track.tree);
+
+  // createTopic takes the track id and a parent; bound to null here, so the
+  // form at the top of the panel always adds at the top level.
+  const addTopic = createTopic.bind(null, track.id, null);
 
   return (
-    // The channel has to enclose both the header stats and the task rows: a
-    // check-in happens deep in the list and is answered at the top of the page.
-    <CheckInBeatProvider>
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <TopNav />
 
         <nav aria-label="Breadcrumb" className="mb-5">
@@ -91,14 +113,14 @@ export default async function TrackPage({
                 personal best is said in the report line, as part of the same
                 outcome, rather than lighting up a second number.
               */}
-              <TrackStat label="Elevation" value={track.terrain.peak} signal="elevation" />
+              <TrackStat label="Elevation" value={track.terrain.peak} />
               <TrackStat
                 label="Streak"
                 value={track.currentStreak}
                 tone="ember"
-                signal="streak"
               />
               <TrackStat label="Longest" value={track.longestStreak} />
+              <TrackStat label="Active days" value={track.activeDayCount} />
             </dl>
 
             {/*
@@ -108,7 +130,7 @@ export default async function TrackPage({
             */}
             {!track.terrain.hasData && (
               <p className="max-w-[34ch] text-sm leading-relaxed text-muted">
-                No elevation yet. Completing a task raises the ground.
+                No elevation yet. Working a topic raises the ground.
               </p>
             )}
           </div>
@@ -127,51 +149,84 @@ export default async function TrackPage({
 
         <div className="divide-y divide-border">
           <Panel
-            label="Topics"
-            sublabel={`${track.topics.length} in track`}
+            label={isTree ? "Tree" : "Topics"}
+            sublabel={
+              isTree
+                ? `${allNodes.length} node${allNodes.length === 1 ? "" : "s"}`
+                : `${track.leafCount} to work on`
+            }
             action={
-              <span className="font-label text-[0.6rem] uppercase tabular-nums tracking-[0.12em] text-muted">
-                {track.taskCount === 0
-                  ? "no tasks yet"
-                  : `${track.completedCount} / ${track.taskCount} today`}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="font-label text-[0.6rem] uppercase tabular-nums tracking-[0.12em] text-muted">
+                  {track.leafCount === 0
+                    ? "nothing to work on yet"
+                    : `${track.workedToday} / ${track.leafCount} today`}
+                </span>
+                {/*
+                  Links, not buttons. The view is a URL, so it is shareable, it
+                  survives a reload, and the back button does what it looks like
+                  it should — none of which a piece of component state gives.
+                */}
+                <span className="flex items-center gap-1">
+                  <ViewLink href={`/tracks/${track.id}`} active={!isTree} label="Flat" />
+                  <ViewLink href={`/tracks/${track.id}?view=tree`} active={isTree} label="Tree" />
+                </span>
+              </div>
             }
           >
-            <InlineCreateForm
-              action={addTopic}
-              label="Topic name"
-              placeholder="e.g. Arrays, Graphs, Present tense"
-            />
+            <InlineCreateForm action={addTopic} label="Topic name" />
 
-            {track.topics.length === 0 ? (
-              <p className="py-8 text-sm text-muted">
-                No topics yet. A Topic is one area inside this track, like Arrays inside
-                DSA.
-              </p>
-            ) : (
-              <ul className="mt-2 divide-y divide-border border-t border-border">
-                {track.topics.map((topic) => (
-                  <TopicRow key={topic.id} topic={topic} trackId={track.id} />
-                ))}
-              </ul>
-            )}
+            <div className="mt-2 border-t border-border">
+              {isTree ? (
+                <TopicTree roots={track.tree} trackId={track.id} all={allNodes} />
+              ) : (
+                <LeafList leaves={track.leaves} trackId={track.id} all={allNodes} />
+              )}
+            </div>
           </Panel>
 
-          <Panel label="Today" sublabel="checked in">
+          <Panel label="Today" sublabel="leaf coverage">
             <div className="py-2">
+              {/*
+                Coverage, not completion. The ratio answers "how much of this
+                track did I touch today" and resets each morning; nothing here
+                ever finishes, so it is never "how many are done".
+              */}
               <ProgressRing
-                completed={track.completedCount}
-                total={track.taskCount}
-                label={`${track.name} checked in today`}
+                completed={track.workedToday}
+                total={track.leafCount}
+                label={`${track.name} leaves worked today`}
               />
             </div>
           </Panel>
 
-          <Panel label="Consistency" sublabel="12 weeks">
+          {/* The heatmap's own window, not the terrain's — see lib/windows.ts. */}
+          <Panel label="Consistency" sublabel={`${HEATMAP_SPAN} · leaves covered`}>
             <StreakHeatmap countsByDay={track.countsByDay} scope={track.name} />
           </Panel>
+
+          <Panel label="History" sublabel={`per topic · ${HISTORY_DAYS} days`}>
+            <LeafHistory rows={history} days={historyDays(HISTORY_DAYS)} />
+          </Panel>
         </div>
-      </div>
-    </CheckInBeatProvider>
+    </div>
+  );
+}
+
+/** One half of the view toggle. Active state is carried by fill, not weight —
+ *  the display face has one weight and a bold class would mark nothing. */
+function ViewLink({ href, active, label }: { href: string; active: boolean; label: string }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={
+        active
+          ? "rounded-none bg-sv-yellow px-2 py-0.5 font-label text-[0.55rem] uppercase tracking-[0.14em] text-sv-ink"
+          : "rounded-none px-2 py-0.5 font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg"
+      }
+    >
+      {label}
+    </Link>
   );
 }

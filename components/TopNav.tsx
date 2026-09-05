@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GlitchText } from "@/components/spiderverse/GlitchText";
-import { WebDivider } from "@/components/spiderverse/SpiderWeb";
+import { ThreadDivider } from "@/components/spiderverse/Threads";
 
 const BUILT = [
   { label: "Home", href: "/" },
@@ -91,10 +91,10 @@ export default function TopNav() {
         ))}
         </ul>
       </div>
-      {/* The masthead rule keeps its magenta weight; the webbing hangs off it
+      {/* The masthead rule keeps its magenta weight; the threads hang off it
           rather than replacing it, so the section break still reads when
           skimmed. */}
-      <WebDivider seed={0x2f71} />
+      <ThreadDivider seed={0x2f71} />
     </nav>
   );
 }

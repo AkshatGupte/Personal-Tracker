@@ -13,15 +13,18 @@ comfortable topics), and abandoned goals.
 
 Build a multi-track, user-defined learning tracker where:
 
-- Users can **create their own goals/tracks** (Track → Topic → Task
-  hierarchy) rather than being limited to hardcoded subjects
-- **Tasks are persistent recurring activities, not one-time items.** A Task is
+- Users can **create their own goals/tracks** (a Track holding a recursive tree
+  of Topics, at most 5 levels deep) rather than being limited to hardcoded
+  subjects
+- **A leaf Topic is a persistent recurring activity, not a one-time item.** It is
   an ongoing learning activity — "Practice array problems", "Read about binary
-  trees" — that stays available indefinitely and is **checked in once per day**.
-  A Task is never permanently completed; the daily check-in is what creates the
-  historical record. There is no one-time task type and none is planned.
-- Progress is measured by **daily check-ins**, with **strict, non-forgiving
-  streaks** to enforce consistency
+  trees" — that stays available indefinitely and is never permanently completed.
+  A Topic with children is a parent and is not worked directly.
+- **Working a leaf is counted, not ticked.** Each click records one activity for
+  that node today; several clicks in a day are allowed and the most recent can be
+  undone. This replaced an earlier once-per-day check-in model.
+- Progress is measured by **daily activity and coverage**, with **strict,
+  non-forgiving streaks** to enforce consistency
 - A **smart coverage engine** compares logged progress against a subject's
   expected curriculum and flags gaps or imbalance
 - An **LLM-powered insight layer** generates intelligent, non-generic remarks
@@ -43,11 +46,12 @@ multi-step decision-making, no background agents, no model-initiated actions.
 ### Phase 1 — Core Tracking
 - Create/edit/delete Tracks
 - Add Topics under a Track (manual or LLM-suggested curriculum)
-- Add Tasks under a Topic (recurring activities, see Objective)
-- **Check in to a Task — once per day, every day, on the same Task.** Checking
-  in records that day and leaves the Task available for tomorrow
-- A Task shows whether it has been checked in **today**; that state resets with
-  the day rather than persisting
+- Nest Topics under Topics, to a hard limit of 5 levels; move and reorder them
+- **Work a leaf Topic — as often as you like, every day, on the same node.** Each
+  click records an activity for that day and leaves the node available tomorrow;
+  undo takes the most recent one back
+- A leaf shows **today's** intensity; a parent shows how many of its direct
+  children were worked today. Both reset with the day rather than persisting
 - Strict daily streak per Track (resets to 0 on a missed day)
 
 ### Phase 2 — Progress Visibility
@@ -87,7 +91,7 @@ should be built ahead of its phase. See `docs/ROADMAP.md`.
   beyond the streak counter and completion percentage — those, along with the
   heatmap and terrain elevation, are inputs to it rather than the answer.
 - **Track structure exploration** (Phase 5): a richer representation of
-  Track → Topic → Task showing what has been learned, what remains, and the
+  Track → nested Topics showing what has been learned, what remains, and the
   progression through it. The form — tree, dependency graph, mind map,
   progression path, radial, terrain-based or otherwise — is deliberately left
   open until the real learning experience and data model have been evaluated.
@@ -106,11 +110,11 @@ should be built ahead of its phase. See `docs/ROADMAP.md`.
 
 ## Success Criteria (MVP)
 
-- User can create a track, add topics/tasks, and check in without friction
-- **The same Task can be checked in on many different days**, and each day is
-  recorded separately
-- A Task checked in yesterday is available, and visibly un-checked, today
-- Checking in gives immediate, legible feedback that the day counted
+- User can create a track, build a topic tree, and record activity without friction
+- **The same leaf can be worked on many different days**, and each day is
+  recorded separately — and more than once within a day
+- A leaf worked yesterday is available, and visibly at zero, today
+- Recording activity gives immediate, legible feedback that it counted
 - Streaks correctly reset on missed days
 - Weekly/monthly views accurately reflect logged data
 - Coverage gap detection correctly flags untouched topics against the

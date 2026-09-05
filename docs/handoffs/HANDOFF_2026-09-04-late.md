@@ -1,5 +1,12 @@
 # Handoff — 2026-09-04 (late)
 
+> **Superseded by `HANDOFF_2026-09-05.md`.** This file describes the app as it
+> was when it was built around Tasks and once-a-day check-ins. That model was
+> removed entirely on 2026-09-05 — there is no Task, TaskCheckIn or
+> CompletionLog any more. Read the newer file instead; this one is kept only
+> because handoffs are a running record.
+
+
 For a fresh session with no memory of the previous one. Read `CLAUDE.md`,
 `docs/PRD.md`, `docs/SCHEMA.md`, `docs/ROADMAP.md` and `docs/RULES.md` alongside
 this. This file only covers what is new, in progress, or not written down

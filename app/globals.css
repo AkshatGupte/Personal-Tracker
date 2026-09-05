@@ -75,6 +75,34 @@
   );
   --card-edge: rgb(255 32 121 / 0.30);
   --terrain-line: rgb(255 32 121 / 0.16);
+
+  /*
+    Activity intensity. The one green in the app, and the only thing it means.
+
+    CLAUDE.md says this palette has no green, and that rule stands for
+    everything it was written about: "done" is still cyan, volume is still
+    magenta, consistency is still yellow. Contribution intensity is a new
+    signal that none of those three can carry — magenta already means volume,
+    and reusing it would make "how much" and "how broadly" the same colour.
+    Green enters for that and nothing else.
+
+    Five steps, because the tiers are fixed at 1-4 and 5-or-more. The ramp is
+    solved rather than eyeballed: every tier clears 4.5:1 against whichever of
+    paper or ink sits on it, by at least 6.4:1, so a rift glow lightening the
+    ground behind a cell cannot sink it. Paper reads on 1-2, ink on 3-5 —
+    --activity-N-fg carries which, so no component has to decide.
+  */
+  --activity-0: rgb(245 240 230 / 0.07);
+  --activity-1: #0f3d22;
+  --activity-2: #17632f;
+  --activity-3: #2fb552;
+  --activity-4: #58e06a;
+  --activity-5: #8fff5c;
+  --activity-1-fg: var(--fg);
+  --activity-2-fg: var(--fg);
+  --activity-3-fg: var(--sv-ink);
+  --activity-4-fg: var(--sv-ink);
+  --activity-5-fg: var(--sv-ink);
 }
 
 /*
@@ -99,6 +127,11 @@
   --color-sv-yellow: var(--sv-yellow);
   --color-sv-red: var(--sv-red);
   --color-sv-ink: var(--sv-ink);
+  --color-activity-1: var(--activity-1);
+  --color-activity-2: var(--activity-2);
+  --color-activity-3: var(--activity-3);
+  --color-activity-4: var(--activity-4);
+  --color-activity-5: var(--activity-5);
 
   /*
     Three roles, so hierarchy comes from family, size, case and tracking
@@ -218,7 +251,7 @@
   }
 }
 
-/* The tick on a completed task: one short moment, no bounce. */
+/* The tick on a recorded activity: one short moment, no bounce. */
 @keyframes check-in {
   from {
     stroke-dasharray: 16;
@@ -558,6 +591,123 @@ body {
 }
 
 /* ----------------------------------------------------------------------------
+   AMBIENT GLITCH
+   ----------------------------------------------------------------------------
+   The corruption glitch that arrives on its own, on one element at a time. It
+   borrows the shard keyframe above wholesale — same generator, same animation —
+   and adds two passes of its own: the heavy channel separation, and the print
+   flares that sit where the plates cross.
+
+   `sv-glitch-in` and `sv-glitch-out` are one pair driving every layer of an
+   event, with the offset supplied per layer as `--ch-x` / `--ch-y` and the
+   settled opacity as `--ch-o`. The halftone wash rides the same pair at zero
+   offset, so it comes up and goes down exactly with the channels rather than
+   needing a third keyframe that could drift out of step.
+
+   In and out are two animations rather than one, because the ramp is fixed at
+   130ms and the resolve is randomised per event — a single scaled keyframe
+   would stretch the onset along with the tail and the glitch would stop
+   snapping. The same reason `.sv-strike` splits its flicker from its fade.
+
+   `steps()` on both: the plates disagree in discrete frames. An eased ramp
+   reads as a soft double-vision blur rather than as a press that missed.
+---------------------------------------------------------------------------- */
+@keyframes sv-glitch-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: var(--ch-o, 0.8);
+    transform: translate3d(var(--ch-x, 0), var(--ch-y, 0), 0);
+  }
+}
+
+@keyframes sv-glitch-out {
+  from {
+    opacity: var(--ch-o, 0.8);
+    transform: translate3d(var(--ch-x, 0), var(--ch-y, 0), 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.sv-glitch-pass {
+  will-change: transform, opacity;
+}
+
+/* The hold, and why it is not simply a longer pause.
+   
+   The event used to be over in ~600ms, which is short enough that "in, sit
+   still, out" reads as one snap. Held for a second or two, that stillness is a
+   static overlay pasted on a word — the plates have to keep disagreeing or the
+   thing stops being a glitch and becomes a sticker.
+   
+   So the copies wander around their settled offset in discrete jumps. Every
+   stop is expressed as a multiple of the same `--ch-x` / `--ch-y` the ramp
+   settled on, so a channel jitters proportionally to how far it was already
+   knocked and the three never converge into register mid-hold.
+   
+   Opacity is deliberately absent here. The ramp's fill is what holds it, which
+   leaves this animation free to loop without ever flickering the layer. */
+@keyframes sv-glitch-jitter {
+  0%,
+  100% {
+    transform: translate3d(var(--ch-x, 0), var(--ch-y, 0), 0);
+  }
+  25% {
+    transform: translate3d(calc(var(--ch-x, 0) * 0.3), calc(var(--ch-y, 0) * 1.6), 0);
+  }
+  50% {
+    transform: translate3d(calc(var(--ch-x, 0) * 1.45), calc(var(--ch-y, 0) * 0.15), 0);
+  }
+  75% {
+    transform: translate3d(calc(var(--ch-x, 0) * 0.65), calc(var(--ch-y, 0) * 1.25), 0);
+  }
+}
+
+/* The cluster's exit. The shards cycle `sv-shard` for as long as the hold
+   lasts, and a cycle ending is not the event ending — so the fade is a separate
+   animation layered over the top, declaring opacity only. `sv-shard` keeps
+   driving transform underneath it: an animation affects nothing it does not
+   name, which is what lets the pieces still be breaking apart as they go. */
+@keyframes sv-shard-out {
+  from {
+    opacity: var(--shard-o, 0.7);
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* The starburst. Snaps to full, then falls away slightly smaller — a specular
+   highlight dying, not a dot shrinking to nothing. Discrete frames again, so it
+   pops in with the shard it is sitting on rather than easing up behind it. */
+@keyframes sv-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0.15) rotate(var(--flare-r, 0deg));
+  }
+  34% {
+    opacity: 1;
+    transform: scale(1) rotate(var(--flare-r, 0deg));
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.7) rotate(var(--flare-r, 0deg));
+  }
+}
+
+.sv-flare {
+  animation-name: sv-flare;
+  animation-timing-function: steps(3, end);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+/* ----------------------------------------------------------------------------
    THE CHECK-IN BEAT
    ----------------------------------------------------------------------------
    One act, three moments, in this order: the tick confirms (sv-checkin-split,
@@ -813,7 +963,7 @@ body {
 }
 
 /*
-  System-status labels: "no tasks yet", "soon", "no elevation yet".
+  System-status labels: "nothing to work on yet", "soon", "no elevation yet".
 
   These read as leftover placeholder text because nothing marked them as
   deliberate. The brief asked for a monospace accent to fix that; the app now
@@ -833,4 +983,173 @@ body {
   margin-right: 0.45em;
   color: var(--sv-cyan);
   opacity: 0.7;
+}
+
+
+/* ============================================================================
+   ACTIVITY INTENSITY
+   ----------------------------------------------------------------------------
+   One class, driven by a data attribute, so a cell's tier is set by the number
+   the server computed rather than by a component picking a colour. Tier 0 is a
+   hairline well, not a filled square: an unworked leaf should read as waiting,
+   not as a thing with a value of zero.
+
+   Square, like every other control here. The radius rule is universal.
+   ========================================================================== */
+.sv-activity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  border: 1px solid transparent;
+  background: var(--activity-0);
+  color: var(--muted);
+  transition: background-color 120ms linear, color 120ms linear;
+}
+.sv-activity[data-tier="0"] {
+  border-color: var(--border);
+}
+.sv-activity[data-tier="1"] { background: var(--activity-1); color: var(--activity-1-fg); }
+.sv-activity[data-tier="2"] { background: var(--activity-2); color: var(--activity-2-fg); }
+.sv-activity[data-tier="3"] { background: var(--activity-3); color: var(--activity-3-fg); }
+.sv-activity[data-tier="4"] { background: var(--activity-4); color: var(--activity-4-fg); }
+.sv-activity[data-tier="5"] { background: var(--activity-5); color: var(--activity-5-fg); }
+
+/* The optimistic state, while the write is in flight. Deliberately quiet — the
+   number has already changed, and a spinner over an action this small would be
+   more disruption than the wait it reports. */
+.sv-activity[data-pending="true"] {
+  opacity: 0.68;
+}
+
+/* Coverage on a parent: a rule that fills left to right. Not a green bar —
+   coverage is breadth, not intensity, and giving it the same colour as a leaf's
+   count would flatten the two signals the hierarchy exists to separate. */
+.sv-coverage {
+  position: relative;
+  height: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.sv-coverage > span {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  background: var(--activity-3);
+}
+
+/* ============================================================================
+   DIMENSIONAL VOIDS
+   ----------------------------------------------------------------------------
+   Keyframes for DimensionalSpots.
+
+   **Only the corruption bursts live here.** The voids themselves no longer use
+   shared keyframes at all: each one generates its own at spawn, because a
+   shared curve cannot hold a slow creep and a hard positional cut in the same
+   track however its duration is varied. That was the whole reason every void
+   used to behave identically. The five keyframes that were here — drift, open,
+   close, breathe, boil — are gone with it.
+
+   A burst is an event rather than a life, so these *are* shared: what varies
+   between bursts is which of them are present, the geometry they are given and
+   the region they play over. Everything here animates `opacity` or `transform`
+   only.
+   ========================================================================== */
+
+/* A burst arriving and leaving. Stepped rather than eased: reality does not
+   fade out of true, it is wrong and then it is not. */
+@keyframes sv-void-burst {
+  0% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  64% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Swallowing — shorter and harder than the rest of the burst, so the interface
+   comes back before the corruption around it has finished. */
+@keyframes sv-void-swallow {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Tearing: a band of the real interface shoved sideways, twice, unevenly, then
+   back. The second throw is shorter and reversed — a slip that is caught, not a
+   slide. Paired with `steps`, so no intermediate position is ever drawn. */
+@keyframes sv-void-tear {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  10% {
+    opacity: 1;
+    transform: translate3d(var(--tear-x, 0px), 0, 0);
+  }
+  45% {
+    opacity: 1;
+    transform: translate3d(calc(var(--tear-x, 0px) * -0.55), 0, 0);
+  }
+  75% {
+    opacity: 1;
+    transform: translate3d(var(--tear-x, 0px), 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* A fracture whipping out of a void and snapping back. Stepped growth: it is
+   not there, then it is, at full length — a crack does not extend smoothly. */
+@keyframes sv-void-crack {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  14% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  66% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+}
+
+/* Chips thrown off a fracture. They travel and shrink, which is what separates
+   a spark from a dot that merely fades — and they are mostly ink, so the field
+   never reads as coloured particles. */
+@keyframes sv-void-spark {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--spark-x, 0px), var(--spark-y, 0px), 0) scale(0.25);
+  }
 }

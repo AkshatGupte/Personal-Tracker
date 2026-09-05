@@ -10,9 +10,12 @@ export type TrackRowData = {
   id: string;
   name: string;
   currentStreak: number;
+  /** Every live node in the track, at any depth. */
   topicCount: number;
-  taskCount: number;
-  completedCount: number;
+  /** Actionable nodes — those with no children. */
+  leafCount: number;
+  /** Distinct leaves worked today. */
+  workedToday: number;
   terrain: Terrain;
 };
 
@@ -87,7 +90,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
     // Deleting a track cascades, so say plainly what else goes with it.
     const alsoRemoved = [
       track.topicCount > 0 && `${track.topicCount} topic${track.topicCount === 1 ? "" : "s"}`,
-      track.taskCount > 0 && `${track.taskCount} task${track.taskCount === 1 ? "" : "s"}`,
+      track.leafCount > 0 && `${track.leafCount} of them worked directly`,
     ].filter(Boolean) as string[];
 
     return (
@@ -131,14 +134,16 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
           </Link>
         </h3>
         <p className="mt-1 font-label text-[0.6rem] uppercase tracking-[0.12em] tabular-nums text-muted">
-          {track.taskCount === 0 ? (
+          {track.leafCount === 0 ? (
             <span className="sv-status">
-              {track.topicCount} topic{track.topicCount === 1 ? "" : "s"}, no tasks yet
+              {track.topicCount === 0
+                ? "nothing in this track yet"
+                : `${track.topicCount} topic${track.topicCount === 1 ? "" : "s"}, nothing to work on yet`}
             </span>
           ) : (
             <>
-              <span className="text-fg">{track.completedCount}</span> of {track.taskCount}{" "}
-              checked in today
+              <span className="text-fg">{track.workedToday}</span> of {track.leafCount}{" "}
+              worked today
             </>
           )}
           {track.currentStreak > 0 && (

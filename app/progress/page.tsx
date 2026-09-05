@@ -135,11 +135,11 @@ export default async function ProgressPage({
           <p className="max-w-[34ch] text-sm leading-relaxed text-muted">
             {current.completed === 0
               ? hasAnyHistory
-                ? `tasks completed ${copy.since}. The ${copy.noun} is still open.`
-                : "tasks completed. Nothing has been logged yet — finish a task and this fills in."
+                ? `activities ${copy.since}. The ${copy.noun} is still open.`
+                : "activities. Nothing has been logged yet — work a topic and this fills in."
               : current.elapsedDays === 1
-                ? `tasks completed ${copy.since}. The ${copy.noun} has only just begun.`
-                : `tasks completed ${copy.since}, across ${current.activeDays} of ${current.elapsedDays} days.`}
+                ? `activities ${copy.since}. The ${copy.noun} has only just begun.`
+                : `activities ${copy.since}, across ${current.activeDays} of ${current.elapsedDays} days.`}
           </p>
 
           <p className="font-label text-[0.6rem] uppercase tracking-[0.14em] tabular-nums text-muted">
@@ -198,7 +198,7 @@ export default async function ProgressPage({
                         track.everActive ? (
                           `nothing this ${copy.noun}`
                         ) : (
-                          "no completions yet"
+                          <span className="sv-status">no activity yet</span>
                         )
                       ) : (
                         <>
@@ -212,14 +212,40 @@ export default async function ProgressPage({
                           <span className="text-streak">{track.currentStreak} day</span> streak
                         </>
                       )}
+                      {track.longestStreak > 0 && (
+                        <>
+                          {" · "}
+                          best {track.longestStreak}
+                        </>
+                      )}
+                      {track.totalActiveDays > 0 && (
+                        <>
+                          {" · "}
+                          {track.totalActiveDays} active {track.totalActiveDays === 1 ? "day" : "days"} all
+                          time
+                        </>
+                      )}
                     </p>
                   </div>
 
-                  <p className="justify-self-end font-label text-lg leading-none tabular-nums text-muted">
-                    <span className={track.completed > 0 ? "text-fg" : undefined}>
-                      {track.completed}
-                    </span>
-                  </p>
+                  {/*
+                    Today's coverage, not the period's volume. The number to its
+                    left already carries volume for the period; this answers the
+                    other question the new model can ask — how much of the track
+                    was touched — and the two are deliberately different signals.
+                  */}
+                  <div className="justify-self-end text-right">
+                    <p className="font-label text-lg leading-none tabular-nums text-muted">
+                      <span className={track.completed > 0 ? "text-fg" : undefined}>
+                        {track.completed}
+                      </span>
+                    </p>
+                    {track.leafCount > 0 && (
+                      <p className="mt-1 font-label text-[0.55rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+                        {track.coverage}% today
+                      </p>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -229,7 +255,7 @@ export default async function ProgressPage({
         <Panel label={copy.listLabel} sublabel={`last ${copy.count}`}>
           {!hasAnyHistory ? (
             <p className="py-8 text-sm text-muted">
-              No {copy.noun}s to summarise yet. Completing a task records the day it happened,
+              No {copy.noun}s to summarise yet. Working a topic records the day it happened,
               and the {copy.noun}s build up from there.
             </p>
           ) : (
@@ -255,7 +281,7 @@ export default async function ProgressPage({
                     ) : (
                       <>
                         <span className="text-fg">{bucket.completed}</span>
-                        {bucket.completed === 1 ? " task" : " tasks"} ·{" "}
+                        {bucket.completed === 1 ? " activity" : " activities"} ·{" "}
                         <span className="text-fg">{bucket.activeDays}</span>/{bucket.elapsedDays} days
                       </>
                     )}
