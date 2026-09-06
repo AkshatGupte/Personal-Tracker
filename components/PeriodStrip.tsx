@@ -57,10 +57,22 @@ export default function PeriodStrip({
     opacity over near-black turns olive at that size — a colour the palette does
     not contain.
   */
+  /*
+    Alpha in the fill, not `opacity` on the element.
+
+    The two composite identically over the page ground, so nothing about the
+    grid changed — but element opacity also dims everything *inside* the cell,
+    and the cells now contain their date. A 0.28-opacity cell would have taken
+    its numeral down with it and put the date under the contrast floor.
+  */
   const cellStyle = (lvl: number) =>
     lvl === 0
-      ? { backgroundColor: "var(--border)", opacity: 0.55 }
-      : { backgroundColor: "var(--accent)", opacity: 0.28 + lvl * 0.18 };
+      ? { backgroundColor: "color-mix(in srgb, var(--border) 55%, transparent)" }
+      : {
+          backgroundColor: `color-mix(in srgb, var(--accent) ${Math.round(
+            (0.28 + lvl * 0.18) * 100,
+          )}%, transparent)`,
+        };
 
   const done = days.filter((d) => !d.isFuture && d.count > 0);
   const total = done.reduce((sum, d) => sum + d.count, 0);
@@ -76,11 +88,15 @@ export default function PeriodStrip({
     row or the block towers over the figure it is annotating — roughly 290px
     tall at the week's cell size, which is more vertical space than the whole
     left-hand column uses.
+
+    Widened from 15rem when the dates went in: at 15rem a month's cells are
+    about 30px and a 12px numeral inside one has almost no margin. 18rem puts
+    them near 36px, which still keeps the block shorter than the week's.
   */
   const single = days.length <= 7;
 
   return (
-    <figure className={`m-0 w-full ${single ? "max-w-[22rem]" : "max-w-[15rem]"}`}>
+    <figure className={`m-0 w-full ${single ? "max-w-[22rem]" : "max-w-[18rem]"}`}>
       {/* The weekday header is its own row rather than a caption under every
           cell: a month has up to six cells per column and repeating the letter
           under each of them turns the grid into text. */}
@@ -88,7 +104,7 @@ export default function PeriodStrip({
         {INITIALS.map((initial, i) => (
           <span
             key={i}
-            className="text-center font-label text-[0.55rem] uppercase leading-none tracking-[0.05em] text-muted"
+            className="text-center font-label text-[0.75rem] uppercase leading-none tracking-[0.05em] text-muted"
           >
             {initial}
           </span>
@@ -99,22 +115,43 @@ export default function PeriodStrip({
         {Array.from({ length: lead }, (_, i) => (
           <div key={`lead${i}`} aria-hidden="true" />
         ))}
+        {/*
+          Every cell carries its date, and an elapsed empty day no longer looks
+          like one that has not arrived.
+
+          A month drew as ~30 unnumbered squares under a `M T W T F S S` header,
+          so there was no way to read a date off it at all — and the two empty
+          states were a filled `--border` tray against an outlined one at half
+          opacity, which at this size is the same grey square twice. A day that
+          was available and went unworked and a day that has not happened are
+          opposite facts about the period.
+
+          They are separated by fill and by edge rather than by opacity: an
+          elapsed empty day is a filled tray with a solid edge, a future day has
+          no fill and a dashed one. Opacity was the wrong axis twice over — it
+          was what made the two look alike, and it would now dim the date inside
+          the cell along with the cell. Numbers are 12px, the interface floor,
+          not the 8-10px they would naturally want at this size.
+        */}
         {days.map((day) => (
           <div
             key={day.key}
             aria-hidden="true"
-            className="aspect-square w-full"
+            className="flex aspect-square w-full items-center justify-center font-label text-[0.75rem] leading-none tabular-nums"
             style={
               day.isFuture
-                ? { border: "1px solid var(--border)", opacity: 0.5 }
+                ? { border: "1px dashed var(--border)", color: "var(--muted)" }
                 : {
                     ...cellStyle(level(day.count)),
+                    color: day.count === 0 ? "var(--muted)" : "var(--fg)",
                     // Today is named by an outline rather than by a brighter
                     // fill, which would read as "more activity".
                     ...(day.isToday ? { outline: "1px solid var(--positive)" } : {}),
                   }
             }
-          />
+          >
+            {day.date.getDate()}
+          </div>
         ))}
       </div>
 

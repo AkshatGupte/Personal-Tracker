@@ -65,7 +65,7 @@ export default function Panel({
             className="sv-panel-header relative flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-3 py-1.5 sm:px-4"
             style={{ background: BORDER[accent], color: "var(--sv-ink)" }}
           >
-            <h2 className="font-label text-[0.6rem] uppercase leading-relaxed tracking-[0.17em]">
+            <h2 className="font-label text-[0.75rem] uppercase leading-relaxed tracking-[0.17em]">
               {label && <GlitchText text={label} intensity="subtle" trigger="auto" blend="normal" baseColor="var(--sv-ink)" />}
               {sublabel && (
                 <span className="ml-2 tracking-[0.1em] opacity-80">{sublabel}</span>
@@ -100,10 +100,10 @@ export default function Panel({
       {(label || action) && (
         <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:justify-start lg:gap-1.5 lg:pt-0.5">
           {label && (
-            <h2 className="font-label text-[0.6rem] uppercase leading-relaxed tracking-[0.17em] text-sv-cyan">
+            <h2 className="font-label text-[0.75rem] uppercase leading-relaxed tracking-[0.17em] text-sv-cyan">
               <GlitchText text={label} intensity="subtle" trigger="auto" baseColor="var(--sv-cyan)" />
               {sublabel && (
-                <span className="mt-0.5 block text-[0.58rem] tracking-[0.1em] text-muted">
+                <span className="mt-0.5 block text-[0.75rem] tracking-[0.1em] text-muted">
                   {sublabel}
                 </span>
               )}

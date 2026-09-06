@@ -20,7 +20,7 @@ export type TrackRowData = {
 };
 
 const actionButton =
-  "rounded-none px-1.5 py-1 font-label text-[0.58rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg";
+  "rounded-none px-1.5 py-1 font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg";
 
 export default function TrackRow({ track }: { track: TrackRowData }) {
   const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
@@ -56,12 +56,12 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
               maxLength={80}
               aria-label="Track name"
               aria-invalid={error ? true : undefined}
-              className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-1.5 text-sm focus:border-accent aria-invalid:border-sv-red"
+              className="sv-input min-w-0 flex-1 rounded-none border border-border-interactive bg-transparent px-3 py-1.5 text-sm focus:border-accent aria-invalid:border-sv-red"
             />
             <button
               type="submit"
               disabled={pending}
-              className="shrink-0 rounded-none bg-sv-yellow px-3 py-1.5 font-label text-[0.6rem] uppercase tracking-[0.14em] text-sv-ink disabled:opacity-60"
+              className="shrink-0 rounded-none bg-sv-yellow px-3 py-1.5 font-label text-[0.75rem] uppercase tracking-[0.14em] text-sv-ink disabled:opacity-60"
             >
               Save
             </button>
@@ -77,7 +77,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
             </button>
           </div>
           {error && (
-            <p role="alert" className="font-label text-[0.7rem] text-sv-red">
+            <p role="alert" className="font-label text-[0.75rem] text-sv-red">
               {error}
             </p>
           )}
@@ -87,11 +87,21 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
   }
 
   if (mode === "confirm") {
-    // Deleting a track cascades, so say plainly what else goes with it.
-    const alsoRemoved = [
-      track.topicCount > 0 && `${track.topicCount} topic${track.topicCount === 1 ? "" : "s"}`,
-      track.leafCount > 0 && `${track.leafCount} of them worked directly`,
-    ].filter(Boolean) as string[];
+    /*
+      Deleting a track is the only hard delete in the app: it cascades to every
+      topic and every TopicActivity row under it, so the streak and the whole
+      recorded history go with it. See docs/SCHEMA.md.
+
+      What was here read "Delete DSA and its 28 topics and 22 of them worked
+      directly? This cannot be undone." — two clauses joined by a second "and"
+      with no noun to attach to, and the one consequence that actually matters
+      left out. A user could reasonably read it as removing the topics and
+      keeping the record of the work.
+    */
+    const topics =
+      track.topicCount > 0
+        ? ` and its ${track.topicCount} topic${track.topicCount === 1 ? "" : "s"}`
+        : "";
 
     return (
       <li className="flex flex-wrap items-center justify-between gap-3 py-4">
@@ -102,15 +112,21 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
             thing being destroyed has to be unmistakable. */}
         <p className="text-sm text-muted">
           Delete <span className="text-fg">{track.name}</span>
-          {alsoRemoved.length > 0 && <> and its {alsoRemoved.join(" and ")}</>}? This
-          cannot be undone.
+          {topics}? Every activity ever recorded on this track
+          {track.currentStreak > 0 && (
+            <>
+              , and its <span className="text-fg">{track.currentStreak}-day streak</span>,
+            </>
+          )}{" "}
+          {track.currentStreak > 0 ? "are" : "is"} permanently destroyed. This cannot be
+          undone.
         </p>
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={onDelete}
             disabled={pending}
-            className="rounded-none px-1.5 py-1 font-label text-[0.58rem] uppercase tracking-[0.14em] text-sv-red disabled:opacity-60"
+            className="rounded-none px-1.5 py-1 font-label text-[0.75rem] uppercase tracking-[0.14em] text-sv-red disabled:opacity-60"
           >
             {pending ? "Deleting…" : "Delete"}
           </button>
@@ -133,7 +149,7 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
             {track.name}
           </Link>
         </h3>
-        <p className="mt-1 font-label text-[0.6rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+        <p className="mt-1 font-label text-[0.75rem] uppercase tracking-[0.12em] tabular-nums text-muted">
           {track.leafCount === 0 ? (
             <span className="sv-status">
               {track.topicCount === 0
@@ -171,7 +187,11 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
         <button type="button" onClick={() => setMode("rename")} className={actionButton}>
           Rename
         </button>
-        <button type="button" onClick={() => setMode("confirm")} className={actionButton}>
+        <button
+          type="button"
+          onClick={() => setMode("confirm")}
+          className={`${actionButton} sv-action-destructive`}
+        >
           Delete
         </button>
       </div>

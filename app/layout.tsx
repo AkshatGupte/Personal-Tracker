@@ -5,7 +5,7 @@ import AmbientGlitch from "@/components/spiderverse/AmbientGlitch";
 import AmbientLightning from "@/components/spiderverse/AmbientLightning";
 import DimensionalSpots from "@/components/spiderverse/DimensionalSpots";
 import SpiderverseBackground from "@/components/spiderverse/SpiderverseBackground";
-import { DimensionalThreads } from "@/components/spiderverse/Threads";
+import { DimensionalThreads } from "@/components/spiderverse/DimensionalThreads";
 import "./globals.css";
 
 /**
@@ -61,24 +61,57 @@ export default function RootLayout({
         {/* Mounted once, here. Every route inherits the same environment and no
             screen has to remember to draw it. Replaced the five-motif
             AtmosphereField, which has been removed along with its three.js
-            scene — nothing in this theme needs a renderer. */}
+            scene — nothing in this theme needs a renderer.
+
+            Both this and the threads below span the *document* rather than the
+            viewport: they are absolutely positioned at the top of the page, are
+            sized to the measured document height, and scroll with the content,
+            drawing a fresh band of composition per screenful. So the multiverse
+            has no bottom edge — scrolling moves through it instead of over it.
+            See useDocumentBands. */}
         <SpiderverseBackground />
-        {/* Webs in the four corners of the viewport. Mounted here for the same
-            reason as the atmosphere — once, so no screen has to remember it —
-            and after the background so it draws over the rift glows while
-            staying behind the content. */}
+        {/* The wireframe solids and the threads between them. Mounted here for
+            the same reason as the atmosphere — once, so no screen has to
+            remember it — and after the background so it draws over the rift
+            glows while staying behind the content. */}
         <DimensionalThreads />
         {/* Voids in the atmosphere, mounted once and — critically — *after* the
             threads, at the same depth. A spot paints over the rift glows and
             over the neon structures while staying behind every piece of UI, so
             it eats the part of the environment it covers and never touches the
             interface. That occlusion is the whole effect: these are holes in
-            the background, not shapes on top of it. See DimensionalSpots. */}
+            the background, not shapes on top of it. See DimensionalSpots.
+
+            This one stays pinned to the viewport while the two layers above it
+            now scroll, and that is the right split: a tear is a transient event
+            that happens where you are looking, not a fixture placed in the
+            environment. Spreading them over the document would fire most of
+            them onto screens nobody is on. The occlusion still works — same
+            depth, later in the DOM, so it paints over whatever band of
+            background has scrolled under it. */}
         <DimensionalSpots />
         {/* Filter definitions for true chromatic aberration, defined once and
             referenced by url() from GlitchText and the page transition. */}
         <ChromaticDefs />
-        {children}
+        {/*
+          The skip link, and it is deliberately the first thing in the body.
+
+          The track page has around 56 focusable elements at five per row, and
+          the first tab stop was the wordmark — so reaching the content meant
+          tabbing the masthead every time, on every page. Visually hidden until
+          it takes focus, then it lands in the top-left as a real control.
+        */}
+        <a href="#main-content" className="sv-skip-link">
+          Skip to content
+        </a>
+        {/*
+          The one `main` landmark. There was none on any page: the whole
+          document was `nav` plus unlabelled generics, so "jump to the main
+          content" had nothing to jump to.
+        */}
+        <main id="main-content" tabIndex={-1}>
+          {children}
+        </main>
         {/* Mounted last and above the content, unlike the atmosphere: a
             discharge comes *off* an edge, so it has to draw over the panel it
             left rather than behind it. Ambient and uncorrelated with anything

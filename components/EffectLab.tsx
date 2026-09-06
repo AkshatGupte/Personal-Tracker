@@ -108,25 +108,36 @@ export default function EffectLab() {
 
       {/* ---------------------------------------------------------------- */}
       <section className="flex flex-col gap-3">
-        <h2 className={sectionLabel}>Dimensional voids</h2>
+        <h2 className={sectionLabel}>Dimensional tears</h2>
         <p className={note}>
-          The third ambient effect. A void opens somewhere every 9-20 seconds and lives
-          anywhere from a second and a half to twenty-two, depending on which of five
-          archetypes it drew — <em>crawler</em> (quiet, drifts, snaps), <em>rupture</em>{" "}
-          (tears open and throws fragments), <em>swarm</em> (several pieces on independent
-          drifts), <em>corruptor</em> (barely moves, breaks the page around itself), and{" "}
-          <em>blink</em> (gone before you are sure it was there). Each generates its own
+          The third ambient effect. A tear opens somewhere every 13-26 seconds and lives
+          about five, whichever of the five archetypes it drew — <em>fissure</em> (a long
+          quiet split), <em>rupture</em> (the surface gives all at once, and the split
+          jumps past its own run), <em>cascade</em> (one failure propagating along a line,
+          seam after seam), <em>corruptor</em> (barely moves, breaks the page around
+          itself), and <em>blink</em> (a tear that will not hold). Each generates its own
           keyframes, so no two share a timeline.
         </p>
         <p className={note}>
-          The thing to judge here is the <em>corruption</em>, not the shape. When one
-          fires, the interface behind it is genuinely displaced, channel-split, torn into
-          bands and sometimes erased outright — that is `backdrop-filter` on the real
-          pixels, not a drawing of a glitch. Press repeatedly and you will mostly see
-          nothing extra: bursts are rate-limited to one every 2.2 seconds however many
-          voids want one, and only the corruptor and the rupture fire strong ones. Fire a
-          dozen, then leave it alone and watch — the contrast between the stillness and
-          the break is the whole effect.
+          What to judge is whether it reads as <em>an opening in the surface</em> rather
+          than as a shape lying on it. The silhouette is built from a line of failure
+          outward — a jagged spine, two lips walked along it — and it grows by the split
+          running further and the lips parting, never by the drawing being scaled. Watch
+          the edge for the things only a hole has: notches where the surface still holds
+          on, splinters standing into the gap, the lit wall of its own thickness inside
+          the near lip, and flaps of panel levered up out of it.
+        </p>
+        <p className={note}>
+          The other half is the <em>corruption</em>. When one fires, the interface behind
+          it is genuinely displaced, channel-split, torn into bands and sometimes erased
+          outright — that is `backdrop-filter` on the real pixels, not a drawing of a
+          glitch. Press repeatedly and you will mostly see nothing extra: bursts are
+          rate-limited to one every 2.6 seconds however many tears want one, and only
+          two tears may be open at once (one on a narrow screen), so pressing harder
+          refills a slot rather than raising the rate, and how hard
+          one hits is read off how far open the tear is at that instant. Fire a dozen,
+          then leave it alone and watch — the contrast between the stillness and the break
+          is the whole effect.
         </p>
         <div className="flex items-center gap-4">
           <button
@@ -134,10 +145,10 @@ export default function EffectLab() {
             className={fireButton}
             onClick={() => window.dispatchEvent(new Event("sv:spot"))}
           >
-            Open a void
+            Open a tear
           </button>
           <p className="font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
-            voids draw behind this page &middot; corruption draws over it
+            interior draws behind this page &middot; edge and corruption draw over it
           </p>
         </div>
       </section>

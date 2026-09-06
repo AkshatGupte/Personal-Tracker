@@ -15,19 +15,26 @@ type Action = (previous: ActionResult, formData: FormData) => Promise<ActionResu
  * dialog, and grabbing focus on arrival is disruptive. Focus returns to the
  * field only after a successful add, where it has been earned.
  *
- * No placeholder, by request. The field's accessible name is carried entirely
- * by `aria-label`, which it already was — the placeholder was never doing that
- * job, so removing it costs nothing a screen reader was relying on.
+ * **A placeholder is back, and the earlier reasoning for dropping it was only
+ * half the picture.** It was removed because it was not carrying the accessible
+ * name — true, and `aria-label` still carries it, so nothing here depends on
+ * the placeholder. What that missed is the sighted empty state: on a track with
+ * no topics this field is the only way forward, and an unlabelled bordered box
+ * above an empty list does not say so. The border was `--border` at 1.32:1 on
+ * the page ground, which is barely a box at all.
  */
 export default function InlineCreateForm({
   action,
   label,
+  placeholder,
   submitLabel = "Add",
 }: {
   action: Action;
-  /** Accessible name for the field. `aria-label`, and the field's only name —
-   *  there is no placeholder to fall back on. */
+  /** Accessible name for the field, via `aria-label`. */
   label: string;
+  /** Visible prompt. Not the accessible name — `aria-label` still is, so this
+   *  disappearing on the first keystroke costs a screen reader nothing. */
+  placeholder: string;
   submitLabel?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, EMPTY);
@@ -56,18 +63,19 @@ export default function InlineCreateForm({
           maxLength={80}
           aria-label={label}
           aria-invalid={state.error ? true : undefined}
-          className="min-w-0 flex-1 rounded-none border border-border bg-transparent px-3 py-2 text-sm focus:border-accent aria-invalid:border-sv-red"
+          placeholder={placeholder}
+          className="sv-input min-w-0 flex-1 rounded-none border border-border-interactive bg-transparent px-3 py-2 text-sm placeholder:text-muted focus:border-accent aria-invalid:border-sv-red"
         />
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 rounded-none bg-sv-yellow px-3.5 py-2 font-label text-[0.65rem] uppercase tracking-[0.14em] text-sv-ink transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="shrink-0 rounded-none bg-sv-yellow px-3.5 py-2 font-label text-[0.75rem] uppercase tracking-[0.14em] text-sv-ink transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           {pending ? "Adding…" : submitLabel}
         </button>
       </div>
       {state.error && (
-        <p role="alert" className="font-label text-[0.7rem] text-sv-red">
+        <p role="alert" className="font-label text-[0.75rem] text-sv-red">
           {state.error}
         </p>
       )}

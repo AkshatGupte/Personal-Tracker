@@ -62,7 +62,7 @@ export default function ActivityCell({
           data-tier={tier}
           data-pending={pending || undefined}
           aria-label={`Record activity on ${label}`}
-          className="sv-activity h-7 w-7 font-label text-[0.7rem] tabular-nums hover:brightness-125"
+          className="sv-activity h-7 w-7 font-label text-[0.75rem] tabular-nums hover:brightness-125"
         >
           {/* The count is the label. A zero cell shows a dot instead: "0" reads
               as a measured value, and an untouched leaf has not been measured. */}
@@ -75,7 +75,7 @@ export default function ActivityCell({
         onClick={() => run(-1)}
         disabled={optimistic === 0}
         aria-label={`Undo last activity on ${label}`}
-        className="rounded-none px-1 py-1 font-label text-[0.58rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg disabled:invisible"
+        className="rounded-none px-1 py-1 font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg disabled:invisible"
       >
         Undo
       </button>
@@ -89,7 +89,7 @@ export default function ActivityCell({
       </span>
 
       {error && (
-        <span role="alert" className="font-label text-[0.58rem] text-sv-red">
+        <span role="alert" className="font-label text-[0.75rem] text-sv-red">
           {error}
         </span>
       )}

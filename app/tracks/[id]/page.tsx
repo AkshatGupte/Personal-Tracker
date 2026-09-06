@@ -70,7 +70,7 @@ export default async function TrackPage({
         <nav aria-label="Breadcrumb" className="mb-5">
           <Link
             href="/"
-            className="rounded-none font-label text-[0.6rem] uppercase tracking-[0.15em] text-muted transition-colors hover:text-fg"
+            className="rounded-none font-label text-[0.75rem] uppercase tracking-[0.15em] text-muted transition-colors hover:text-fg"
           >
             &larr; All tracks
           </Link>
@@ -152,29 +152,46 @@ export default async function TrackPage({
             label={isTree ? "Tree" : "Topics"}
             sublabel={
               isTree
-                ? `${allNodes.length} node${allNodes.length === 1 ? "" : "s"}`
-                : `${track.leafCount} to work on`
+                ? `${allNodes.length} topic${allNodes.length === 1 ? "" : "s"} in the tree`
+                : `${track.leafCount} topic${track.leafCount === 1 ? "" : "s"} to work on`
             }
             action={
-              <div className="flex items-center gap-3">
-                <span className="font-label text-[0.6rem] uppercase tabular-nums tracking-[0.12em] text-muted">
-                  {track.leafCount === 0
-                    ? "nothing to work on yet"
-                    : `${track.workedToday} / ${track.leafCount} today`}
-                </span>
-                {/*
-                  Links, not buttons. The view is a URL, so it is shareable, it
-                  survives a reload, and the back button does what it looks like
-                  it should — none of which a piece of component state gives.
-                */}
-                <span className="flex items-center gap-1">
-                  <ViewLink href={`/tracks/${track.id}`} active={!isTree} label="Flat" />
-                  <ViewLink href={`/tracks/${track.id}?view=tree`} active={isTree} label="Tree" />
-                </span>
-              </div>
+              <span className="font-label text-[0.75rem] uppercase tabular-nums tracking-[0.12em] text-muted">
+                {track.leafCount === 0
+                  ? "nothing to work on yet"
+                  : `${track.workedToday} / ${track.leafCount} worked today`}
+              </span>
             }
           >
-            <InlineCreateForm action={addTopic} label="Topic name" />
+            {/*
+              The view toggle sits at the top of the content column, not in the
+              panel's gutter.
+
+              Two things were wrong with it there. The gutter is 7rem, and at
+              1440px the label, the sublabel, the count and a yellow chip could
+              not fit: `TODAY` wrapped onto the toggle's own baseline and read as
+              part of the toggle group. And the gutter is rendered *before* the
+              content, so the first tab stop inside the panel was a control 46px
+              below the field it precedes — focus went `← All tracks` → Flat →
+              Tree → back up to the topic name input.
+
+              Here it is above the form both visually and in the DOM, so tab
+              order runs down the page and the gutter is text only.
+
+              Links, not buttons. The view is a URL, so it is shareable, it
+              survives a reload, and the back button does what it looks like it
+              should — none of which a piece of component state gives.
+            */}
+            <div className="mb-3 flex items-center justify-end gap-1">
+              <ViewLink href={`/tracks/${track.id}`} active={!isTree} label="Flat" />
+              <ViewLink href={`/tracks/${track.id}?view=tree`} active={isTree} label="Tree" />
+            </div>
+
+            <InlineCreateForm
+              action={addTopic}
+              label="Topic name"
+              placeholder="Name a topic to work on"
+            />
 
             <div className="mt-2 border-t border-border">
               {isTree ? (
@@ -185,7 +202,7 @@ export default async function TrackPage({
             </div>
           </Panel>
 
-          <Panel label="Today" sublabel="leaf coverage">
+          <Panel label="Today" sublabel="topics worked">
             <div className="py-2">
               {/*
                 Coverage, not completion. The ratio answers "how much of this
@@ -219,11 +236,25 @@ function ViewLink({ href, active, label }: { href: string; active: boolean; labe
   return (
     <Link
       href={href}
-      aria-current={active ? "page" : undefined}
+      /*
+        Scroll is kept. This is a panel-level view switch, not a page
+        navigation: the same topics in a different arrangement, halfway down a
+        long page. Next scrolls to the top by default, so from `scrollY=900` the
+        toggle threw the reader back to the masthead — and asymmetrically, since
+        flat→tree landed at 0 and tree→flat at 96.
+      */
+      scroll={false}
+      /*
+        `true`, not `page`. The top nav owns `aria-current="page"` — it says
+        which section of the site you are in — and this says which of two
+        arrangements of one section is showing. Both claiming `page` put two of
+        them on `/progress?period=month`.
+      */
+      aria-current={active ? "true" : undefined}
       className={
         active
-          ? "rounded-none bg-sv-yellow px-2 py-0.5 font-label text-[0.55rem] uppercase tracking-[0.14em] text-sv-ink"
-          : "rounded-none px-2 py-0.5 font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg"
+          ? "rounded-none bg-sv-yellow px-2 py-0.5 font-label text-[0.75rem] uppercase tracking-[0.14em] text-sv-ink"
+          : "rounded-none px-2 py-0.5 font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted transition-colors hover:text-fg"
       }
     >
       {label}

@@ -60,8 +60,20 @@ override which binary it uses.
      Kill by that pid, never by name pattern, and never `rm -rf .next` unless
      you know nothing else is serving from it.
 
+     **Read the answer.** This was run, and then followed by an unconditional
+     "port free" line that made it look empty when it was not. The check is
+     worthless if the next line contradicts it.
+
    - **Switching between `npm run dev` and `npm run build`.** They share the
      directory too.
+
+     **`next build` in the project root is the same hazard as `rm -rf .next`,
+     and it is easier to run by accident.** It overwrites `.next/server` under a
+     running dev server, which then 500s with `Cannot find module
+     './vendor-chunks/...'`. Some routes recompile out of it; the ones whose
+     chunks were replaced rather than removed do not, and touching sources will
+     not help — the stale piece is the dev server's own webpack runtime, so only
+     a restart clears it. Build in the isolated copy, or stop the server first.
 
    - **Editing a watched file while a server runs.** Anything under the project
      root triggers a recompile, `qa/` included — it is excluded from tsconfig
@@ -83,6 +95,133 @@ override which binary it uses.
 
    The copy has its own `.next`, so the two never collide, and the user's app
    and real data are untouched.
+
+## Checking text contrast against the composited ground
+
+`CLAUDE.md` requires every text/background pair to clear 4.5:1 **against the
+background as actually rendered**, and says to measure rather than assume,
+because the atmosphere lightens the ground unevenly. Nothing measured it until
+`qa/contrast-check.mjs` existed.
+
+```
+node qa/contrast-check.mjs http://localhost:3488
+```
+
+It collects text sitting on open background (not inside a panel, which has its
+own opaque ground), freezes every animation, and takes two screenshots of the
+same frame: one with the glyph fill set to `transparent`, one with the text
+hidden outright. Every background layer is identical in both, so the pixels they
+differ on are exactly where the text is painted. That region, eroded by a pixel
+to drop the antialiased fringe, is measured against the text colour.
+
+```
+node qa/contrast-check.mjs http://localhost:3488
+NO_HALO=1 node qa/contrast-check.mjs http://localhost:3488   # same method, halo removed
+```
+
+**The two-frame method replaced "the worst pixel anywhere in the element's
+rect".** That was written before the ink halo existed and it measures the wrong
+pair twice over: it flags a glow passing through the gap between two words
+without ever touching a letterform, and — fatally — a halo is *part of* the
+text's own rendering, so sampling the ground by hiding the text hides the halo
+with it. A working halo scored 1.01:1 under the old method. The old figure is
+still printed on every line as `[box N:1]`, because it remains the honest
+picture of how bright the region behind the type gets.
+
+`NO_HALO=1` strips `body`'s text-shadow and measures the same way. The halo and
+the method landed together, so without this "it passes now" would be
+unfalsifiable; with it, the two changes can be told apart. Measured on `/` at
+1560/1280/390: **5 pairs under 4.5:1 with the halo stripped, worst 1.01:1; all
+clear with it, worst 6.41:1.**
+
+PNG is decoded in the script from `node:zlib` rather than adding a dependency —
+the rest is a scanline unfilter, and this directory stays dependency-free.
+
+## Checking the reading column against the atmosphere
+
+`qa/column-contrast.mjs` guards one invariant: **no text in the content column
+ever sits on a bright ground, at any scroll offset.**
+
+> **This check currently FAILS, by decision.** The fix it was written for — a
+> mask holding the atmosphere back from the reading column — was reverted on
+> 2026-09-06 because of how it looked: a flat rectangle down the middle of a
+> wide page, with the effect surviving only in the margins. See
+> `docs/DECISIONS.md`. Expect 14 failures, worst region ground L 0.72.
+>
+> Glyph legibility is *not* what is failing here — `qa/contrast-check.mjs` is
+> still all clear, because the ink halo puts every letter on its own `--bg`
+> ground. This check measures the region, gaps between words included. Keep the
+> two apart when reading a result.
+
+```
+node qa/column-contrast.mjs http://localhost:3488 /tracks/<id>
+```
+
+The defect it exists to prevent is not "some text is low contrast" — it is that
+the *same* text passed or failed depending on where the page happened to be
+scrolled to, because the atmosphere layers are `position: fixed` while the page
+is about 1950px tall. Measured before the fix on one topic row: 3.50:1 at
+scrollY 0, 5.71:1 at 260, 7.05:1 at 520.
+
+It sweeps two widths, three routes and four scroll offsets, hides the text,
+photographs the frame and reads the real composited ground behind every text
+region. Two assertions: nothing brighter than L 0.02 behind text, and nothing
+under 4.5:1.
+
+**Three ways an earlier version of it lied, all now handled in the file:**
+
+- `GlitchText` paints two offset duplicates of every heading. Hiding only the
+  base string leaves a cyan copy of the word where the word was, and a cyan
+  label then measures 1.00:1 against a "ground" of L 0.86 — it is reading itself.
+  `.sv-glitch-layer` is hidden with the text.
+- Text on a solid surface — a comic panel, a yellow button, a filled activity
+  cell — is not on the atmosphere at all, and `visibility: hidden` takes the
+  surface away with the text. Those are excluded.
+- The heatmap's day-by-day list lives in a closed `<details>`, which Chrome hides
+  with `content-visibility` rather than `display: none`. Its rows still report a
+  laid-out rect, so unpainted rows were measured — and their stale rects landed
+  on a table two panels away. `checkVisibility()` catches it.
+
+And one trap worth repeating from the README's own list: a `\d` written inside a
+`page.eval` template literal becomes a literal `d`. That silently disabled the
+"skip text on a solid surface" rule and the check confidently reported 1.03:1 on
+ink-on-yellow buttons.
+
+## Checking the scrolling multiverse
+
+```
+node qa/bands-check.mjs http://localhost:3489
+```
+
+The atmosphere spans the document rather than the viewport, drawing one *band*
+of composition per screenful. Band 0 is the hand-set composition; every band
+above it is generated, and this asserts the properties hand-placement gave for
+free and generation does not — across three pages at five window sizes:
+
+- the two layers are exactly the measured document height, and the band count
+  matches `ceil(document / viewport)`
+- **every rendered structure has a thread arriving at its centre.** A generated
+  band that produced an orphan is a solid floating with no relation to anything
+- **no thread endpoint is left alone inside the frame.** These runs either join
+  two structures or carry on out of the composition; a segment stopping at an
+  arbitrary interior point is a snapped thread
+- no horizontal overflow
+
+Two things about how it measures, both load-bearing:
+
+- It reads path data out of each band's `<svg>` in that band's own viewBox units
+  and maps it to document pixels. It does **not** re-run the generator — a check
+  that recomputes the thing it is checking proves nothing. This is what caught a
+  bug where the thread drawing was 720px wide on a 1280px page.
+- "Dangling" means *alone*: an endpoint that coincides with another endpoint is a
+  junction. That is what makes it correct on a phone, where two of the five
+  solids are deliberately not drawn (`hidden sm:block`) but their threads remain
+  — the node is still a real meeting point, only the solid is absent. Hidden
+  structures are excluded from the orphan count for the same reason; they have no
+  box, and measuring one would put a phantom at 0,0.
+
+It was validated by reintroducing each of the two bugs it was written for and
+confirming it fails on both. A check that has never failed has not been tested.
 
 ## Checking the dimensional voids
 
@@ -130,14 +269,37 @@ environment. (`VenomLightning`, which this section used to name, was replaced by
 |---|---|---|
 | `AmbientLightning` | ambient, 8-18s | `window.dispatchEvent(new Event("sv:lightning"))` |
 | `AmbientGlitch` | ambient, 10-20s | `window.dispatchEvent(new Event("sv:glitch"))` |
-| `DimensionalSpots` | ambient, 9-20s | `window.dispatchEvent(new Event("sv:spot"))` |
+| `DimensionalSpots` | ambient, 13-26s | `window.dispatchEvent(new Event("sv:spot"))` |
 | `GlitchShatter` | deterministic feedback | a `fire` counter prop |
 
-**The voids are the one effect you cannot judge by firing it.** The other three
-are events — you press the button, you watch the half-second, you decide. A void
-draws one of five archetypes and lives anywhere from 1.5 to 22 seconds, and the
-question is whether the stillness and the sudden corruption read as one anomaly.
-Open a few and then leave the page alone.
+**The tears are the one effect you cannot judge by firing it.** The other three
+are events — you press the button, you watch the half-second, you decide. A tear
+draws one of five archetypes (`fissure`, `rupture`, `cascade`, `corruptor`,
+`blink`) and lives about five seconds, and the question is whether it reads as
+*an opening in the surface* rather than as a shape lying on it. Open a few and
+then leave the page alone.
+
+**Dispatching `sv:spot` does not sample the real cadence.** Live, a tear arrives
+every 13-26s and at most two are open at once (one under 640px), so the layer is
+clean roughly three quarters of the time. Firing the event only refills a free
+slot. To judge frequency rather than appearance, watch an untouched page for two
+minutes.
+
+**Use `qa/tear-shots.mjs` for the silhouette.** Five seconds, small, and
+randomly placed is not something a live screenshot can settle:
+
+```
+node qa/tear-shots.mjs http://localhost:3488 /tmp/tear-shots
+```
+
+It freezes a tear at nine points of its life and crops it at 2x — a fresh tear
+per frame, because the component's removal timers keep running while its
+animations are paused. What to look for at each stage: a hairline crack early, a
+split that has *run* along its line before the lips part, notches and splinters
+on the edge, the lit wall of the surface's own thickness inside the near lip,
+flaps of panel levered up, and fractures that lengthen as it widens. If it reads
+as one shape getting bigger, the progression has broken — see the decisions entry
+for why that is a geometry fault and not a tuning one.
 
 Judging the corruption specifically needs a frozen frame over *content*: a
 displacement has nothing to displace over empty background, and several tuning
@@ -244,3 +406,38 @@ await b.close();
 `p.eval(expr)` returns a JSON value from the page, which is how overflow checks
 are done — compare `document.documentElement.scrollWidth` against `innerWidth`
 at 1440, 1280, 390 and 320.
+
+### Screenshotting a scrolling page — do not use `captureBeyondViewport`
+
+`p.shot()` sets `captureBeyondViewport: true`, which is right for a full-page or
+element shot and **wrong for anything that has to look like the viewport.**
+
+Since the atmosphere started spanning the document (see `useDocumentBands`),
+this matters more than it used to. `captureBeyondViewport` inflates the viewport
+to the size of what it is capturing, so `innerHeight` becomes the height of the
+whole page — and the background derives its band size from `innerHeight`, so what
+comes back is one enormous band stretched over the document rather than the three
+the user actually sees. It is the same family as the trap noted above about
+`ellipse closest-side`: the bug disappears in exactly the image you would check
+it with.
+
+Worse, a *clipped* capture at the bottom of a long page with this layer **hangs**
+— no error, no timeout, the call simply never returns. It cost two dead runs.
+
+So for a viewport shot: scroll first, then capture with the flag off.
+
+```js
+await p.eval(`scrollTo(0, ${y}); 1`);
+await new Promise((r) => setTimeout(r, 600));
+const { data } = await p.send("Page.captureScreenshot", {
+  format: "png",
+  captureBeyondViewport: false,
+});
+writeFileSync(out, Buffer.from(data, "base64"));
+```
+
+`p.send` is exposed on the page object for exactly this kind of escape hatch —
+it is also how `Emulation.setEmulatedMedia` is used to force
+`prefers-reduced-motion: reduce`, which is the only way to get a *deterministic*
+screenshot of this app: it removes the tears, the lightning and the ambient
+glitch, and freezes the drift glows at their neutral pose.

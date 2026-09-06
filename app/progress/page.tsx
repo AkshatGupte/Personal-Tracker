@@ -81,6 +81,9 @@ export default async function ProgressPage({
     <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
       <TopNav />
 
+      {/* The page's name, for the heading outline only — see Home. */}
+      <h1 className="sr-only">Progress</h1>
+
       {/*
         The window switch sits above the figure it changes, in the section-label
         voice rather than as buttons: it selects what is being read, the way the
@@ -88,14 +91,17 @@ export default async function ProgressPage({
         anything.
       */}
       <nav aria-label="Summary window" className="pt-1">
-        <ul className="flex items-center gap-4 font-label text-[0.6rem] uppercase tracking-[0.15em]">
+        <ul className="flex items-center gap-4 font-label text-[0.75rem] uppercase tracking-[0.15em]">
           {(["week", "month"] as const).map((option) => {
             const active = option === period;
             return (
               <li key={option}>
                 <Link
                   href={option === "week" ? "/progress" : "/progress?period=month"}
-                  aria-current={active ? "page" : undefined}
+                  /* `true`, not `page`: this selects a window within the
+                     section, and the top nav's Progress link is already the
+                     page. Both claiming `page` is the duplicate. */
+                  aria-current={active ? "true" : undefined}
                   className={
                     active
                       ? "border-b-2 border-sv-yellow pb-0.5 text-fg"
@@ -121,12 +127,14 @@ export default async function ProgressPage({
       >
         <div className="flex flex-col justify-center gap-4">
           <div>
-            <h1
+            {/* Demoted from `h1` — see the note on Home. This is the caption
+                of the figure beside it, not the name of the page. */}
+            <h2
               id="period-heading"
-              className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted"
+              className="font-label text-[0.75rem] uppercase tracking-[0.17em] text-muted"
             >
               {copy.heading}
-            </h1>
+            </h2>
             <p className="mt-2 font-mono text-5xl font-medium leading-none tracking-tight tabular-nums">
               {current.completed}
             </p>
@@ -139,10 +147,19 @@ export default async function ProgressPage({
                 : "activities. Nothing has been logged yet — work a topic and this fills in."
               : current.elapsedDays === 1
                 ? `activities ${copy.since}. The ${copy.noun} has only just begun.`
-                : `activities ${copy.since}, across ${current.activeDays} of ${current.elapsedDays} days.`}
+                : /*
+                     5.5: the denominator is *elapsed* days and never said so.
+                     It read "across 1 of 6 days", which invites reading 6 as
+                     the length of the period — a week has seven and a month has
+                     thirty. "Elapsed" is the whole correction, and it is said
+                     once: `copy.since` already carries "so far this month", so
+                     repeating it here produced "so far this month, ... so far
+                     this month".
+                   */
+                  `activities ${copy.since}, on ${current.activeDays} of the ${current.elapsedDays} days elapsed.`}
           </p>
 
-          <p className="font-label text-[0.6rem] uppercase tracking-[0.14em] tabular-nums text-muted">
+          <p className="font-label text-[0.75rem] uppercase tracking-[0.14em] tabular-nums text-muted">
             {formatPeriod(period, current.start, current.endExclusive)}
             {period === "week" && " · Mon–Sun"}
           </p>
@@ -164,7 +181,7 @@ export default async function ProgressPage({
           label="Tracks"
           sublabel={`this ${copy.noun}`}
           action={
-            <span className="font-label text-[0.6rem] font-bold uppercase tabular-nums tracking-[0.12em]">
+            <span className="font-label text-[0.75rem] font-bold uppercase tabular-nums tracking-[0.12em]">
               {tracks.length === 0 ? "none yet" : `${tracks.length} total`}
             </span>
           }
@@ -193,7 +210,7 @@ export default async function ProgressPage({
                         {track.name}
                       </Link>
                     </h3>
-                    <p className="mt-1 font-label text-[0.6rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+                    <p className="mt-1 font-label text-[0.75rem] uppercase tracking-[0.12em] tabular-nums text-muted">
                       {track.completed === 0 ? (
                         track.everActive ? (
                           `nothing this ${copy.noun}`
@@ -203,26 +220,29 @@ export default async function ProgressPage({
                       ) : (
                         <>
                           <span className="text-fg">{track.activeDays}</span>
-                          {track.activeDays === 1 ? " day" : " days"} active
+                          {track.activeDays === 1 ? " day" : " days"} this {copy.noun}
                         </>
                       )}
                       {track.currentStreak > 0 && (
                         <>
                           {" · "}
-                          <span className="text-streak">{track.currentStreak} day</span> streak
+                          <span className="text-streak">
+                            {track.currentStreak} day
+                          </span>{" "}
+                          streak now
                         </>
                       )}
                       {track.longestStreak > 0 && (
                         <>
                           {" · "}
-                          best {track.longestStreak}
+                          longest streak {track.longestStreak}
                         </>
                       )}
                       {track.totalActiveDays > 0 && (
                         <>
                           {" · "}
-                          {track.totalActiveDays} active {track.totalActiveDays === 1 ? "day" : "days"} all
-                          time
+                          {track.totalActiveDays} active {track.totalActiveDays === 1 ? "day" : "days"} in
+                          all
                         </>
                       )}
                     </p>
@@ -234,15 +254,27 @@ export default async function ProgressPage({
                     other question the new model can ask — how much of the track
                     was touched — and the two are deliberately different signals.
                   */}
+                  {/*
+                    5.4: the big figure was bare.
+
+                    It rendered as `52`, `8`, `0` with `51% TODAY` under it at
+                    8.8px — two numbers, neither of them saying what it counts,
+                    and the smaller one carrying all the meaning. The figure now
+                    names its own unit on the line beneath it, in the same
+                    "worked today" vocabulary the rest of the app uses.
+                  */}
                   <div className="justify-self-end text-right">
                     <p className="font-label text-lg leading-none tabular-nums text-muted">
                       <span className={track.completed > 0 ? "text-fg" : undefined}>
                         {track.completed}
                       </span>
                     </p>
+                    <p className="mt-1 font-label text-[0.75rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+                      {track.completed === 1 ? "activity" : "activities"} this {copy.noun}
+                    </p>
                     {track.leafCount > 0 && (
-                      <p className="mt-1 font-label text-[0.55rem] uppercase tracking-[0.12em] tabular-nums text-muted">
-                        {track.coverage}% today
+                      <p className="font-label text-[0.75rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+                        {track.coverage}% worked today
                       </p>
                     )}
                   </div>
@@ -265,17 +297,17 @@ export default async function ProgressPage({
                   key={bucket.key}
                   className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 py-3"
                 >
-                  <p className="font-label text-[0.65rem] uppercase tracking-[0.12em] tabular-nums">
+                  <p className="font-label text-[0.75rem] uppercase tracking-[0.12em] tabular-nums">
                     <span className={bucket.isCurrent ? "text-fg" : "text-muted"}>
                       {formatPeriod(period, bucket.start, bucket.endExclusive)}
                     </span>
                     {bucket.isCurrent && (
                       // The space matters: without it a screen reader reads
                       // "6 SeptThis week" as one word.
-                      <> <span className="text-[0.55rem] text-muted">this {copy.noun}</span></>
+                      <> <span className="text-[0.75rem] text-muted">this {copy.noun}</span></>
                     )}
                   </p>
-                  <p className="font-label text-[0.65rem] uppercase tracking-[0.12em] tabular-nums text-muted">
+                  <p className="font-label text-[0.75rem] uppercase tracking-[0.12em] tabular-nums text-muted">
                     {bucket.completed === 0 ? (
                       "no activity"
                     ) : (

@@ -87,9 +87,22 @@ function Node({
   const isOpen = !collapsed.has(node.id);
   const percent = coveragePercent({ worked: node.worked, total: node.total });
 
+  /*
+    Every sibling is indented and ruled, the first one included.
+
+    `first:border-l-0 first:pl-0` used to strip both from the first child of
+    each group. The indent step is 12px, so the first child of a depth-2 group
+    rendered at the x of a depth-1 node — the error was exactly one full level,
+    and it put two different depths on the same x while splitting one depth
+    across two. Measured in the seed tree: `Graphs` (depth 1) at 423 against
+    `Two pointers` (depth 2) at 422.
+  */
   return (
-    <li className="border-l border-border pl-3 first:border-l-0 first:pl-0">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
+    <li className="border-l border-border pl-3">
+      {/* The band goes on the row, never on the `li`: an `li` contains its whole
+          subtree, so hovering a parent would light every descendant with it and
+          the highlight would stop meaning "this row". */}
+      <div className="sv-row -mx-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 py-2">
         <div className="flex min-w-0 items-center gap-2">
           {node.isLeaf ? (
             // Alignment placeholder. A leaf has nothing to expand, and letting
@@ -101,7 +114,7 @@ function Node({
               onClick={() => toggle(node.id)}
               aria-expanded={isOpen}
               aria-label={`${isOpen ? "Collapse" : "Expand"} ${node.name}`}
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-none text-[0.6rem] text-muted transition-colors hover:text-fg"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-none text-[0.75rem] text-muted transition-colors hover:text-fg"
             >
               <span aria-hidden="true">{isOpen ? "▾" : "▸"}</span>
             </button>
@@ -109,9 +122,29 @@ function Node({
 
           <span className="min-w-0 truncate text-sm">{node.name}</span>
 
+          {/*
+            "Direct", and the word is doing real work.
+
+            The figure counts distinct *direct* children worked today — see
+            `lib/tree.ts` — so `Two pointers` reads 2/2 with a full bar while its
+            grandchild `Happy number` has never been touched. Nothing in the old
+            label said so, and reading the tree top-down therefore gave a
+            systematically optimistic picture of a track. The calculation is
+            correct and deliberate; only the label was lying by omission.
+
+            The full sentence goes to assistive tech, where there is room for it.
+          */}
           {!node.isLeaf && (
-            <span className="font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
-              {node.worked}/{node.total} today
+            <span
+              className="font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted"
+              title={`${node.worked} of ${node.total} topics directly inside ${node.name} worked today. Topics deeper down are not counted here.`}
+            >
+              <span aria-hidden="true">
+                {node.worked}/{node.total} direct
+              </span>
+              <span className="sr-only">
+                {node.worked} of {node.total} topics directly inside worked today
+              </span>
             </span>
           )}
         </div>

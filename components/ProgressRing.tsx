@@ -59,7 +59,7 @@ export default function ProgressRing({
           aria-label={
             total === 0
               ? `${label}: nothing to work on yet.`
-              : `${label}: ${completed} of ${total} worked, ${percent} percent.`
+              : `${label}: ${completed} of ${total} topics worked today, ${percent} percent.`
           }
         >
           <circle
@@ -105,14 +105,26 @@ export default function ProgressRing({
           <span className="font-mono text-4xl font-medium leading-none tracking-tight tabular-nums">
             {percent}%
           </span>
-          <span className="mt-1.5 font-label text-[0.6rem] uppercase tracking-[0.15em] text-muted">
-            complete
+          {/*
+            "Worked today", never "complete".
+
+            Nothing in this model finishes: a leaf is a recurring activity with
+            no terminal state, and the ring resets every morning. "0% COMPLETE"
+            on a new track reads as "you have finished none of your curriculum",
+            which is a different and much more discouraging claim than "you have
+            not worked any of it yet today" — and it is not one the data
+            supports. This is the phrase the track row, the panel and the
+            Progress page all now use for the same figure.
+          */}
+          <span className="mt-1.5 font-label text-[0.75rem] uppercase tracking-[0.15em] text-muted">
+            worked today
           </span>
         </div>
       </div>
 
-      <p aria-hidden="true" className="font-label text-[0.65rem] uppercase leading-relaxed tracking-[0.14em] tabular-nums text-muted">
-        <span className="text-fg">{completed}</span> of <span className="text-fg">{total}</span> worked
+      <p aria-hidden="true" className="font-label text-[0.75rem] uppercase leading-relaxed tracking-[0.14em] tabular-nums text-muted">
+        <span className="text-fg">{completed}</span> of <span className="text-fg">{total}</span> topics
+        worked today
       </p>
     </div>
   );

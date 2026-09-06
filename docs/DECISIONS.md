@@ -5,6 +5,654 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-06 (latest, fix) — Two ways the banded threads came apart**
+
+Reported as "some structures were disconnected from the multiverse". Two
+independent defects, both introduced by the banding change above, both now
+covered by `qa/bands-check.mjs`.
+
+**1. `<svg>` is a replaced element, so `inset-x-0` does not give it a width.**
+`ThreadLines` was `absolute inset-0 h-full w-full`; moving it to a band's
+position rewrote that as `absolute inset-x-0` with `top`/`height` inline, and
+dropped `w-full`. For an *absolutely positioned replaced element* — which an svg
+with a viewBox is — `width: auto` resolves from the intrinsic aspect ratio and
+the resolved height, **not** from a `left: 0; right: 0` pair the way a normal
+block does. viewBox is 1:1 and the height was one band, so the box came out
+square: 720px wide on a 1280px page. Every thread was compressed into the left
+56% of the frame while the structures stayed at their true percentages, so the
+right-hand solids had nothing arriving at them. **This hit band 0 as well**, so
+"band 0 is byte-identical" was true of the glows and the structures and false of
+the threads — the earlier geometry probe printed the 720-wide box and it was read
+past. `w-full` is back, with a comment saying why it is not redundant.
+
+**2. Mirroring positions without mirroring directions.** Odd bands reflect the
+composition about x=50. The structures were reflected and `OUTRUNS` was not, so
+`a` — mirrored from x=8 to x=92 — kept `dx = -20` and its two branches pointed
+back into the page, terminating at x=72 and x=74. Those are inside the frame, and
+the classifier's fall-through drew them as plain segments ending in nothing.
+Fixed by negating `dx` on mirrored bands, which is what reflecting a composition
+means. `extend()` is the second line of defence for what jitter and the keep-out
+clamp can still produce: it pushes any endpoint that would land inside the frame
+along its own ray to the first boundary it crosses, so a branch can only ever
+leave the composition or reach a neighbouring band's solid. It is an identity on
+band 0, whose six endpoints were all hand-placed outside the frame.
+
+**`qa/bands-check.mjs`** reads the threads out of each band's path data in that
+band's own viewBox units and maps them to document pixels, rather than
+re-deriving the generator's intent — a check that recomputes the thing it is
+checking proves nothing. It asserts: the layers equal the document height; the
+band count matches; every *rendered* structure has a thread endpoint at its
+centre; and no endpoint is left alone inside the frame. "Alone" is the operative
+word — an endpoint shared with another endpoint is a junction, which is what
+makes the check correct at the two solids a phone does not draw, where the node
+is still a real meeting point and only the solid is absent. Both defects were
+reintroduced one at a time to confirm it fails on each.
+
+**Process note, recorded because it cost the user something.** A production
+`next build` was run in the project root while the user's own dev server was
+serving from the same `.next`. It overwrote `.next/server`, and the running dev
+server then 500'd on `/tracks/[id]` with `Cannot find module
+'./vendor-chunks/@prisma.js'`; other routes recompiled themselves, that one could
+not, and touching sources did not clear it because the stale piece is the
+server's own webpack runtime. Only a restart fixes it. `qa/README.md` already
+warns about `rm -rf .next`; **`next build` in the project root is the same
+hazard and was not named.** The port check was run and its output misread,
+because it was followed by an unconditional "port free" echo. Resolve the port
+*and read the answer* before building, and build in the isolated copy.
+
+---
+
+**2026-09-06 (latest) — The atmosphere spans the document, not the viewport**
+
+`SpiderverseBackground` and the page-wide thread layer were both `fixed
+inset-0`: one viewport of environment, pinned, with the page sliding across it.
+Both now span the whole document, scroll with it, and draw one band of
+composition per screenful. `CLAUDE.md`'s "global, background-only, always-on"
+still holds — what changed is that "global" now means the whole page rather than
+the whole screen.
+
+**Absolute, not fixed-with-a-scroll-handler, and not `position: relative` on
+`body`.** An absolutely positioned element with no positioned ancestor resolves
+against the initial containing block, whose origin is the *document* origin — so
+`top: 0` is the top of the page and the layer scrolls normally, with no scroll
+listener and nothing running per frame. Making `body` relative would have worked
+too and was rejected: it silently re-parents every unparented `absolute` in the
+app, which is a change to code nobody is looking at.
+
+**The height is measured from `body`'s border box, never from
+`documentElement.scrollHeight`.** The layers are absolutely positioned, so they
+add to the document's scrollable overflow but not to `body`'s own height.
+Measuring the scroll height would mean measuring the thing being sized from that
+measurement, and any rounding upward would ratchet the document longer on every
+pass. `body`'s box cannot be pushed around by its own absolutely positioned
+children, so the loop cannot close. A `ResizeObserver` on it is the whole
+"extends when the page grows" behaviour.
+
+**Bands are generated, not tiled.** Band 0 is the hand-set composition,
+unchanged and verified against the old Tailwind values in the DOM (glows at
+-320/-252/1088x864, 512/108, 256/58; structure centres at 8%/44%, 91%/19%,
+88%/80%, 24%/7%, 15%/90%). Above it each band mirrors on parity, jitters
+position, scale and opacity, and **re-seeds each polyhedron** — that last part is
+what matters, because a band that merely moves the same five solids around is
+still a repeat, and two copies on screen together is all it takes to see the
+period. The rift glows get the same treatment plus a negative animation delay per
+band, so the three incommensurate drift periods do not fall into a vertical
+rhythm.
+
+**The vertical off-frame threads became cross-band threads.** They are written as
+displacements from their source rather than fixed endpoints, so band 0's numbers
+reproduce exactly and the same run off a moved structure leaves in the same
+direction. At an internal boundary the endpoint retargets to the nearest solid in
+the neighbouring band; at the document's top and bottom, where there is no
+neighbour, it still runs off the edge. They are deduplicated by node pair —
+without that, band k's downward branch and band k+1's upward branch frequently
+resolve to the same pair and lay two neon strokes on one thread at twice the
+intensity of every other.
+
+**Per-band `<svg>` with `overflow: visible`, not one document-tall drawing.** The
+bloom is a `blur()` on a `<g>`, and a filter's region is the bounding box of what
+is inside it — one drawing would make that region the whole page and ask the
+compositor for a texture the height of the document.
+
+**The speed lines stay pinned, and that is the one measured exception.**
+Attributed layer by layer while scrolling the track page (headless,
+`--disable-gpu`, median frame time over 180 frames): baseline 66.7ms against a
+16.7ms vsync floor, and removing the speed lines alone returned it to 16.7 while
+removing the halftone, the glows, the structures or the thread lines changed
+nothing. The cause is `sv-speedline-pan` animating `background-position-x`, which
+repaints the element's visible area every frame — cheap as a fixed
+viewport-sized promoted surface, a full uncacheable repaint as a document-tall
+scrolling one. With it pinned, every remaining scrolling layer measures at the
+vsync floor. Nothing is lost: the speed lines are a uniform hairline field with
+no located feature, so there is no position in the texture to scroll to, and they
+are a camera device rather than a thing in the world. It stays inside the same
+container rather than moving to a sibling, so its paint order is unchanged.
+
+**`DimensionalSpots` stays pinned too, for a different reason.** A tear is a
+transient event that happens where you are looking, not a fixture placed in the
+environment; spreading them over the document would fire most of them onto
+screens nobody is on. Occlusion still works — same depth, later in the DOM, so it
+paints over whatever band has scrolled under it, and `qa/spots-check.mjs` still
+reports the layer ordering clean.
+
+**Module split:** `DimensionalThreads` moved out of `Threads.tsx` into its own
+`"use client"` module, because it needs the measured document height. `Threads.tsx`
+stays a server module so `ThreadFrame`, `ThreadDivider`, `ThreadVoid` and the
+shared `ThreadStructure` keep rendering to HTML on the server instead of shipping
+their geometry to the browser; `Neon`, `r1` and `Pt` are exported for the new
+layer to build on.
+
+**Band height is held stable against small viewport-height changes** (20%
+tolerance). On a phone the URL bar hides mid-scroll and `innerHeight` grows by
+60-100px; taking that literally would re-derive every band boundary while the
+user is scrolling through them.
+
+**A QA trap found on the way, worth not rediscovering:** `Page.captureScreenshot`
+with `captureBeyondViewport: true` *hangs* on a clip at the bottom of a page with
+this layer, and inflates the viewport (which re-derives the bands) even when it
+does not. Viewport screenshots for this must scroll first and capture with
+`captureBeyondViewport: false`.
+
+---
+
+**2026-09-06 (later) — The column veil is reverted; Group 3.1 is open again**
+Shipped in the audit pass above and **taken back out the same day at the owner's
+request**: "the entire colour scheme is off, make it the same as it was before."
+
+The reason is straightforward and the screenshot settles it. Masking the
+atmosphere out of the 1024px reading column does exactly what it was designed to
+do, and what it looks like at a wide viewport is a flat near-black rectangle
+down the middle of the page with the glows and wireframes surviving only in the
+margins. `CLAUDE.md` describes the atmosphere as global and background-only; a
+version of it that stops at the content column reads as two designs side by
+side, not as one page. The measurement was right and the result was wrong.
+
+Reverted: the `.sv-column-veil` class on `DimensionalThreads`, the wrapper around
+the drift glows and speed lines in `SpiderverseBackground`, and the CSS block and
+its three tokens. `SpiderverseBackground.tsx` is byte-identical to its previous
+state again; `Threads.tsx` differs only by the earlier three-pass neon work.
+
+**What this does and does not reopen, measured after the revert:**
+
+- `qa/column-contrast.mjs` fails again — 14 samples, worst region ground L 0.72,
+  worst 1.00:1. The audit's stated invariant ("no content sits on a ground
+  brighter than L 0.02") is **not held**, and that item should be treated as
+  open rather than done.
+- `qa/contrast-check.mjs` is still **ALL CLEAR**, and the distinction matters.
+  That check measures the *glyph*, using the halo-aware two-frame method; the
+  column check measures the *region*, including the gaps between words. The ink
+  halo from 2026-09-05 puts every glyph on its own `--bg` ground regardless of
+  what is drifting behind it, and it is scroll-independent, so the specific
+  failure the audit opened with — the same row readable at one scroll offset and
+  not at another — does not come back with the veil removed. What comes back is
+  bright atmosphere *around* type, not under it.
+
+The script is kept rather than deleted. It is the only thing that can evaluate a
+future attempt, and the numbers above are only quotable because it exists. It
+should be expected to fail until someone decides what to do instead — dimming
+the glows globally, or accepting the region ground and relying on the halo, are
+both live options and both are the owner's call.
+
+---
+
+**2026-09-06 — Desktop UX audit: 40 defect fixes across five groups**
+A UX audit of the desktop app produced a list of functional bugs, affordance
+gaps, contrast failures, accessibility defects and copy problems. Everything
+below is a fix to something already built — no capability was added, removed or
+changed, no animation timing was touched, and the Spider-Verse direction is
+unchanged. The decisions worth recording are the ones where the obvious fix was
+not the right one.
+
+**The tree indent bug was one full level, not a rounding error.**
+`first:border-l-0 first:pl-0` stripped the indent *and* the connecting rule from
+the first child of every group. The step is 12px, so the first child of a
+depth-2 group rendered at a depth-1 node's x: two different depths shared one
+position while one depth occupied two. Removing both overrides gives five
+depths, five x positions, 25px apart.
+
+**`+ Inside` is hidden, not omitted.** It was absent on depth-5 rows, which took
+its width with it and put the activity cell and Undo 43px left on those rows —
+the two most-used controls in the app had two columns instead of one.
+`disabled:invisible` reserves the space. It stays `disabled` so it is not a tab
+stop and announces nothing.
+
+**Focus for the four inline forms is returned by remembering *which* trigger,
+not by holding the node.** The component swaps its whole render for the form, so
+the button that opened it is unmounted and there is nothing to hold a ref to.
+What is stored is which of the four it was; an effect refocuses it once the
+buttons are back. Also: `autoFocus` did not work on the confirm button —
+measured, the confirmation rendered with `document.activeElement` still `<body>`,
+which additionally meant the Escape handler never received a key. That one is
+focused explicitly.
+
+**The parent-delete button is `aria-disabled`, not `disabled`.** Its explanation
+is good and was reachable only by hovering a control that cannot be operated.
+`aria-disabled` keeps it focusable and announced while still refusing the click,
+and the reason moved from `title` to `aria-describedby`. Its opacity went 0.4 →
+0.75, because 40% on this ground reads as absent rather than blocked — and a
+real tab stop has to look like a control.
+
+**A new `--border-interactive` token, beside `--border` rather than replacing
+it.** WCAG 1.4.11 wants 3:1 for a component boundary; `--border` measures 1.32:1
+on the page ground. It is doing its other job — panel hairlines and separators —
+well, so it is untouched and inputs and the activity cell take the new one.
+`#9a6a7f` was chosen against the *worst* ground rather than the flat token:
+4.46:1 on `--bg` and 3.39:1 against a composited ground at L 0.02, which is the
+ceiling the atmosphere is now held under inside the column. Measured on rendered
+pixels afterwards at 4.4:1.
+
+**Affordance states are plain CSS, not Tailwind `hover:` utilities.** Tailwind
+wraps `hover:` in `@media (hover: hover)`, and the QA browser reports
+`hover: none` — so a hover written as a utility cannot be verified here at all.
+That is not a reason to avoid the variant in general, but it is a reason for the
+states this audit is about (the create field, the activity cell, the row band,
+the destructive action) to be written where they can be measured.
+
+**Group 3 — the audit named the wrong layer, and the measurement said so.**
+The brief attributed the scroll-dependent contrast failure to the neon
+wireframes at 0.78-0.90 opacity. Toggling each layer and sampling the brightest
+pixel behind the column on a track page at scrollY 0: baseline L 0.0793, threads
+removed 0.0600, **rift glows removed 0.0232**. The conspicuous layer is not the
+dominant one — three overlapping radial glows composite higher than any wireframe,
+and CLAUDE.md's "everything under 8% opacity" is true of each layer alone and not
+of the three stacked. Both are veiled; the `--bg` fill stays outside the mask,
+because masking the page ground would punch a hole through to the canvas.
+
+Why a mask on a viewport-fixed layer is an invariant rather than a patch: the
+layer does not scroll and the column is centred at a constant width, so one
+horizontal mask covers the column at every scroll offset by construction. Below
+68rem it does not apply — the column *is* the viewport there, and veiling it
+would delete the atmosphere rather than move it aside; the ink halo carries
+legibility at those widths and is width-independent. Result: worst in-column
+ground L 0.0168 against a 0.02 ceiling, worst text contrast 6.31:1, across two
+widths, three routes and four scroll offsets.
+
+**Sub-view toggles claim `aria-current="true"`, the top nav claims `"page"`.**
+Both were claiming `page`, which put two on `/progress?period=month`. The nav
+says which section of the site you are in; a toggle says which arrangement of
+that section is showing.
+
+**The heatmap legend is derived from the cells actually drawn.** `level()`
+quantises against the busiest day, so steps are unreachable at small maxima —
+and beyond that a window may simply contain no count that maps to a given step.
+The legend printed all five regardless and advertised a magenta that is nowhere
+in the grid. Deriving it from the rendered cells means the two cannot disagree.
+
+**`bleed-r` is gone from the home terrain.** It put the `NEXT 100` axis label
+338px outside the column, in the decoration layer, with the curve's endpoint dot
+inside a lit polygon. An axis label is data.
+
+**1.9 (hydration mismatch) could not be reproduced and no fix was invented.**
+`caret-color` appears nowhere in the source and nowhere in the server-rendered
+HTML, and no console error appears on `/`, `/tracks/[id]`, `/lab` or `/progress`
+in a clean browser. `caret-color: transparent` on inputs is a browser-extension
+signature. What *was* wrong and is now fixed is that `qa/cdp.mjs` could not have
+seen it either: `page.errors` collected exceptions and `Log` entries but not
+`console.error`, which is how React reports a hydration mismatch — so "the
+console is clean" was being reported by a check structurally unable to observe
+the thing it was checking for.
+
+**Type floor: 59 sizes raised to 12px.** `/lab` and `components/spiderverse/*`
+were excluded — the lab is out of scope and the effect internals are not
+interface text. Tracking and case are unchanged; only the size moved.
+
+---
+
+**2026-09-05 (late) — The contrast failure is fixed with an ink halo (option 2), and the measurement it defeated was fixed too**
+The open decision from the previous handoff. `CLAUDE.md` requires every
+text/background pair to clear 4.5:1 against the *composited* ground;
+`qa/contrast-check.mjs` measured it and found failures where a bright thread
+passes behind the reading column — `--muted` at 1.00-1.02:1, text and background
+the same brightness. Worst at 390px, where the reading column is the viewport.
+The three options were put up and **option 2 was chosen: a ground of ink round
+every glyph.** It is the only one that holds at every width — dimming the threads
+undoes what was asked for, and a shade behind the reading column shades the whole
+page on a phone.
+
+**A halo, never a stroke, and this is the part that matters.** `text-shadow`
+paints copies of the glyph *behind* it: same outline, same width, same metrics,
+no reflow. `-webkit-text-stroke` would be one declaration instead of eight and is
+exactly what must not be used — it strokes the glyph's own outline, so it reads
+as weight, and `CLAUDE.md` is explicit that Bangers ships one weight, that
+synthesised bold smears it, and that emphasis never comes from weight here. An
+outline that thickens type is that rule broken from the other side.
+`paint-order: stroke fill` avoids the thickening and is supported in this Chrome,
+but degrades to stroke-*over*-fill anywhere it is not, and the degraded state is
+the banned one.
+
+One ring at 1px, eight directions, in `--bg`, inherited from `body` so nothing
+opts in and a new component cannot forget it. Eight offset copies union to the
+glyph dilated by a pixel, so the interior is covered as well as the edge and the
+effective ground becomes `--bg` — `--fg` at about 18:1, `--muted` at about 8.9:1,
+whatever drifts behind. One pixel because this is an ink contour in a comic, not
+a glow; at two it starts to read as an outlined display treatment on body copy.
+
+**Three opt-outs, each for a stated reason.** `.text-sv-ink`, `.sv-panel-header`
+and `.sv-activity` are dark type on a solid plate, where a near-black halo round
+near-black type improves nothing and does thicken the letterform. `.text-sv-ink`
+is the right predicate rather than a list of components: ink type cannot be drawn
+without it, so the next yellow button cannot forget it. `.sv-glitch-layer` (a new
+no-op class on `GlitchText`'s duplicate layers) and `.sv-glitch-pass`
+(`AmbientGlitch`'s channel copies) are offset copies of one string in the split
+plates — usually `screen`-blended, where a near-black halo contributes nothing,
+but `GlitchText` is used with `blend="normal"` on the comic caption box and there
+an opaque halo behind each copy paints out the copies under it, knocking the
+chromatic split out with itself. The base layer keeps its halo.
+
+**The fix defeated the check, so the check was rebuilt.** `contrast-check.mjs`
+sampled the ground by hiding the text — which hides the halo with it, because a
+halo is part of the text's own rendering. It now freezes every animation and
+takes two frames of the same page: glyph fill `transparent` (a `text-shadow` is
+painted from glyph geometry and ignores the fill colour, so the halo survives)
+and text hidden outright. The pixels they differ on are where the text is
+painted. That the old measure was a proxy is separately true: it flags a glow
+passing between two words that never touches a letterform, so it is still printed
+on every line as `[box N:1]` but no longer decides.
+
+**The mask has to be eroded, and the first attempt was wrong without it.** The
+raw difference includes the halo's own antialiased fringe — partly-covered pixels
+still nearly as bright as what is behind them — and against those a working halo
+reported 1.01:1 and could never pass. Dropping every masked pixel that touches an
+unmasked one leaves the glyph body. This is not a way of only measuring pixels
+that already pass: survival is decided on geometry alone, and a halo that did not
+apply leaves an empty mask and falls back to the box figure, while one too thin
+for a heavy glyph leaves lit background showing inside the letterform. Either
+fails.
+
+**`NO_HALO=1` exists because the halo and the method landed together**, which
+would otherwise make "it passes now" unfalsifiable. Same page, same method,
+`body`'s text-shadow removed. Measured on `/` at 1560/1280/390: **5 pairs under
+4.5:1 stripped, worst 1.01:1; all clear with the halo, worst 6.41:1.**
+
+**Not measured: the paint cost.** Eight shadows on every glyph in the app is a
+real cost and it has not been quantified — the probe was not run. Nothing looked
+wrong at either width, but this is an open number, not a cleared one. If it ever
+matters, dropping the four diagonal offsets halves it and costs very little
+coverage at 1px.
+
+---
+
+**2026-09-05 (late) — Tears made much less frequent, in three places at once**
+Called too frequent. Cut, and the important part is that the scheduled interval
+was only one of three things setting the rate — changing it alone would have
+done very little.
+
+- **Interval** 4.2-9.5s → 15-30s. The old number was chosen when the life
+  dropped from 14-22s to five, so the layer would keep the same *presence*.
+  That was the wrong target: a tear on screen 70% of the time is wallpaper, not
+  atmosphere.
+- **Concurrency cap** 3 (2 under 640px) → 2 (1 under 640px), and the forced
+  ceiling a dispersal may push to, 5 → 3. The cap and the interval are one
+  decision: at a five-second life a cap of three is only reachable when tears
+  arrive faster than they close, so leaving it would have let a chain put three
+  up regardless.
+- **Chains**, which were the easy one to miss. Roughly half of every tear begot
+  another — a blink chained 6 times in 10 — so the interval was never the real
+  rate. Blink 0.62 → 0.3, dispersal 0.14 → 0.06 (and 2-3 pieces → 2), reform
+  0.3 → 0.16. Also one opening spawn on load instead of two: a page that arrives
+  with two tears on it has announced the layer before anything has been read.
+
+**Measured, not reasoned about**, because the chains make the interval a poor
+predictor. Sampling an untouched home page, 150-180s per setting: before, one
+every ~6.9s with the screen occupied over 70% of the time; after, **one every
+15.0s at 25%**. Two or three still coexist briefly when a dispersal fires, which
+is 6% of tears and is the one moment meant to look like more than one thing.
+
+One thing to know before retuning: 13-26s and 15-30s measured the same arrival
+rate to within noise, so the interval is the *least* sensitive of the three
+levers. The cap and the chains did most of the work, which is exactly why
+changing the interval alone would have looked like it had barely done anything.
+
+---
+
+**2026-09-05 (late) — The dimensional voids are rebuilt as tears: an opening generator, not a blob generator**
+Feedback on the previous pass was that the effect read as "one blob grows →
+splits into blobs → becomes a larger blob", and that what is wanted is a **hole
+or tear in the UI** — an opening with a black depth behind it, not a black
+shape on top of it. Explicitly ruled out: blobs, bubbles, blob splitting, smooth
+organic portals, clusters of black blobs, generic particles. The layering
+(interior behind the UI, edge and corruption in front) was called out as right
+and is kept. This is a focused visual correction, not a rewrite of the effect.
+
+**The root cause was geometric, so the fix is too.** The outline was a ring of
+jittered radii pushed through a smooth spline. However hard the radii were
+thrown around — four families, spikes, notches, cusps — a closed curve drawn
+outward from a centre *is* a mass, so it could only grow by being scaled and
+could only multiply into more masses. No amount of edge detail survives a scale
+on a black silhouette.
+
+The outline is now built from a **line of failure outward**: a jagged spine
+(straight runs, sharp turns, the reasoning `growCrack` already records), with
+the two lips walked along it. That gives an opening the things a blob
+structurally cannot have — a direction, a length, two pointed ends, and a width
+that is a hairline at one end and a gaping notch at the other. The four families
+are `slit`, `rift`, `breach` and `fracture`; `blot`, `tear`, `splinter` and
+`shatter` are gone.
+
+**Growth moved out of the transform and into the geometry.** `growth()` returned
+a scale running 0.02 → 1.45 over a life; `openness()` returns how far *open* the
+tear is, and `buildCels` consumes it to decide how far the split has run along
+the spine and how far the lips have parted. Two separate curves, because the
+split runs ahead of the gape — which is why the first second is a long hairline
+crack rather than a small round hole. Cels are therefore an ordered
+**progression** (sealed hairline → widest → closed again) rather than
+interchangeable poses, and the morph track reads the step off the clock instead
+of picking one at random. The transform now moves 12% top to bottom and exists
+only to keep something alive *between* swaps.
+
+**What was added to make it an opening rather than a silhouette:**
+- **A wall.** Outline and an inner edge in one path filled `evenodd`, so the
+  crescent between them is the thickness of the punctured surface, lit down one
+  side. Small, and it is the whole difference between a hole and a shape. Drawn
+  on the *front* layer, because the blackout takes the composited backdrop to 6%
+  and anything under it goes with it. First cut squeezed the inner edge to half
+  width and the opening read violet instead of black; it is a thin rim now.
+- **Flaps** — pieces of the page levered up out of the tear, hinged on real lip
+  points, filled `--elevated` and outlined. Tapered outward, not splayed: a
+  widened free edge read as a rectangle laid over the hole.
+- **The blackout's clip is animated.** It used to be pinned to cel 0, which only
+  worked because every cel was the same size. Cel 0 is a sealed hairline now, so
+  a static clip would erase nothing for the whole life. It steps through the same
+  progression — which is also what makes the *hole* widen rather than the black
+  scale, since the region of interface being removed grows in the same shape at
+  the same moment. This is why every cel has an identical command structure and
+  why irregularity is expressed by moving points, never inserting them.
+- **The ink bleed is gone** — the same drawing at 1.08 and half strength, which
+  is a soft halo, which is the most reliable way to make a dark mass read as
+  organic. Replaced by a hard un-blurred offset plate in the purple separation,
+  which is the registration error `CLAUDE.md` names.
+- **Fractures lengthen and multiply with the opening**, so the page visibly gets
+  worse as the hole gets wider rather than being corrupted on a schedule beside
+  it.
+
+**Two archetypes were replaced, for the same reason.** `swarm` was several
+pieces on independent radial drifts fanning out as they grew — that is "one blob
+splitting into a cluster of blobs", named in the brief. It is now **`cascade`**:
+three openings strung along a single line, each a sealed seam until the one
+before it has torn. `rupture` threw fragments, which is the same thing smaller;
+it now throws *the split itself*, one or two further openings along the same
+axis, and its give is expressed as a **surge in openness** rather than an
+overscale. `crawler` is `fissure`. `corruptor` and `blink` keep their names and
+their characters.
+
+**Budget.** Cels are now a progression *and* two jitter variants of each, so the
+per-piece drawing count roughly tripled: measured at 2228 live paths and 195KB
+of generated CSS at the five-void hard cap. Trimmed by dropping the fracture
+fan-out from three siblings to two, the morph track from 72 stops to 56, and the
+multi-piece scripts to seven steps. `qa/spots-check.mjs` then measured voids at
+the same median *and* p95 frame time as the baseline on the same page.
+
+---
+
+**2026-09-05 — Threads brightened to three-pass neon; and the 4.5:1 rule is measurably broken**
+Asked to make the multiverse lines and shapes thicker and more neon. **This
+modifies `Threads.tsx`, which an earlier brief put off limits** — taken as
+superseded by an explicit request to change this specific thing, the same way
+the lightning was. Geometry, composition and placement are untouched; only
+stroke weight and how it is lit changed.
+
+`Neon` now runs three passes instead of two — wide soft bloom (7x, blur 8, 0.72
+of bloom), tight saturated sheath (2.9x, blur 2.5), pale core — which is the
+same build `AmbientLightning` was given, so a thread and a discharge are lit by
+one set of rules rather than two. Widths: threads 0.95 → 1.6, structure front
+1.35 → 2.1, back 0.9 → 1.35, edges 0.8 → 1.2. Layer and node opacities up about
+a third.
+
+**The important part of this entry is what measuring it revealed.**
+
+`CLAUDE.md`: *"Every text/background pair must clear 4.5:1 against the
+composited ground — the rift glows lighten the background, so measure, do not
+assume."* Nothing had ever measured it. `qa/contrast-check.mjs` now does, by
+hiding **only the glyphs**, screenshotting, and taking the worst pixel under
+each string — the ground under a string is a gradient and the worst pixel is
+rarely the one you would pick by eye. PNG is decoded from `node:zlib` rather
+than adding a dependency.
+
+**Result, measured before and after the change on the same pages:**
+
+| | pairs under 4.5:1 | worst |
+|---|---|---|
+| before brightening | 8 | 1.01:1 |
+| after brightening | 9 | 1.00:1 |
+
+The failures are the header column — `Elevation`, the summary line, and the
+terrain's axis labels — where a thread passes behind them. **They pre-date this
+change.** The threads always crossed that text; they were dimmer, so it was less
+bad. Brightening deepened an existing violation rather than creating one.
+
+**Left unfixed, deliberately, and this is the part to revisit.** The request was
+for brighter threads and that is delivered. Every fix is a design decision that
+should not be made silently inside a "make it brighter" task:
+
+1. **Dim the threads again** — undoes what was asked for.
+2. **A dark halo behind small text** (`paint-order: stroke` or a text-shadow in
+   `--bg`). On-theme, since an ink outline round type is comic language, but it
+   changes typography, which is explicitly protected.
+3. **A shade behind the reading column**, masking the thread layer where content
+   sits. Works on desktop and is useless at 390px, where the column *is* the
+   viewport — and 390px is where the failures are worst.
+
+Option 2 is the only one that holds at every width. It needs a decision.
+
+---
+
+**2026-09-05 — The void is split across two depths: interior behind the UI, torn edge in front**
+The voids read as objects placed over the page rather than holes in it. The
+cause was structural: the whole void lived at `-z-10`, so a panel painted over
+it and it could only ever read as *behind* a surface, never *through* one.
+Putting the whole thing in front would have it hiding content for five seconds,
+which is why it went behind originally.
+
+**So it is split, and each half does the job it suits.**
+
+- **Interior at `-z-10`** — the darkness through the opening. Cannot cover a
+  control or a word.
+- **Edge, fractures and pale linework at `z-30`** (`[data-sv-tear]`) — the torn
+  lip of the surface, drawn as a *stroke* of the silhouette rather than a fill,
+  so it is a band along the edge and the interior remains the other layer's
+  business. Cracks moved here too: a fracture running across a panel is the
+  connection to the surrounding UI the brief asked for.
+- **A blackout clipped to the silhouette**, also at `z-30`. Without it the rim
+  is an outline drawn *on* a panel — you see the interface carrying on inside
+  the opening.
+
+Both halves ride the *same* `animName` and `morphNames` the piece already
+generates, never copies, so they cannot desynchronise under any future retune.
+
+**`ONSET` is the important part, and it is about order rather than content.**
+Every archetype now fires a burst at `t = 0.015`, before the void is visible,
+at a fixed `ONSET_STRENGTH = 0.62` — the one burst whose strength is *not* read
+off the growth curve, because at 5% scale that rule yields something too faint
+to register and a tear does not start gently. Previously the first corruption
+landed at 0.24-0.34, well after the shape had faded up, so the sequence read as
+"a thing appeared, then effects happened near it". Cracking the surface first
+inverts it.
+
+**One blackout per void, not per piece.** Measured with one per piece, a swarm
+put six live `backdrop-filter`s on screen and pinned the page to 33.4ms where
+the same page without voids reached 16.7. Now `pieceIndex === 0` only — the same
+anchor piece the bursts already use. It is also the right reading: a satellite
+fragment does not punch its own hole through reality.
+
+**On the frame numbers, honestly.** This environment (`--disable-gpu`, headless)
+returns 16.7ms and 33.4ms for *identical* content across consecutive probes, so
+it can rule out a large regression and nothing finer. The claim that survives:
+measured back to back within one run, with bursts suppressed so only the
+persistent layer was live, no-voids and with-voids were identical. The earlier
+"six backdrops halves the frame rate" reading was reproducible enough across
+runs to act on; the residual is not.
+
+**The trade, recorded because it reverses a previous decision.** "The void can
+never hide anything" no longer holds — the front half draws over the interface
+and blacks out what is inside it. That *is* the effect: it is what separates a
+tear from a decoration, and it was explicitly asked for. What still holds:
+`pointer-events: none` (proven by hit-testing both layers, 0/154 at five
+widths), `aria-hidden`, placement weighted away from the reading column, an
+opacity that ramps with `presence(t)` so a young void barely dims anything, and
+a five-second life.
+
+**QA had to be extended, not just re-run.** The existing check hit-tested only
+`[data-sv-spots]` — the layer *behind* the UI, where a pass proves nothing. It
+now tests both, asserts the front layer's `pointer-events`/`aria-hidden`/
+`overflow`, names it explicitly when a link is blocked, and requires it absent
+under reduced motion. A first attempt to apply those edits asserted out
+mid-script and left the file untouched, and the run that followed reported ALL
+CLEAN from the *old* check — worth recording as a reminder that a green result
+from an unmodified test file is not evidence of anything.
+
+---
+
+**2026-09-05 — A pale pen layer over the voids, regenerated per cel**
+Asked for restrained white/off-white linework and a more hand-drawn comic
+reading, explicitly as an addition rather than a rethink. Nothing about the
+envelope, the archetypes, the corruption passes or the cadence moved.
+
+**`var(--fg)`, not `#FFF`.** The theme's warm paper white, so the marks read as
+part of the same ink system the rest of the app is drawn in. Opacities 0.2-0.5
+and widths around 2% of the void's radius: black stays the mass throughout.
+
+**The contour is the fill path, stroked and dashed.** Not a second generated
+outline — the same `d` the black `<path>` already uses, with an irregular
+`stroke-dasharray`. Costs no geometry and cannot drift out of register with the
+shape it belongs to, which a separately-generated outline eventually would. A
+second pass at 0.2 opacity is offset `translate(1.6 -1.2)` for the misprint.
+
+**Everything pale is regenerated from the cel's own jitter stream.** The dash
+pattern, which ticks are drawn, and where the crack highlights sit all change
+with the boil. A pale layer that held still while the ink moved underneath would
+read as a border on a wobbling shape; changing together is what reads as a hand
+going over the same drawing again. Which ticks appear is a per-cel roll against
+`spec.keep`, which is what makes them flicker in and out.
+
+**Where the ticks sit is fixed, what gets drawn is not.** Rolled fresh per cel
+they would scatter over the whole edge every frame and read as static; the
+positions come from a `markSpec` decided once, the same way the silhouette's
+spikes and notches are.
+
+**Two tunings that mattered more than they sound:**
+- The pen was first derived as a fraction of `crackWidth`, which put it near 6px
+  on a large void — a dashed *border*, not a drawn line. It is now `penWidth`,
+  its own number at `radius * 0.022`.
+- The dash array was six values from one range, which is an even dash and
+  therefore still a border. It now alternates short mark / long gap: what makes
+  a contour look hand-drawn is mostly that most of it is missing.
+
+**The tear bands stopped being rectangles.** `tornBand()` walks jittered points
+across the top and back along the bottom. A perfect rectangle was the last
+purely geometric shape in the effect and the one thing that gave the corruption
+away as computed.
+
+**A note for anyone tuning this further.** Black ink on a dark ground loses
+contrast far faster than pale ink does, so during the faint phases — early
+growth, a flicker, the collapse — the white is *relatively* more visible than at
+full presence. That was checked and left as it is: at the widths and opacities
+here it reads as a sketch mark surviving a moment longer than the fill, which is
+the wanted effect. If the pen is ever thickened, that is the first place it will
+go wrong, and the fix is to tie the pale layer's opacity to `presence(t)` rather
+than to lower its base opacity.
+
+---
+
 **2026-09-05 — `AmbientLightning` rebuilt against a reference: short jags, four generations, four passes**
 Asked to make the lightning match a reference frame — cyan Lichtenberg discharge
 with a hot core and a heavy bloom. **This modifies the lightning system, which an

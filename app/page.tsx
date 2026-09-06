@@ -22,6 +22,18 @@ export default async function Home() {
       <TopNav />
 
       {/*
+        The page's own name, for the heading outline only.
+
+        `ELEVATION` was the `h1` here and `THIS WEEK` was the one on Progress —
+        both of them section labels for the figure beside them, neither of them
+        the name of anything. A document whose top-level heading is the caption
+        of its first widget has no outline. Visually hidden because the audit's
+        constraint is that nothing changes about what is displayed where; the
+        visible label stays exactly where it was, one level down.
+      */}
+      <h1 className="sr-only">Home — all tracks</h1>
+
+      {/*
         Volume, as ground rather than as a chart in a box. The measurements sit
         in the left column and the terrain runs off the right edge of the page,
         so the horizon is a structural line instead of a widget border.
@@ -32,12 +44,12 @@ export default async function Home() {
       >
         <div className="sv-settle flex flex-col justify-center gap-4">
           <div>
-            <h1
+            <h2
               id="elevation-heading"
-              className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted"
+              className="font-label text-[0.75rem] uppercase tracking-[0.17em] text-muted"
             >
               <GlitchText text="Elevation" intensity="subtle" trigger="auto" baseColor="var(--muted)" />
-            </h1>
+            </h2>
             {/*
               Keyed by the value, so the flash fires on the *change* and never on
               the resting state — a check-in that raises the ground is marked,
@@ -69,7 +81,7 @@ export default async function Home() {
           </p>
 
           {bestStreak > 0 && (
-            <p className="font-label text-[0.65rem] uppercase tracking-[0.14em] tabular-nums">
+            <p className="font-label text-[0.75rem] uppercase tracking-[0.14em] tabular-nums">
               <span className="text-streak">{bestStreak} day</span>{" "}
               <span className="text-muted">best active streak</span>
             </p>
@@ -100,7 +112,19 @@ export default async function Home() {
           into the real free space, and the caption keeps its own line inside
           the figure instead of being pushed out of the bottom onto the rule.
         */}
-        <div className="bleed-r h-[10rem] lg:h-[11rem]">
+        {/*
+          `bleed-r` is gone, and with it the only piece of content that escaped
+          the reading column.
+
+          It pushed the figure past the container into the decoration margin, so
+          at 1440px the `NEXT 100` axis label landed at x=1362 — 338px outside
+          the 1024px column, sitting in the atmosphere layer, with the curve's
+          endpoint dot inside a lit wireframe polygon. An axis label is data: it
+          is the thing that says what the drawing measures, and it cannot be
+          read against a background the interface does not control. The terrain
+          keeps its full height and simply ends where the column does.
+        */}
+        <div className="h-[10rem] lg:h-[11rem]">
           <TerrainProfile
             id="home"
             terrain={terrain}
@@ -126,7 +150,7 @@ export default async function Home() {
           accent="magenta"
           label="Tracks"
           action={
-            <span className="font-label text-[0.6rem] font-bold uppercase tabular-nums tracking-[0.12em]">
+            <span className="font-label text-[0.75rem] font-bold uppercase tabular-nums tracking-[0.12em]">
               {totalLeaves === 0 ? (
                 <span className="sv-status">nothing to work on yet</span>
               ) : (
@@ -135,7 +159,11 @@ export default async function Home() {
             </span>
           }
         >
-          <InlineCreateForm action={createTrack} label="Track name" />
+          <InlineCreateForm
+            action={createTrack}
+            label="Track name"
+            placeholder="Name a learning goal, e.g. Spanish"
+          />
 
           {rows.length === 0 ? (
             <div className="py-8">

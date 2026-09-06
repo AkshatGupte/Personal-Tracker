@@ -43,6 +43,21 @@
      the old #33203a (blue above red) read as a violet band in a palette that
      has no violet. */
   --border: #3a2030;
+  /*
+    Boundaries of things you can operate, as opposed to rules that separate
+    things you read.
+
+    WCAG 1.4.11 wants 3:1 for a UI component boundary. `--border` on the page
+    ground measures 1.32:1 — it is a hairline for panel rules and separators and
+    is doing that job well, so it is left exactly as it is and this sits beside
+    it. Inputs and the activity cell take this one.
+
+    Chosen against the *worst* ground, not the flat token: 4.46:1 on `--bg`, and
+    3.39:1 against a composited ground at L=0.02, which is the ceiling the
+    atmosphere is now clipped to inside the content column. Still ink/magenta
+    tinted rather than violet, per the palette note above.
+  */
+  --border-interactive: #9a6a7f;
   --fg: #f5f0e6;
   --muted: #aba0b5;
   --accent: #ff2079;
@@ -115,6 +130,7 @@
   --color-surface: var(--surface);
   --color-elevated: var(--elevated);
   --color-border: var(--border);
+  --color-border-interactive: var(--border-interactive);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
@@ -198,8 +214,9 @@
   select:focus-visible,
   textarea:focus-visible,
   [tabindex]:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
+    outline: 3px solid var(--focus);
+    outline-color: var(--focus);
+    outline-offset: 3px;
     border-radius: 0;
   }
 
@@ -360,6 +377,261 @@ body {
   letter-spacing: normal;
   word-spacing: normal;
   font-synthesis-weight: none;
+}
+
+/* ==========================================================================
+   Interactive affordances.
+
+   Everything here is an audit fix, and each one has a measured number behind
+   it rather than a preference.
+   ========================================================================== */
+
+/*
+  The skip link: out of the way until it is needed, unmissable once it is.
+
+  Positioned rather than `sr-only`, because it has to be visible when focused —
+  the point is that a keyboard user can see where the jump goes. Square, yellow
+  on ink, in the label voice: the same treatment the primary buttons get.
+*/
+.sv-skip-link {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  transform: translateY(-120%);
+  background: var(--sv-yellow);
+  color: var(--sv-ink);
+  padding: 0.6rem 1rem;
+  font-family: var(--font-comic);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-radius: 0;
+}
+.sv-skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/*
+  Buttons point.
+
+  Tailwind's Preflight sets `button { cursor: default }` and nothing overrode
+  it, so on the track page 132 buttons reported `cursor: default` against 6
+  links reporting `pointer`. In an interface whose controls are square, flat and
+  unfilled by design, the cursor is a large part of what says "this is a
+  control" — and it was saying the opposite of what the links said about
+  themselves.
+
+  Disabled controls are excluded: `+ Inside` on a depth-5 row and `Delete` on a
+  parent are inert by rule, and a pointer over them would promise an action the
+  server will refuse.
+*/
+button:not(:disabled),
+[role="button"]:not(:disabled),
+summary {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+/*
+  The focus ring is pinned, not inherited.
+
+  Tab sampling found two rings in the app: a 3px yellow one on some controls and
+  a 3px `#ABA0B5` one on most — the muted text colour, because the outline was
+  resolving against `currentColor` on those elements. The ring's contrast was
+  therefore a function of the element's own text colour, which is exactly the
+  thing a focus indicator must not depend on. `outline-color` is now stated
+  explicitly alongside the shorthand so nothing can fall back to `currentColor`.
+
+  Yellow, and `--focus` rather than `--streak`: they hold the same value, and
+  the alias is what keeps a future retune of the streak signal from silently
+  retuning the focus ring with it.
+*/
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-color: var(--focus);
+  outline-offset: 3px;
+}
+
+/*
+  The primary action has to answer a hover.
+
+  The tier-0 cell is a `rgba(245,240,230,0.07)` wash and its only hover was
+  `filter: brightness(1.25)` — 44/255 of maximum channel delta, measured, which
+  is invisible at 8x magnification let alone at a glance. It is the one control
+  in the app a user presses over and over, and it was the least responsive thing
+  on the screen.
+
+  Style only, no motion: the wash steps up and the boundary takes the accent.
+  Magenta is already "volume, active states" in the palette, so an accent edge
+  on the cell that records volume is the signal the palette already assigns.
+  The filled tiers keep their own green and answer with the edge alone — washing
+  those out would make a hover look like a change in intensity.
+*/
+.sv-activity:hover,
+.sv-activity:focus-visible {
+  border-color: var(--accent);
+}
+.sv-activity[data-tier="0"]:hover,
+.sv-activity[data-tier="0"]:focus-visible {
+  background: color-mix(in srgb, var(--fg) 20%, transparent);
+  color: var(--fg);
+}
+
+/*
+  Text fields answer to a pointer, in plain CSS rather than a `hover:` utility.
+
+  Tailwind wraps `hover:` in `@media (hover: hover)`. That is right for a
+  touchscreen and wrong for a check: the QA browser reports `hover: none`, so a
+  hover written as a utility cannot be measured here at all — `hover:border-*`
+  on the create field read as "no change" against a pointer that was provably
+  over it. Every other affordance in this block is plain CSS for the same
+  reason, and the boundary state of the one field that stands between an empty
+  track and a usable one should not be the exception.
+*/
+.sv-input {
+  transition: border-color 120ms linear, background-color 120ms linear;
+}
+.sv-input:hover:not(:disabled) {
+  border-color: var(--accent-soft);
+  background-color: var(--elevated);
+}
+
+/*
+  A row the eye can hold on to.
+
+  The topic name ends at x=430 and the activity cell starts at x=988: 559px of
+  nothing, in an 840px row, repeated fourteen times at a 54px pitch, with no
+  response to hover at all. Delete is the rightmost control on that traverse,
+  which is the worst possible thing to arrive at having lost the line.
+
+  `:focus-within` as well as `:hover`, so a keyboard user tabbing across a row's
+  five controls gets the same band a mouse user gets.
+*/
+.sv-row {
+  transition: background-color 120ms linear;
+}
+.sv-row:hover,
+.sv-row:focus-within {
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
+
+/*
+  Refused, not absent.
+
+  A parent's Delete is blocked by rule and was drawn at 40% opacity, which on
+  this ground reads as "not there" rather than "not allowed" — and since it is
+  now `aria-disabled` rather than `disabled` it is a real tab stop, so it has to
+  look like a control. Legible, plainly inert, and it does not answer a hover.
+*/
+.sv-action-blocked {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+.sv-action-blocked:hover {
+  color: var(--muted);
+}
+
+/*
+  Destructive actions hover red.
+
+  `+ Inside`, `Rename`, `Move` and `Delete` all went `--muted` → `--fg`: four
+  controls, one of them irreversible, with identical feedback. `--sv-red` is
+  already the palette's destructive ink — it is what the confirmation button and
+  every error message are set in — so this says nothing new, it just says it one
+  step earlier, while the pointer is still over the control.
+*/
+.sv-action-destructive:hover:not(:disabled),
+.sv-action-destructive:focus-visible:not(:disabled) {
+  color: var(--sv-red);
+}
+
+/* ==========================================================================
+   The ink halo — the one thing standing between type and the atmosphere.
+
+   `CLAUDE.md` requires every text/background pair to clear 4.5:1 against the
+   *composited* ground, and warns that the rift glows and the neon threads
+   lighten it unevenly, so it has to be measured. `qa/contrast-check.mjs`
+   measured it and it failed: where a bright thread passes behind the reading
+   column, `--muted` on a cyan thread came out at 1.00-1.02:1 — text and
+   background the same brightness. Five pairs at three widths.
+
+   The failure predates the threads being brightened; measured with the old
+   values and the new ones back to back, brightening deepened an existing
+   violation rather than creating one. Three fixes were put up:
+
+     1. Dim the threads again — undoes what was asked for.
+     2. This: a ground of ink round every glyph.
+     3. A shade behind the reading column — works on desktop, and at 390px the
+        reading column *is* the viewport, so it shades the whole page.
+
+   Only this one holds at every width, and it is the one that was chosen.
+
+   **It is a halo, never a stroke.** `text-shadow` paints copies of the glyph
+   *behind* it, so the glyph itself is untouched — same outline, same width,
+   same metrics, no reflow. `-webkit-text-stroke` would be one declaration
+   instead of eight, and it is exactly what must not be used here: it strokes
+   the glyph's own outline, so it reads as weight. `CLAUDE.md` is explicit that
+   Bangers ships one weight, that synthesised bold smears it, and that emphasis
+   never comes from weight in this app — an outline that thickens type is that
+   rule broken from the other direction. `paint-order: stroke fill` would avoid
+   the thickening and is supported in this Chrome, but it degrades to
+   stroke-*over*-fill anywhere it is not, and the degraded state is precisely
+   the banned one.
+
+   One ring at 1px, eight directions. Eight offset copies of a glyph union to
+   that glyph dilated by a pixel, so the interior is covered as well as the
+   edge — the effective ground under every glyph becomes `--bg`, which puts
+   `--fg` at about 18:1 and `--muted` at about 8.9:1 whatever is drifting
+   behind. One pixel because this is an ink contour in a comic, not a glow: at
+   two it starts to read as an outlined display treatment on body copy.
+   ========================================================================== */
+
+:root {
+  --ink-halo:
+    1px 0 0 var(--bg), -1px 0 0 var(--bg), 0 1px 0 var(--bg), 0 -1px 0 var(--bg),
+    1px 1px 0 var(--bg), 1px -1px 0 var(--bg), -1px 1px 0 var(--bg),
+    -1px -1px 0 var(--bg);
+}
+
+/* Inherited, so nothing has to opt in and a new component cannot forget it. */
+body {
+  text-shadow: var(--ink-halo);
+}
+
+/*
+  Off wherever the type is dark on a solid plate.
+
+  A near-black halo round near-black type does not improve anything — the plate
+  is already opaque and the atmosphere is nowhere near it — and what it *does*
+  do is thicken the letterform, which is the failure the halo was written to
+  avoid. `.text-sv-ink` is the right predicate rather than a hand-maintained
+  list of components: ink type cannot be drawn without it, so this cannot be
+  forgotten when the next yellow button is added. The other two set their ink
+  from CSS instead — the comic panel's caption box and the activity cell's
+  upper tiers, whose `--activity-N-fg` resolves to `--sv-ink` at 3 and above.
+*/
+.text-sv-ink,
+.sv-panel-header,
+.sv-activity {
+  text-shadow: none;
+}
+
+/*
+  Off on every duplicate channel layer of a glitch.
+
+  These are offset copies of the same string in the split plates, stacked and
+  usually blended with `screen`, where a near-black halo contributes nothing.
+  But `GlitchText` is used with `blend="normal"` on the comic panel's caption,
+  and there an opaque ink halo behind each copy paints out the copies under it
+  — the chromatic split knocking itself out. The base layer, drawn last, keeps
+  its halo, so the string a reader actually reads is still on ink.
+*/
+.sv-glitch-layer,
+.sv-glitch-pass {
+  text-shadow: none;
 }
 
 /* Hard ink-registration plate: an offset solid block, never a blur. A blurred
@@ -1006,8 +1278,10 @@ body {
   color: var(--muted);
   transition: background-color 120ms linear, color 120ms linear;
 }
+/* The untouched cell's only boundary. `--border` measured 1.32:1 here and the
+   composited fill 1.11:1, so the control had no edge that met 1.4.11 at all. */
 .sv-activity[data-tier="0"] {
-  border-color: var(--border);
+  border-color: var(--border-interactive);
 }
 .sv-activity[data-tier="1"] { background: var(--activity-1); color: var(--activity-1-fg); }
 .sv-activity[data-tier="2"] { background: var(--activity-2); color: var(--activity-2-fg); }

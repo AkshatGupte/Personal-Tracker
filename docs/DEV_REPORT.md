@@ -6,6 +6,695 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-06 (later) — Structures that had come unthreaded are joined up again
+
+**What changed:** after the scrolling background went in, some of the wireframe
+shapes were floating with no neon threads reaching them, and a few threads
+stopped in open space instead of running off the edge of the page. Both are
+fixed. Every shape on every screenful now has threads arriving at it, and no
+thread ends in mid air.
+
+**What was actually wrong — two separate things:**
+
+1. **The threads were being drawn into a box little more than half the width of
+   the page.** When the thread drawing was changed to sit at a band's position,
+   it lost the instruction that said "be as wide as the page". A drawing like
+   this is treated by the browser as a picture with a fixed shape, so instead of
+   stretching to the full width it sized itself square from its height — 720
+   pixels wide on a 1280 pixel page. The threads were all squashed into the left
+   side while the shapes stayed where they belonged, so the ones on the right had
+   nothing reaching them. This affected the very top of the page too, not just
+   the new screenfuls.
+2. **Mirrored screenfuls pointed their loose branches the wrong way.** Every
+   other screenful flips the composition left-to-right. The shapes were being
+   flipped but the short branches that run off them were not, so a branch meant
+   to leave off the left edge instead pointed back into the middle of the page
+   and simply stopped there. Those are now flipped with the shape, and there is a
+   second guard that pushes any branch along its own direction until it genuinely
+   leaves the frame, so one can never stop halfway again.
+
+**A new check that would have caught it:** `qa/bands-check.mjs`. It reads the
+threads and shapes straight out of the finished page and asserts that every shape
+has a thread arriving at it, that no thread stops at a loose end, that the
+background covers the document exactly, and that there is no sideways scrolling —
+across three pages at five window sizes. It was tested by putting each of the two
+bugs back and confirming it fails on both, because a check that never fails
+proves nothing.
+
+**Note:** it also reports that on a phone two of the five shapes are deliberately
+not drawn while their threads remain, which is how it has always been and is not
+a fault.
+
+**Roadmap status:** no roadmap item — a fix to the previous entry's work.
+
+---
+
+## 2026-09-06 — The multiverse background now scrolls with the page
+
+**What was built:**
+The glowing background — the rift light, the wireframe shapes and the neon
+threads between them — used to be pinned to the screen. It covered exactly one
+screenful and stayed put while the page slid over it, so on a long track page
+you could scroll to the very bottom and find the same five shapes sitting in the
+same five places. It now covers the whole page and scrolls with it, drawing a
+fresh set of shapes for every screenful. Scrolling moves you *through* the
+multiverse instead of over a picture of it, and there is no point on any page
+where the background stops.
+
+**How it works (flow):**
+1. When a page loads, the app measures how tall the document actually is and how
+   tall one screenful is, and divides one by the other to get a number of
+   "bands" — screenfuls of background to draw.
+2. Band 1 is the composition that was already there, unchanged, so the top of
+   every page looks exactly as it did.
+3. Every band after that is *generated* from a number derived from its own
+   position — the shapes flip to the other side of the page, shift, resize, and
+   most importantly are re-shaped, so band 4 holds genuinely different solids
+   rather than a copy of band 1. Nothing is tiled, so nothing repeats.
+4. The threads that used to run off the bottom edge of the screen now find the
+   nearest shape in the next band down and connect to it, so the structure is
+   continuous across a boundary rather than stopping at one. Only at the very top
+   and very bottom of the page — where there is no neighbour — do they still run
+   off the edge.
+5. It watches the page for changes in height. Add a track, or open a subtree so
+   the page gets longer, and another band appears on its own. Nothing has to be
+   told the page grew.
+
+**One thing deliberately left pinned:** the faint diagonal speed lines. They are
+a perfectly even hairline pattern with no feature anywhere in them, so there is
+no position in them to scroll to, and they were measured to be the single
+expensive layer to scroll — 67 milliseconds a frame against a 17ms budget, on
+its own. Pinned, the whole scrolling background costs nothing measurable. The
+dimensional tears also stay pinned, for a different reason: a tear is a passing
+event that happens where you are looking, and spreading them over the whole
+document would fire most of them onto screens nobody is on.
+
+**What was checked:** the top of every page is pixel-for-pixel what it was (the
+shapes and glows land on the same coordinates as the old hand-written values,
+measured, not assumed); no sideways scrollbar at 1440, 1280, 768, 390 and 320px
+wide; five shapes per screenful on desktop and three on a phone, at the bottom of
+the page exactly as at the top; text contrast still passes everywhere; the tear
+effect suite still passes clean; and scrolling runs at full frame rate.
+
+**Roadmap status:** no roadmap item — this is visual work on the existing
+atmosphere.
+
+---
+
+## 2026-09-06 — The background masking was undone
+
+**What changed:** the change that held the glowing background back from the
+middle of the page has been removed. The atmosphere is global again, exactly as
+it was.
+
+**Why:** it worked, and it looked wrong. On a wide screen it left a flat black
+rectangle down the centre of the page with the colour surviving only at the
+edges, so the page read as two different designs next to each other rather than
+one. The design direction says the atmosphere is global; a version that stops at
+the content column is not that.
+
+**What this means for readability — the useful part:** the text is still fine.
+The ink outline added the day before puts every letter on its own near-black
+ground whatever is drifting behind it, and that does not depend on scroll
+position. The measured glyph contrast check still passes everywhere. What is no
+longer true is the stricter rule the audit asked for, that the *whole area*
+behind a line of text stays dark — that is measurably broken again, and it is
+recorded as an open item rather than quietly dropped.
+
+The measuring tool is kept, not deleted. It will report a failure until someone
+decides what to do instead, and it is the only way to judge whether a future
+attempt is better.
+
+**Roadmap status:** no roadmap item. Audit item 3.1 is open again.
+
+---
+
+## 2026-09-06 — UX audit: things that were broken now work
+
+**What was built:**
+Nothing new — this is a repair pass over the desktop app from a UX audit. Ten
+functional bugs are fixed. The most visible ones: the tree view was drawing
+topics at the wrong depth, the buttons on each topic row did not line up in
+columns, switching between Flat and Tree threw you back to the top of the page,
+and the monthly calendar had no dates in it.
+
+**What was actually wrong, in plain terms:**
+- **The tree was one level out.** The first item inside every group lost its
+  indent, so a child appeared at the same distance from the left as its parent.
+  The error was exactly one level, which made the shape of the tree unreadable
+  in the one view that exists to show it.
+- **The row buttons jumped.** The `+ Inside` button is not offered on the
+  deepest topics, and it was being left out entirely rather than left blank — so
+  on those rows everything after it slid 43px to the left. The two controls
+  people use most had two different positions down the list. It now holds its
+  space.
+- **The four little forms behaved four different ways.** Rename and Add put the
+  cursor in the box and closed on Escape; Move and the delete confirmation did
+  neither, and pressing Enter on "Delete X?" did nothing at all. All four now
+  take focus when they open, close on Escape, and put focus back on the button
+  you opened them with.
+- **Flat/Tree scrolled you to the top.** It is a switch between two arrangements
+  of the same list, not a jump to a new page, so it now keeps your position.
+- **The monthly calendar had no dates**, and a day that had passed with no
+  activity looked identical to a day that has not happened yet. Days now carry
+  their number; an empty past day is a filled square, a future day is an
+  unfilled dashed one.
+- **The delete confirmation for a track was ungrammatical** and did not mention
+  that deleting a track destroys every activity ever recorded on it and its
+  streak. It says so now.
+- **The heatmap key showed a colour the grid never draws.** The key is now built
+  from the squares actually on screen.
+
+**One thing could not be reproduced and was not faked:** the audit reported a
+React hydration warning about `caret-color` on inputs. That value appears
+nowhere in the code and nowhere in the HTML the server sends, and no warning
+appears on any page in a clean browser — it is the signature of a browser
+extension rewriting the page before React starts. What *was* wrong is that the
+project's own browser-checking tool could not have seen such a warning either:
+it collected crashes but not `console.error`, which is how React reports this.
+That gap is fixed, so the check now means something.
+
+**Technical concepts used:**
+- **CDP (Chrome DevTools Protocol)** — every fix was confirmed by driving a real
+  browser and measuring, never by reading the code.
+
+**Roadmap status:** no roadmap item — repair work on Phase 2 screens.
+
+---
+
+## 2026-09-06 — Controls now look and behave like controls
+
+**What was built:**
+The interface answers when you point at it. Buttons show a hand cursor, rows
+highlight as you move down the list, the empty-topic field tells you what to
+type, and the square you click to record activity now visibly responds.
+
+**What was wrong:**
+- **No button anywhere showed a pointer cursor** — 132 of them on a track page.
+  In an interface where controls are deliberately flat and square, the cursor
+  was one of the few remaining signals that something is clickable, and it was
+  saying the opposite of what the links said.
+- **A topic row is 840px wide with 559px of empty space** between the topic name
+  and its buttons, repeated fourteen times, and nothing changed as you moved
+  across it. Delete is the last button on that journey. Rows now highlight.
+- **Delete looked exactly like Rename and Move on hover.** It now goes red.
+- **The square you click to record activity** brightened by an amount that was
+  invisible even magnified eight times. It now changes fill and takes a magenta
+  edge.
+- **The create field had no placeholder and no hover.** On a track with nothing
+  in it, that field is the only way forward and it rendered as an empty box.
+- **Boundaries were too faint to count as boundaries** — the accessibility
+  standard asks for a 3:1 difference and they measured 1.32:1. A new colour was
+  added for the edges of things you operate, kept separate from the hairline used
+  for panel rules so those are unchanged. Measured on screen afterwards: 4.4:1.
+- **The focus ring took its colour from the text** it was on, so its visibility
+  depended on the element. It is pinned to yellow everywhere — 58 focusable
+  elements, one ring.
+- **Text was too small.** 102 elements below 11px. Nothing renders below 12px
+  now, and no row wraps or overflows at 1280px or 1440px as a result.
+
+**Roadmap status:** no roadmap item — affordance and contrast repair.
+
+---
+
+## 2026-09-06 — The background no longer decides whether text is readable
+
+**What was built:**
+The glowing background is now held back inside the column where the content
+lives, and pushed to full strength in the margins either side. It looks the
+same; it just stops interfering with the words.
+
+**Why this was serious:** the background layers are pinned to the window while
+the page scrolls past them, so a bright line that sits harmlessly in the margin
+at one scroll position lies directly across a row of buttons at another. The
+same row of the same page passed the project's own contrast rule at one scroll
+position and failed it at another — 3.50:1 at the top of the page, 7.05:1 a few
+hundred pixels down. Legibility was a function of where you happened to be
+scrolled to.
+
+**How it works (flow):**
+1. The lit background layers get a mask that fades them down to a tenth of their
+   strength across the middle 1024px of the window and leaves them untouched
+   outside it.
+2. Because those layers do not scroll and the content column is always centred
+   and always the same width, one fixed mask covers the column at *every* scroll
+   position. There is no offset left for it to be wrong at.
+3. Below the column width — a phone — the mask does not apply, because there the
+   column is the whole screen and hiding it would delete the effect rather than
+   move it aside.
+
+**What the measurement said, and what it corrected:** the audit blamed the neon
+wireframe shapes. Switching each layer off in turn and re-measuring showed the
+soft coloured glows are the bigger contributor — removing the wireframes got the
+worst spot from 0.079 to 0.060, removing the glows got it to 0.023. Both are now
+masked. The page's own background fill is deliberately left out of the mask,
+since masking that would cut a hole through the page itself.
+
+**Technical concepts used:**
+- **CSS mask** (a stencil that fades part of a layer out) — no animation was
+  changed; every drift timing and keyframe is byte-identical.
+- **`qa/column-contrast.mjs`** — a new check that photographs each page with the
+  text hidden, at four scroll positions and two window widths, and reads the
+  actual brightness behind every piece of text. It fails if any of it is too
+  bright or drops under the contrast floor. Result: worst background 0.0168
+  against a 0.02 ceiling, worst contrast 6.31:1 against a 4.5:1 floor.
+
+Building that check turned up three ways an earlier version of it lied — it was
+measuring decorative duplicate layers as if they were text, treating rows inside
+a collapsed section as visible, and a stray backslash had silently disabled the
+rule meant to skip text sitting on a solid button. All three are fixed and
+written down in the file.
+
+**Roadmap status:** no roadmap item.
+
+---
+
+## 2026-09-06 — The app can be used with a keyboard and a screen reader
+
+**What was built:**
+A skip link, a proper main landmark, and every control now says what it acts on.
+
+- **There was no `main` landmark on any page** and no skip link, so reaching the
+  content meant tabbing past the whole masthead — on a track page there are
+  about 56 focusable elements, five per row.
+- **Row buttons said nothing about their row.** A screen reader heard "Delete"
+  fourteen times with no way to tell which topic. They now announce "Delete
+  Sliding window", matching a pattern the reorder arrows already used.
+- **The delete confirmation was also called "Delete"**, identical to the button
+  that opened it and to every other row's. It is now "Confirm deleting X".
+- **The reason a parent cannot be deleted was mouse-only** — a tooltip on a
+  button that keyboard users cannot reach. The button is now reachable and
+  announced while still refusing the click, and it no longer looks switched off.
+- **The page headings were wrong.** The top-level heading on Home was
+  "ELEVATION" — the caption of the first chart, not the name of anything. Each
+  page now has a real top-level heading; nothing visible moved.
+- **The charts had no per-item alternative.** Heatmap squares and the 28-day
+  history strips were unlabelled, and the middle column of the history table was
+  completely empty to a screen reader. Every square now has a hover
+  ("5 September 2026 — 3 activities") and each history row states its days as a
+  sentence.
+- **The "Insights — soon" item in the navigation announced nothing at all** — a
+  blank entry between Home and Progress. It now reads "Insights — Not built yet".
+- **Tab order jumped backwards** on the track page, from the Flat/Tree toggle
+  back up to the topic field above it. The toggle moved out of the panel's
+  narrow left gutter — where it was also colliding with the panel's own
+  metadata — to the top of the content column, which fixed both.
+
+**And the words were made consistent.** The same figure was being called
+`8 / 14 TODAY`, `8 OF 14 WORKED`, `51% COMPLETE`, `LEAF COVERAGE` and `51% TODAY`
+in five places. It is "worked today" everywhere now. "Complete" is gone
+entirely — nothing in this app ever completes, and "0% COMPLETE" on a new track
+reads as a verdict on you rather than a description of the day. Parent rows now
+say "2/2 direct", because that figure only counts topics directly inside and the
+label never said so, which made reading the tree top-down systematically
+flattering.
+
+**Roadmap status:** no roadmap item.
+
+---
+
+## 2026-09-05 (late) — Text is now readable wherever the background glows
+
+**What was built:**
+Some text on the page was genuinely unreadable. Where one of the bright cyan
+lines in the background passed behind the reading column, the words and the
+background were **the same brightness** — a measured ratio of 1.01:1, where the
+project's own rule requires 4.5:1. Every piece of text now sits on a thin ring
+of near-black ink, so it stays legible whatever drifts behind it. Worst case
+went from 1.01:1 to 6.41:1, and the whole page now passes.
+
+**Why this one and not the other two options:**
+Three fixes were on the table. Dimming the background lines would have undone
+what was asked for a session earlier. Putting a dark panel behind the reading
+column works on a laptop, but on a phone the reading column *is* the whole
+screen, so it would have darkened everything. The ink ring is the only one that
+works at every screen size — and an ink outline round lettering is comic-book
+language anyway, so it belongs here rather than fighting the look.
+
+**One thing it had to avoid:** the app's typeface has only one weight, and the
+design rules are strict that emphasis never comes from making text bolder. The
+obvious way to outline text (`-webkit-text-stroke`) draws *on* the letter and
+therefore makes it look bolder. The method used here paints copies of the letter
+**behind** it instead, so the letter itself is untouched — same shape, same
+width, nothing moves on the page.
+
+**How it works (flow):**
+1. A ring of eight near-black copies of each letter is drawn one pixel out in
+   each direction, behind the letter itself.
+2. Those eight copies overlap into a solid patch shaped like the letter, so the
+   background immediately under and around it is always the page's own near-black
+   — never the glow that happens to be passing.
+3. It is inherited from the page body, so every component gets it without asking
+   and a new one cannot forget it.
+4. It is switched off in five places, all for the same reason: dark text on a
+   solid colour (the yellow buttons, the comic panel's caption bar, the brighter
+   activity squares) does not need it and would only look heavier, and the
+   coloured duplicate layers used by the glitch effects would blot each other out
+   if each one carried an opaque ring.
+
+**The measuring tool had to be rebuilt too, and this is worth reading:**
+The tool that found the problem worked by hiding the text and photographing what
+was behind it. That cannot see this fix — the ink ring is part of how the text is
+drawn, so hiding the text hides the ring as well, and a perfectly working fix
+still measured 1.01:1. It now photographs the same page twice, once with the
+letters made invisible but their ring still drawn and once with everything hidden,
+and compares. The pixels that differ are exactly where the text is painted, and
+those are what get measured.
+
+To keep this honest, the tool has a mode that strips the ink ring and measures the
+same way, so the fix and the change of method can be told apart rather than taken
+on trust. Stripped: 5 failures, worst 1.01:1. With it: everything clear, worst
+6.41:1.
+
+**Technical concepts used:**
+- **`text-shadow`** (copies of text painted behind it) — the outline, chosen
+  specifically because it cannot change the letterform.
+- **Screenshot differencing** — two photographs of the same frozen page,
+  subtracted, to find exactly which pixels the text occupies.
+- **`NO_HALO=1`** — a switch on the checking tool that removes the fix and
+  re-measures, so its own result can be disproved.
+
+**One thing deliberately left open:** the paint cost of drawing eight copies of
+every letter has *not* been measured. Nothing looked slow, but that is an
+unmeasured number rather than a cleared one. If it ever matters, dropping the four
+diagonal copies halves the work and barely changes the result at this size.
+
+**Roadmap status:** no roadmap item — this closes the open contrast defect
+recorded in `docs/DECISIONS.md` and the previous handoff.
+
+---
+
+## 2026-09-05 (late) — The tears in the background appear far less often
+
+**What was built:**
+The dark tears that open in the background were arriving too often. They now
+show up **about a third as frequently**: measured on a page left alone, one every
+15 seconds with a tear visible about a quarter of the time, where before it was
+one every 7 seconds and something was on screen more than 70% of the time.
+
+**Why it needed three changes and not one:**
+The obvious dial is "how long to wait before the next one", but that was never
+what set the real rate. Two other things were quietly adding tears:
+
+1. **How many are allowed on screen at once** was three (two on a phone). At a
+   five-second lifetime that number is only reachable when tears are arriving
+   faster than they close — so leaving it alone would have let them pile up
+   again however long the wait between them got. It is now two, and one on a
+   narrow screen.
+2. **Tears begetting other tears.** Roughly half of them spawned a follow-up
+   when they closed, and one of the five behaviours did it six times out of ten.
+   That is what made the waiting time misleading. All of those chances were
+   roughly halved, so a follow-up is now the exception that makes one arrival
+   memorable rather than the normal way tears appear.
+3. **The wait itself** went from 4-9 seconds to 15-30. Notably this was the
+   *least* effective of the three on its own — two different settings for it
+   measured the same arrival rate — which is why the other two mattered.
+
+Also, the page now opens one tear shortly after load instead of two. A page that
+arrives with two tears on it has announced the effect before you have read
+anything.
+
+**How it works (flow):**
+1. A timer waits 15-30 seconds, opens a tear, and starts the wait again.
+2. Before opening one it checks how many are already on screen and does nothing
+   if the limit is reached — so the limit, not the timer, is what ultimately
+   holds the rate down.
+3. When a tear closes it rolls a die: usually nothing, occasionally it disperses
+   into two smaller ones or reforms as a bigger one nearby. Those are the
+   moments where two or three are briefly visible at once, and they are the only
+   ones.
+
+**Technical concepts used:**
+- **A measurement script** rather than an estimate — the follow-up chains make
+  the timer a poor predictor of what actually appears, so a browser watched an
+  untouched page for two to three minutes per setting and counted. That is where
+  every number above comes from.
+
+**Checks run:** the tear suite (`qa/spots-check.mjs`) still passes clean at five
+screen widths on two pages, and all five behaviours still appear despite fewer
+tears being allowed at once.
+
+**Roadmap status:** no roadmap item — visual tuning of the ambient atmosphere.
+
+---
+
+## 2026-09-05 (late) — The dark shapes are now holes torn in the page
+
+**What was built:**
+The dark shapes that open in the background used to read as a blob: one growing,
+splitting into more, becoming a bigger one. They now read as a **hole ripped in
+the interface** — a crack that opens along a jagged line, widens into an
+irregular opening with visible black depth behind it, and closes again. Over the
+five seconds it lives you can see the surface give way, pieces of the page get
+levered up out of the tear, black lightning run out of it across the interface,
+and then the page heal over.
+
+**Why it looked like a blob, in one sentence:** the shape was drawn as a wobbly
+circle, and a wobbly circle can only get bigger by being enlarged — so however
+ragged its edge was, the eye read one lump inflating.
+
+**How it works (flow):**
+1. Instead of drawing a ring around a centre, the app first draws the **line the
+   surface fails along** — a jagged, kinked line, the way a real crack runs.
+2. The outline is then the two **lips** of that line, walked along either side of
+   it. That gives it a direction, a length and two pointed ends, which a blob
+   cannot have. Points along each lip are marked as *notches* (the surface still
+   holding on) or *splinters* (a shard left standing into the gap), so the edge
+   is torn rather than merely bumpy.
+3. A single number — how far open the tear is right now — drives everything. The
+   crack **runs along its line first** and the lips part afterwards, which is why
+   the first second is a long hairline and not a small round hole.
+4. The app draws the opening **fresh at each stage** of that number, and plays
+   those drawings in order: sealed hairline → spreading → widest → closing. The
+   shape is never scaled up; it is redrawn wider.
+5. As it opens, more happens: fractures out of the edge get longer and more of
+   them appear, flaps of the page lift out of the tear, and the corruption bursts
+   that break the interface around it hit harder — all read off the same number,
+   so the page visibly gets worse as the hole gets wider.
+6. The blackness inside is drawn behind the interface, and the torn edge, the
+   fractures and the lifted flaps are drawn in front of it. A thin lit rim inside
+   the near edge shows the **thickness of the punctured surface**, which is what
+   makes it look like there is somewhere behind the page rather than a black
+   sticker on top of it.
+7. The patch of interface inside the opening is genuinely blanked out, and that
+   blanked patch now **follows the tear as it widens** rather than being a fixed
+   shape.
+
+**Two of the five behaviours were replaced,** because they were the blob
+splitting: what used to be several pieces drifting apart from a centre is now a
+single failure **propagating along one line** — three openings in a row, each a
+sealed seam until the one before it has torn. The violent one no longer throws
+fragments; it throws the split itself, further along the same line.
+
+**Technical concepts used:**
+- **Generated SVG geometry** (drawing shapes from maths rather than from an
+  image file) — the spine, the two lips, the wall, the flaps and the fractures
+  are all computed, so no two tears are the same drawing.
+- **CSS keyframes generated per tear** — each opening writes its own animation,
+  which is why two on screen never behave alike.
+- **An animated `clip-path`** (the shape used to cut a hole in a layer) — this is
+  what lets the blanked-out patch of interface grow in step with the drawing.
+  It is also why every stage of the tear is built from the same number of points:
+  a browser can only animate between two shapes with matching structure.
+- **`backdrop-filter`** (a filter applied to whatever is already painted behind
+  an element) — unchanged from before; it is what makes the corruption bend and
+  split the *real* interface rather than draw a picture of a glitch.
+- **`qa/tear-shots.mjs`** — a new checking tool that freezes one tear at nine
+  points of its life and photographs it enlarged. The effect is five seconds
+  long, small and randomly placed, so it cannot be judged from a live
+  screenshot. This tool had been rebuilt from scratch in a temporary folder four
+  times; it is in the repo now.
+
+**Checks run:** the existing tear suite (`qa/spots-check.mjs`) passes clean at
+five screen widths on two pages — no sideways scrolling, nothing blocking
+clicks, corruption stays local and leaves the page exactly as it found it, all
+five behaviours appear, and nothing at all renders when the device asks for
+reduced motion. Frame timing with tears on screen now matches the same page
+without them, after trimming the drawing budget.
+
+**Roadmap status:** no roadmap item — this is visual work on the ambient
+atmosphere, outside the Phase 2 feature list.
+
+---
+
+## 2026-09-05 — Brighter, thicker multiverse threads — and a contrast problem they revealed
+
+**What was built:**
+The multiverse lines and shapes in the background are now noticeably thicker and
+brighter — they read as lit neon tubes rather than thin drawn lines.
+
+- Every stroke got a **second glow pass**. There was one blurred halo under a
+  pale core; a single blurred pass can be wide *or* intense but not both, so it
+  is now a wide soft glow, a tight saturated one, and the core. This is the same
+  three-layer build the lightning uses, so a thread and a lightning bolt are now
+  lit by the same rules.
+- **Thicker strokes:** the connecting threads went up about 70%, the front faces
+  of the shapes about 55%.
+- **Brighter:** the shapes and the threads were all raised, roughly a third.
+
+**What this turned up, which matters more than the change itself:**
+
+The project's own design rules say every piece of text must stay clearly legible
+against the background *as actually rendered*, and specifically warns that the
+glowing background layers lighten it unevenly, so it has to be measured rather
+than assumed. Nothing had ever measured it.
+
+So a measurement tool was written, and **it fails** — on the header text where a
+bright thread passes behind it, legibility drops to roughly the point where text
+and background are the same brightness.
+
+**This is not new, and it is not caused by this change.** Measured with the old
+values and the new ones, back to back: 8 failing pairs before, 9 after. The
+threads always crossed that text; they were dimmer, so it was less bad. The
+brightening deepened a problem that was already there and already breaking the
+project's own rule.
+
+**It has been left unfixed on purpose.** The request was for brighter threads,
+and that has been delivered in full. Every way of fixing the contrast is a
+design decision that is not mine to make quietly: dimming the threads again
+undoes what was asked for, adding a dark halo behind small text changes the
+typography, and putting a shade behind the reading column changes the layout.
+The options are written up in `docs/DECISIONS.md`.
+
+**Technical concepts used:**
+- A three-pass glow (wide, tight, core) rather than one blurred pass
+- A contrast measuring script that hides only the letters and photographs the
+  background underneath them, so the number describes the real composited
+  ground rather than an assumption about it
+
+**Verified:** no sideways scrolling at any width; the header text was checked at
+3x magnification and is legible where the thread passes between rather than
+across it; the void, tear and lightning checks were all re-run on the brighter
+background and pass unchanged.
+
+**Roadmap status:** no roadmap item — a visual change, plus a defect found.
+
+---
+
+## 2026-09-05 — The voids now tear through the interface instead of sitting behind it
+
+**What was built:**
+The voids read as objects placed near the page rather than holes in it, and the
+reason was structural, not cosmetic: the entire void was drawn *behind* the
+interface, so a panel painted over it and it could only ever look like something
+underneath a surface. It is now split across both depths.
+
+- **The inside of the hole stays behind the interface.** That is the darkness
+  you see through the opening, and keeping it there means it can never cover a
+  button or a word.
+- **The torn edge, the cracks and the pale linework are drawn in front of it.**
+  These are the parts a real tear actually shows you, and having them cut across
+  a panel is exactly the depth cue that was missing.
+- **What is in front of the void is blacked out inside its outline.** Without
+  this you would see the interface carrying on inside the hole, which makes the
+  edge read as an outline drawn on a panel rather than an opening in one.
+
+Both halves are driven by the *same* animation data — not copies — so they
+cannot drift apart from each other however the timing is retuned later.
+
+**The order of events changed, and that matters more than any of it.** Every
+void now opens with a sharp little break in the surface at the very start of its
+life, before there is anything to see. Previously the first corruption arrived a
+third of the way in, well after the shape had faded up, so it read as "a thing
+appeared, and later some effects happened near it". Now the surface cracks
+first, and the void comes through the crack. That is the whole difference
+between something emerging and something being placed.
+
+The existing five-second progression is unchanged: small tear → opening and
+growth → heavy corruption → peak → collapse.
+
+**A cost that had to be found and fixed.** The blackout inside the hole is the
+expensive part, and it was first drawn once per *piece* — so a swarm, which is
+four to six fragments, put six of them on screen at once and pinned the page to
+half its frame rate. It is now one per void, on the main body only. That is also
+the better reading: a swarm's satellites are fragments thrown off the tear, and
+a fragment does not punch its own hole.
+
+**An honest note on measurement:** the test browser here runs without graphics
+acceleration and its frame timing fluctuates between 16.7ms and 33.4ms for
+*identical* content, so these numbers can rule out a large regression but cannot
+prove a small one is absent. Measured back to back in the same run with bursts
+suppressed, a page with voids and a page without were identical.
+
+**The trade this makes, stated plainly:** the tear now draws over the interface,
+and briefly blacks out whatever is inside it. That is precisely what makes it
+read as a tear rather than a decoration — but it does mean a label can be
+obscured for a moment while a void passes over it. It is transient, it is
+weighted toward the edges of the screen away from the reading column, it fades
+in with the void's growth so a young one barely dims anything, and it can never
+be clicked.
+
+**Technical concepts used:**
+- Splitting one drawing across two depths, driven by one set of animations
+- Stroking the outline rather than filling it, so the front half is a band along
+  the edge and the interior stays the business of the layer behind
+
+**Verified:** home and track at 1560, 1280, 768, 390 and 320. The check was
+extended to the new front layer specifically — it is over the controls, so
+proving it unclickable is the whole point: 154 hit-tests per page per width
+across *both* layers found none, a real link stays clickable during corruption,
+and the layer disappears entirely under reduced motion. No sideways scrolling,
+and the page returns exactly to its previous state.
+
+**Roadmap status:** no roadmap item — a visual-system change.
+
+---
+
+## 2026-09-05 — Pale linework over the voids: drawn, not computed
+
+**What was built:**
+An addition on top of the existing void effect — nothing about how it behaves
+changed. The voids now carry a thin layer of off-white pen work, so they read as
+comic artwork being drawn and corrupted rather than as black shapes being
+animated. Black is still the mass; the white is a line on it.
+
+**Four additions, all of them thin:**
+1. **A broken contour.** The void's own outline, stroked in the theme's warm
+   paper white with an irregular dash pattern so most of it is missing. It is
+   the same path as the black fill, so it can never drift out of register with
+   the shape it belongs to.
+2. **A second, fainter pass a hair out of register** — the misprint that makes a
+   drawn line look drawn rather than computed.
+3. **Short pale ticks** set just off the edge, sometimes doubled the way a pen
+   doubles a contour. Where they sit is fixed to the shape, but *which of them
+   get drawn* is decided fresh on every frame, so they flicker in and out.
+4. **Highlights along the fractures** — a short pale line offset to one side of
+   the heavy cracks, catching the lit edge of a split.
+
+**All of it is regenerated on every frame of the shape's own boil.** That is the
+whole point: the dashes re-break, the ticks come and go, and the highlights
+shift, so the line looks like a hand going over the same drawing again rather
+than a border sitting still while the ink underneath moves.
+
+**The corruption got the same treatment:**
+- **Loose pale arcs** are struck around a burst — the reference's linework
+  circles a form rather than tracing it.
+- **The tear bands are no longer rectangles.** They now have ragged top and
+  bottom edges. A perfect rectangle was the one shape in the whole effect that
+  gave the corruption away as computed.
+
+**One judgement worth recording:** the pen started out derived from the fracture
+width, which came out around six pixels on a large void and read as a dashed
+border rather than a drawn line. It is now its own number and much thinner, and
+the dash pattern was rebalanced to short marks with long gaps — what makes a
+contour look hand-drawn is mostly that it is missing.
+
+**Technical concepts used:**
+- Stroking the same path that is already being filled, broken up by a dash
+  pattern — costs no extra shapes and cannot misalign
+- Per-frame regeneration of the pale marks from the same randomness that drives
+  the shape's redraw, so the two are in step by construction
+
+**Verified:** home and track at 1560, 1280, 768, 390 and 320. No sideways
+scrolling, neither layer ever under the cursor, a link still clickable during
+corruption, the page returning exactly to its previous state, all five
+behaviours present, nothing under reduced motion, and frame timing unchanged
+from a page with no voids at all.
+
+**Roadmap status:** no roadmap item — a visual polish pass.
+
+---
+
 ## 2026-09-05 — The lightning redrawn against a reference frame
 
 **What was built:**

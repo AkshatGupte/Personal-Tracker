@@ -186,7 +186,10 @@ export function GlitchText({
   // Block-level hosts must stay block-level: forcing inline-block on an h1
   // makes two consecutive headings share a line.
   const display = Host === "span" ? "inline-block" : "block";
-  const layer = "absolute inset-0 select-none pointer-events-none will-change-transform";
+  // `sv-glitch-layer` carries no styling of its own — it is the hook the ink
+  // halo uses to stay off the duplicate channel copies. See `globals.css`.
+  const layer =
+    "sv-glitch-layer absolute inset-0 select-none pointer-events-none will-change-transform";
   const filterId = chromatic === "heavy" ? "url(#sv-chromatic-heavy)" : "url(#sv-chromatic)";
 
   return (

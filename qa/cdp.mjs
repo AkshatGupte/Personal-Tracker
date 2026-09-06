@@ -288,6 +288,23 @@ function makePage(browser, sessionId, width, height) {
       page.errors.push(msg.params.exceptionDetails?.exception?.description ?? "exception");
     if (msg.method === "Log.entryAdded" && msg.params.entry.level === "error")
       page.errors.push(msg.params.entry.text);
+    /*
+      `console.error` too, and this was a real hole rather than a nicety.
+
+      React reports a hydration mismatch by calling `console.error`, which
+      arrives as `Runtime.consoleAPICalled` and never as a `Log` entry or an
+      exception. Without this branch `page.errors` came back empty on a page
+      that was loudly warning in a real browser, so "the console is clean" could
+      be reported from a check that was structurally unable to see the thing it
+      was checking for.
+    */
+    if (msg.method === "Runtime.consoleAPICalled" && msg.params.type === "error") {
+      const text = (msg.params.args ?? [])
+        .map((a) => a.value ?? a.description ?? a.preview?.description ?? "")
+        .join(" ")
+        .trim();
+      if (text) page.errors.push(text);
+    }
   });
 
   return (async () => {

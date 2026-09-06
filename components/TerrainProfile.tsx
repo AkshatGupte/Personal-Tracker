@@ -222,10 +222,13 @@ export default function TerrainProfile({
             <span
               key={milestone.value}
               aria-hidden="true"
-              className="pointer-events-none absolute left-0 -translate-y-1/2 font-label text-[0.6rem] uppercase tracking-[0.14em] tabular-nums text-streak"
+              className="pointer-events-none absolute left-0 -translate-y-1/2 font-label text-[0.75rem] uppercase tracking-[0.14em] tabular-nums text-streak"
               style={{ top: `${(1 - milestone.y) * 100}%` }}
+              title={`${milestone.value} activities recorded`}
             >
-              {milestone.value}
+              {/* The bare number floated with nothing to say what it counted,
+                  against gridlines that are nearly invisible by design. */}
+              {milestone.value} <span className="lowercase tracking-normal">done</span>
             </span>
           ))}
 
@@ -233,8 +236,8 @@ export default function TerrainProfile({
           <p
             className={
               compact
-                ? "sv-status absolute inset-0 flex items-center justify-center font-label text-[0.55rem] uppercase text-muted"
-                : "sv-status absolute inset-0 flex items-center justify-center px-4 text-center font-label text-[0.65rem] uppercase text-muted"
+                ? "sv-status absolute inset-0 flex items-center justify-center font-label text-[0.75rem] uppercase text-muted"
+                : "sv-status absolute inset-0 flex items-center justify-center px-4 text-center font-label text-[0.75rem] uppercase text-muted"
             }
           >
             {compact ? "No elevation yet" : "No elevation yet \u00b7 working a topic raises the ground"}
@@ -248,10 +251,13 @@ export default function TerrainProfile({
           /* Right padding matches RIGHT_GUTTER as a share of the width, so
              "next N" sits under the end of the curve rather than out in the
              bleed past it. */
-          className="mt-1.5 flex justify-between font-label text-[0.6rem] uppercase tracking-[0.12em] text-muted"
+          className="mt-1.5 flex justify-between font-label text-[0.75rem] uppercase tracking-[0.12em] text-muted"
           style={{ paddingRight: `${(RIGHT_GUTTER / W) * 100}%` }}
         >
-          <span>{TERRAIN_SPAN}</span>
+          {/* Both axes named. The x-axis said "2 weeks" and the y-axis said
+              nothing at all, so "elevation" was a word with no unit attached to
+              it anywhere on the drawing. */}
+          <span>{TERRAIN_SPAN} · height = activities</span>
           {terrain.next && <span className="tabular-nums">next {terrain.next}</span>}
         </div>
       )}

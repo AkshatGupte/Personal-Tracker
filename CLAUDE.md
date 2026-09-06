@@ -187,6 +187,29 @@ being asked.
 - The ground is painted on `html`, **never on `body`**. `html`'s background
   propagates to the canvas; if `body` paints one too, the `-z-10` atmosphere
   layer renders behind it and the page looks flat black.
+- **"Global" means the whole document, not the whole screen.**
+  `SpiderverseBackground` and `DimensionalThreads` are `position: absolute` at
+  the document top, sized to the measured document height, and they scroll with
+  the page — drawing one *band* of composition per screenful, so no page has a
+  height at which the multiverse runs out. Absolute rather than fixed because
+  the initial containing block's origin is the document origin; `body` must
+  **not** be made `position: relative` to achieve this, and the height must be
+  measured from `body`'s border box rather than `documentElement.scrollHeight`,
+  or the layer ratchets the document longer on every pass. See
+  `useDocumentBands` and `docs/DECISIONS.md` (2026-09-06 latest).
+- **Bands are generated, never tiled.** Band 0 is the hand-set composition,
+  unchanged. Above it, each band mirrors on parity, jitters, and **re-seeds each
+  polyhedron** — a band that only moves the same solids around is still a repeat,
+  and two copies on screen together is all it takes to see the period. Threads
+  that used to leave the frame vertically retarget to the nearest solid in the
+  neighbouring band, so a boundary has structure running through it; only at the
+  document's top and bottom do they still run off the edge.
+- **Two layers stay pinned to the viewport, both deliberately.** The speed lines,
+  because `sv-speedline-pan` animates `background-position-x` and that is a full
+  repaint every frame — measured at 66.7ms/frame against a 16.7ms floor when it
+  scrolls, and the only layer that costs anything; they are also a uniform field
+  with no position to scroll to. And `DimensionalSpots`, because a tear is a
+  transient event where you are looking, not a fixture in the environment.
 
 **The terrain metaphor — unchanged, and still the product's signature:**
 - Elevation is cumulative activity summed from `TopicActivity`; it only rises.

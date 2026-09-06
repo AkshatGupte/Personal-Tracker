@@ -31,6 +31,15 @@
  * the only thing in the drawing that can say the structure continues outside the
  * viewport, and without it a bounded composition reads as an object on a page.
  *
+ * **The page-wide layer lives in `DimensionalThreads.tsx`, not here.** It spans
+ * the whole document and generates a band of composition per screenful, which
+ * needs the measured document height and therefore has to be a client
+ * component. This file stays a server module so the four in-page pieces below
+ * — `ThreadFrame`, `ThreadDivider`, `ThreadVoid` and the shared
+ * `ThreadStructure` — keep rendering to HTML on the server rather than shipping
+ * their geometry to the browser as JS. `Neon`, `r1` and `Pt` are exported for
+ * that layer to build on.
+ *
  * **Neon is two strokes in two colours, not a filter.** A wide blurred pass in
  * `--sv-cyan` for the bloom, and a thin pass in pale cyan for the core — which
  * is exactly what `AmbientLightning` already does, down to the same `#8FF3FF`.
@@ -61,9 +70,9 @@ function rng(seed: number) {
   };
 }
 
-const r1 = (n: number) => Math.round(n * 10) / 10;
+export const r1 = (n: number) => Math.round(n * 10) / 10;
 
-type Pt = [number, number];
+export type Pt = [number, number];
 
 /**
  * One wireframe polyhedron: front face, back face, and the edges joining them.
@@ -124,7 +133,7 @@ function buildStructure(seed: number, box: number) {
  *  colour, and it sits inside the cyan plate rather than beside it. */
 const CORE = "#8FF3FF";
 
-function Neon({
+export function Neon({
   paths,
   width,
   bloom,
@@ -140,15 +149,38 @@ function Neon({
 }) {
   return (
     <>
-      {/* Bloom in the cyan plate itself, taken from the caller's text colour so
-          the token stays the source. Blurred, wide and saturated. */}
-      <g style={{ filter: "blur(3px)", opacity: bloom }}>
+      {/*
+        Two bloom passes, not one.
+
+        A single blurred pass can be wide or intense but not both: widen it and
+        it goes to mist, tighten it and there is no halo left. Splitting it into
+        a far soft glow and a near saturated sheath is what makes a stroke read
+        as a lit tube rather than a coloured line — the same three-pass build
+        `AmbientLightning` uses, so a thread and a discharge are lit by the same
+        rules.
+
+        Both take `currentColor` from the caller, so the cyan token stays the
+        single source for the plate.
+      */}
+      <g style={{ filter: "blur(8px)", opacity: bloom * 0.72 }}>
+        {paths.map((d, i) => (
+          <path
+            key={`w${i}`}
+            d={d}
+            stroke="currentColor"
+            strokeWidth={r1(width * 7)}
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+      </g>
+      <g style={{ filter: "blur(2.5px)", opacity: bloom }}>
         {paths.map((d, i) => (
           <path
             key={`b${i}`}
             d={d}
             stroke="currentColor"
-            strokeWidth={r1(width * 3.8)}
+            strokeWidth={r1(width * 2.9)}
             strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
@@ -205,136 +237,13 @@ export function ThreadStructure({
     >
       {/* Far face and the converging edges sit back; the near face carries the
           weight. Depth is lit as well as drawn. */}
-      <Neon paths={[back]} width={0.9} bloom={0.4} core={0.45} />
-      <Neon paths={edges} width={0.8} bloom={0.34} core={0.4} />
-      <Neon paths={[front]} width={1.35} bloom={0.72} core={1} />
+      <Neon paths={[back]} width={1.35} bloom={0.55} core={0.55} />
+      <Neon paths={edges} width={1.2} bloom={0.48} core={0.5} />
+      <Neon paths={[front]} width={2.1} bloom={0.92} core={1} />
     </svg>
   );
 }
 
-/**
- * The threads, drawn once across the whole viewport behind the structures.
- *
- * `preserveAspectRatio="none"` on a 0-100 box, so coordinates are literally
- * viewport percentages. Distortion is irrelevant here and nowhere else: a
- * straight line stays straight under a non-uniform scale, only its angle
- * changes, and a thread has no shape to lose. The structures are separate
- * elements for exactly this reason — a solid *does* have a shape to lose.
- */
-function ThreadLines({
-  runs,
-  opacity,
-}: {
-  runs: Array<{ from: Pt; to: Pt }>;
-  opacity: number;
-}) {
-  const paths = runs.map(
-    ({ from, to }) => `M ${r1(from[0])} ${r1(from[1])} L ${r1(to[0])} ${r1(to[1])}`,
-  );
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      style={{ opacity }}
-      fill="none"
-    >
-      {/*
-        Stroke widths here are screen pixels, not viewBox units, because
-        `non-scaling-stroke` is set — a 0.16 written for a 0-100 box renders as
-        a sixth of a pixel and disappears, which is exactly what happened on the
-        first pass and left the structures unconnected.
-      */}
-      <Neon paths={paths} width={0.95} bloom={0.5} core={0.85} />
-    </svg>
-  );
-}
-
-/*
-  The composition, in viewport percentages.
-
-  Placed by hand rather than generated. That is the whole correction this pass
-  makes: a seeded scatter produces an even field however carefully it is tuned,
-  and "a few dominant structures with smaller ones around them" is a
-  composition, which is a decision and not a distribution.
-
-  Everything sits outside roughly 22-78% horizontally, which is where a centred
-  max-w-5xl column lives on a wide screen. The threads cross that band; the
-  solids do not.
-*/
-const NODES: Array<{ id: string; x: number; y: number; size: number; seed: number; opacity: number; cls: string }> = [
-  // The dominant one. Everything else is read in relation to it.
-  { id: "a", x: 8, y: 44, size: 460, seed: 0x14b7e2, opacity: 0.72, cls: "w-[150px] sm:w-[300px] lg:w-[460px]" },
-  { id: "b", x: 91, y: 19, size: 300, seed: 0x8f3d55, opacity: 0.6, cls: "w-[110px] sm:w-[210px] lg:w-[300px]" },
-  { id: "c", x: 88, y: 80, size: 380, seed: 0xd6714a, opacity: 0.64, cls: "w-[130px] sm:w-[250px] lg:w-[380px]" },
-  { id: "d", x: 24, y: 7, size: 170, seed: 0x2ea9c1, opacity: 0.5, cls: "hidden sm:block sm:w-[120px] lg:w-[170px]" },
-  { id: "e", x: 15, y: 90, size: 200, seed: 0x3b90f7, opacity: 0.54, cls: "hidden sm:block sm:w-[140px] lg:w-[200px]" },
-];
-
-const NODE = Object.fromEntries(NODES.map((n) => [n.id, [n.x, n.y] as Pt]));
-
-/*
-  Threads between structures, and past them.
-
-  The runs that leave the frame are listed with an endpoint outside 0-100 on
-  purpose: a thread that stops at the edge reads as a line that ended, and one
-  that crosses it reads as a structure continuing.
-*/
-const RUNS: Array<{ from: Pt; to: Pt }> = [
-  { from: NODE.a, to: NODE.d },
-  { from: NODE.a, to: NODE.e },
-  { from: NODE.a, to: NODE.c },
-  { from: NODE.d, to: NODE.b },
-  { from: NODE.b, to: NODE.c },
-  { from: NODE.e, to: NODE.c },
-  // Branches off the dominant structure, carrying on out of frame.
-  { from: NODE.a, to: [-12, 6] },
-  { from: NODE.a, to: [-10, 88] },
-  { from: NODE.b, to: [112, -8] },
-  { from: NODE.c, to: [108, 112] },
-  { from: NODE.e, to: [4, 114] },
-  { from: NODE.d, to: [36, -14] },
-];
-
-/**
- * The multiverse Rendred sits inside. Mounted once in the root layout.
- *
- * Five structures, one clearly dominant, threads running between them and out
- * past the frame. The solids are kept out of the centre band where a centred
- * column lives; the threads cross it, faintly, because a lattice that stops at
- * the content is two decorations rather than one continuous structure.
- *
- * **On a phone the two smallest drop out and the rest shrink.** The content
- * column is the full width there, so what remains is deliberately sparse — three
- * structures at the edges and the threads between them.
- *
- * Pure decoration — `aria-hidden`, `pointer-events-none`, no animation, so
- * there is nothing for reduced motion to freeze.
- */
-export function DimensionalThreads() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden text-sv-cyan"
-    >
-      {/* Threads first, so every structure paints over the threads arriving at
-          it and each one reads as passing behind the solid. */}
-      <ThreadLines runs={RUNS} opacity={0.6} />
-
-      {NODES.map((node) => (
-        <ThreadStructure
-          key={node.id}
-          seed={node.seed}
-          size={node.size}
-          opacity={node.opacity}
-          className={`${node.cls} h-auto`}
-          style={{ left: `${node.x}%`, top: `${node.y}%`, transform: "translate(-50%, -50%)" }}
-        />
-      ))}
-    </div>
-  );
-}
 
 /**
  * One small structure in each corner of a frame.

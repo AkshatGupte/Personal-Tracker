@@ -40,13 +40,13 @@ export default function LeafHistory({
         </caption>
         <thead>
           <tr>
-            <th scope="col" className="w-[14rem] pb-2 text-left font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+            <th scope="col" className="w-[14rem] pb-2 text-left font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted">
               Topic
             </th>
-            <th scope="col" className="pb-2 text-left font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+            <th scope="col" className="pb-2 text-left font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted">
               Last {days.length} days
             </th>
-            <th scope="col" className="w-[4rem] pb-2 text-right font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+            <th scope="col" className="w-[4rem] pb-2 text-right font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted">
               Total
             </th>
           </tr>
@@ -57,7 +57,7 @@ export default function LeafHistory({
               <th scope="row" className="py-2 pr-3 text-left align-middle font-normal">
                 <span className="flex min-w-0 flex-col">
                   {row.path.length > 0 && (
-                    <span className="truncate font-label text-[0.5rem] uppercase tracking-[0.14em] text-muted">
+                    <span className="truncate font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted">
                       {row.path.join(" › ")}
                     </span>
                   )}
@@ -65,7 +65,7 @@ export default function LeafHistory({
                     {row.name}
                   </span>
                   {row.deleted && (
-                    <span className="font-label text-[0.5rem] uppercase tracking-[0.14em] text-sv-red">
+                    <span className="font-label text-[0.75rem] uppercase tracking-[0.14em] text-sv-red">
                       deleted
                     </span>
                   )}
@@ -78,15 +78,33 @@ export default function LeafHistory({
                     return (
                       <span
                         key={day}
-                        title={`${day}: ${count === 0 ? "nothing" : count}`}
+                        aria-hidden="true"
+                        title={`${longDate(day)} — ${count} ${count === 1 ? "activity" : "activities"}`}
                         data-tier={intensityTier(count)}
                         className="sv-activity h-3 w-3 shrink-0"
                       />
                     );
                   })}
                 </div>
+                {/*
+                  This cell was **empty** to assistive tech: 28 unlabelled spans
+                  and nothing else, so the middle column of a three-column table
+                  announced nothing at all. The spans are decoration and are now
+                  marked as such; the same 28 days are stated here as a sentence,
+                  which is what a screen reader reads out for the row. Sighted
+                  readers get the per-day hover on the squares.
+                */}
+                <span className="sr-only">
+                  {(() => {
+                    const active = days.filter((d) => (row.byDay[d] ?? 0) > 0);
+                    if (active.length === 0) return "No activity in this window.";
+                    return `Worked on ${active.length} of ${days.length} days: ${active
+                      .map((d) => `${longDate(d)}, ${row.byDay[d]}`)
+                      .join("; ")}.`;
+                  })()}
+                </span>
               </td>
-              <td className="py-2 text-right align-middle font-label text-[0.65rem] tabular-nums text-muted">
+              <td className="py-2 text-right align-middle font-label text-[0.75rem] tabular-nums text-muted">
                 <span className="text-fg">{row.total}</span>
               </td>
             </tr>
@@ -95,6 +113,15 @@ export default function LeafHistory({
       </table>
     </div>
   );
+}
+
+/** "5 September 2026" from a yyyy-mm-dd key. A bare key reads as a serial
+ *  number, which is not what a reader is trying to find out from a cell. */
+function longDate(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+    day: "numeric", month: "long", year: "numeric",
+  });
 }
 
 /** The window's day keys, oldest first. */

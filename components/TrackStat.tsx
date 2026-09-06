@@ -28,7 +28,7 @@ export default function TrackStat({
 
   return (
     <div>
-      <dt className="font-label text-[0.6rem] uppercase tracking-[0.17em] text-muted">
+      <dt className="font-label text-[0.75rem] uppercase tracking-[0.17em] text-muted">
         {label}
       </dt>
       <dd className={`mt-1.5 font-mono text-3xl font-medium leading-none tracking-tight tabular-nums ${rest}`}>

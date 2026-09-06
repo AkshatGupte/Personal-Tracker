@@ -11,7 +11,9 @@ const BUILT = [
 ];
 
 // Shown as planned, never as a working link. See the scope rule in CLAUDE.md.
-const PLANNED = [{ label: "Insights", when: "Phase 3" }];
+// "Not built yet" is what a user can act on. The roadmap phase it belongs to
+// is an internal scheduling detail and meant nothing on the screen.
+const PLANNED = [{ label: "Insights", note: "Not built yet" }];
 
 /**
  * The masthead: a wordmark, a rule, and the sections.
@@ -56,7 +58,7 @@ export default function TopNav() {
         them. Planned sections keep an explicit "soon", per the scope rule in
         CLAUDE.md: an unbuilt section is never presented as a working link.
       */}
-      <ul className="flex min-w-0 items-center gap-4 overflow-x-auto font-label text-[0.65rem] uppercase tracking-[0.15em]">
+      <ul className="flex min-w-0 items-center gap-4 overflow-x-auto font-label text-[0.75rem] uppercase tracking-[0.15em]">
         {BUILT.map((section) => {
           const active = pathname === section.href;
           return (
@@ -75,17 +77,31 @@ export default function TopNav() {
             </li>
           );
         })}
+        {/*
+          The planned section announces one thing, not nothing.
+
+          It read as an empty `listitem` in the accessibility tree: a bare
+          generic carrying `aria-disabled`, which means nothing without a widget
+          role, wrapping two text spans that were never joined into a name. A
+          screen reader arriving at the nav list heard an unexplained blank item
+          between Home and Progress. One element, one explicit name, and the
+          visible treatment is unchanged — still a label plus a "soon" marker,
+          still not presented as a working link.
+        */}
         {PLANNED.map((section) => (
           <li key={section.label} className="hidden sm:block">
             <span
-              aria-disabled="true"
-              title={`Planned for ${section.when}`}
+              role="note"
+              aria-label={`${section.label} — ${section.note}`}
+              title={section.note}
               className="flex items-baseline gap-1.5 whitespace-nowrap text-muted"
             >
-              {section.label}
+              <span aria-hidden="true">{section.label}</span>
               {/* Size separates it, not opacity: dimming would push this
                   below the contrast floor the rest of the page holds. */}
-              <span className="sv-status text-[0.55rem] text-muted">soon</span>
+              <span aria-hidden="true" className="sv-status text-[0.75rem] text-muted">
+                soon
+              </span>
             </span>
           </li>
         ))}

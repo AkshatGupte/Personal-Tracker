@@ -35,13 +35,19 @@ export default function LeafList({
     );
   }
 
+  /* `sv-row` is the hover/focus band — see globals.css. The row is 840px wide
+     with 559px of nothing between the topic name and the controls, and Delete
+     is at the far end of that traverse. */
   return (
     <ul className="divide-y divide-border">
       {leaves.map((leaf) => (
-        <li key={leaf.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5">
+        <li
+          key={leaf.id}
+          className="sv-row -mx-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 py-2.5"
+        >
           <div className="flex min-w-0 flex-col">
             {leaf.path.length > 0 && (
-              <span className="font-label text-[0.55rem] uppercase tracking-[0.14em] text-muted">
+              <span className="font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted">
                 {leaf.path.join(" › ")}
               </span>
             )}

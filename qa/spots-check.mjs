@@ -78,10 +78,11 @@ async function openVoids(page, { tries = 12, every = 400, burst = 8 } = {}) {
  * every other timer is a void's life or a respawn, all measured in seconds.
  *
  * The timeout is deliberately generous. Bursts are rare by design and cannot be
- * forced: spawning is capped at three live voids, a crawler holds one of those
- * slots for up to 22 seconds while only sometimes bursting at all, and a global
- * 2.2s gate drops any burst that lands too close to the last. At a 14s timeout
- * this check failed intermittently on a perfectly working effect.
+ * forced: spawning is capped at two live tears (one under 640px), each holds its
+ * slot for about five seconds, and a global 2.6s gate drops any burst that lands
+ * too close to the last. At a 14s timeout this check failed intermittently on a
+ * perfectly working effect, and the cap has been lowered since — dispatching
+ * `sv:spot` harder does not raise the rate, it only refills a slot sooner.
  */
 async function holdBurst(page, { timeout = 50000 } = {}) {
   await page.eval(`(() => {
@@ -166,13 +167,24 @@ for (const page of pages) {
       const layer = document.querySelector('[data-sv-spots]');
       const cs = layer ? getComputedStyle(layer) : null;
 
+      /*
+        Hit-test both halves of the void.
+
+        The tear layer draws at z-30, *over* the interface — that is what makes
+        the void read as a hole rather than as something behind a panel, and it
+        is exactly why it has to be proven unclickable. Checking only the
+        behind-the-UI layer would pass trivially and prove nothing about the
+        half that is actually in front of the controls.
+      */
+      const tear = document.querySelector('[data-sv-tear]');
+      const overlays = [layer, tear].filter(Boolean);
       let hits = 0, sampled = 0;
       for (let gx = 2; gx < 100; gx += 7) {
         for (let gy = 2; gy < 100; gy += 9) {
           const el = document.elementFromPoint(
             Math.round(innerWidth * gx / 100), Math.round(innerHeight * gy / 100));
           sampled++;
-          if (el && layer && layer.contains(el)) hits++;
+          if (el && overlays.some(o => o.contains(el))) hits++;
         }
       }
 
@@ -199,6 +211,10 @@ for (const page of pages) {
         pe: cs && cs.pointerEvents, z: cs && cs.zIndex,
         pos: cs && cs.position, ov: cs && cs.overflow,
         aria: layer && layer.getAttribute('aria-hidden'),
+        tearPe: tear && getComputedStyle(tear).pointerEvents,
+        tearZ: tear && getComputedStyle(tear).zIndex,
+        tearAria: tear && tear.getAttribute('aria-hidden'),
+        tearOv: tear && getComputedStyle(tear).overflow,
         kinds,
         uniqueAnims: new Set(anims).size, totalAnims: anims.length,
       };
@@ -212,13 +228,20 @@ for (const page of pages) {
     if (m.hits > 0) fail(`${page.name}@${w}: void layer took ${m.hits}/${m.sampled} hits`);
     if (m.pe !== "none") fail(`${page.name}@${w}: pointer-events is ${m.pe}`);
     if (m.aria !== "true") fail(`${page.name}@${w}: aria-hidden is ${m.aria}`);
+    if (m.tearPe && m.tearPe !== "none")
+      fail(`${page.name}@${w}: tear layer pointer-events is ${m.tearPe} — it is over the UI`);
+    if (m.tearAria && m.tearAria !== "true")
+      fail(`${page.name}@${w}: tear layer aria-hidden is ${m.tearAria}`);
+    if (m.tearOv && m.tearOv !== "hidden")
+      fail(`${page.name}@${w}: tear layer overflow is ${m.tearOv} — it must not scroll`);
     if (m.totalAnims > 1 && m.uniqueAnims < 2)
       fail(`${page.name}@${w}: ${m.totalAnims} animated elements share ${m.uniqueAnims} track(s)`);
 
     console.log(
       `${page.name} @${w}: ${m.overflow > 0 ? "OVERFLOW" : "ok"} ` +
         `scroll ${m.scrollW}/${m.clientW} · voids=${m.voids} [${m.kinds.join(",")}] ` +
-        `hits=${m.hits}/${m.sampled} · tracks ${m.uniqueAnims}/${m.totalAnims} unique`,
+        `hits=${m.hits}/${m.sampled} · tracks ${m.uniqueAnims}/${m.totalAnims} unique · ` +
+        `tear z${m.tearZ}/pe:${m.tearPe}`,
     );
 
     await p.shot(`${OUT}/spots-${page.name}-${w}.png`);
@@ -317,7 +340,10 @@ if (!held) {
     if (!a) return 'no link';
     const r = a.getBoundingClientRect();
     const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-    return (a === top || a.contains(top)) ? 'reachable' : 'blocked by ' + (top && top.tagName);
+    if (a === top || a.contains(top)) return 'reachable';
+    const tear = document.querySelector('[data-sv-tear]');
+    if (tear && tear.contains(top)) return 'blocked by the TEAR layer';
+    return 'blocked by ' + (top && top.tagName);
   })()`);
   console.log(`   link under corruption: ${clicked}`);
   if (clicked !== "reachable") fail(`interactive element ${clicked} during corruption`);
@@ -412,14 +438,16 @@ await sleep(2500);
 const rm = await p.eval(`(() => ({
   matches: matchMedia("(prefers-reduced-motion: reduce)").matches,
   voids: !!document.querySelector("[data-sv-spots]"),
+  tear: !!document.querySelector("[data-sv-tear]"),
   corrupt: !!document.querySelector("[data-sv-corrupt]"),
   overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
 }))()`);
 console.log(
-  `\nreduced motion — query=${rm.matches} voids=${rm.voids} corruption=${rm.corrupt} overflow=${rm.overflow}`,
+  `\nreduced motion — query=${rm.matches} voids=${rm.voids} tear=${rm.tear} corruption=${rm.corrupt} overflow=${rm.overflow}`,
 );
 if (!rm.matches) fail("could not emulate prefers-reduced-motion");
 if (rm.voids) fail("void layer rendered under reduced motion");
+if (rm.tear) fail("tear layer rendered under reduced motion");
 if (rm.corrupt) fail("corruption rendered under reduced motion");
 
 await b.close();

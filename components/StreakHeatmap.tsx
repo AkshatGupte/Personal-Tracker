@@ -3,6 +3,12 @@ import { HEATMAP_DAYS, HEATMAP_SPAN, HEATMAP_WEEKS } from "@/lib/windows";
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/** "5 September 2026" — for the per-cell hover, where a bare ISO key reads as
+ *  a serial number rather than a date. */
+function longDate(date: Date): string {
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
 /**
  * Twelve weeks of activity, one cell per day, read from real TopicActivity
  * rows. An empty history renders as an empty grid, which is the honest state
@@ -42,7 +48,7 @@ export default function StreakHeatmap({
     Array.from({ length: 7 }, (_, day) => {
       const date = addDays(start, week * 7 + day);
       const key = dayKey(date);
-      return { key, count: countsByDay[key] ?? 0, future: date > today };
+      return { key, date, count: countsByDay[key] ?? 0, future: date > today };
     }),
   );
 
@@ -78,10 +84,39 @@ export default function StreakHeatmap({
       ? { backgroundColor: "var(--bg)" }
       : { backgroundColor: INK[Math.min(lvl, 4) - 1] };
 
+  /*
+    The legend is the set of inks the grid actually draws, read off the same
+    cells, rather than a hardcoded 0-4.
+
+    Two things put steps out of reach. `level` quantises against the busiest
+    day, so at max 3 the counts 1, 2 and 3 map to levels 2, 3 and 4 and nothing
+    can ever land on 1; and beyond that, a window simply may not contain a count
+    that maps to a given step. The legend printed all five regardless, so it
+    advertised a magenta that is nowhere in the grid — a key to a colour that is
+    not there is worse than no key.
+
+    Derived from the rendered cells, not from what the range could hold: those
+    are different sets, and it was the first of them the reader is trying to
+    match a square against.
+  */
+  const legendLevels = [
+    0,
+    ...Array.from(
+      new Set(
+        columns
+          .flat()
+          .filter((cell) => !cell.future && cell.count > 0)
+          .map((cell) => level(cell.count)),
+      ),
+    ).sort((a, b) => a - b),
+  ];
+
   const summary =
     total === 0
       ? `${scope}: no activity recorded in the last ${HEATMAP_SPAN}.`
-      : `${scope}: active on ${activeDays} of the last ${HEATMAP_DAYS} days, ${total} activities in total.`;
+      : `${scope}: active on ${activeDays} of the last ${HEATMAP_DAYS} days, ${total} ${
+          total === 1 ? "activity" : "activities"
+        } in total.`;
 
   return (
     <div className="flex flex-col gap-3">
@@ -97,7 +132,7 @@ export default function StreakHeatmap({
               <span
                 key={label}
                 aria-hidden="true"
-                className="flex h-3 items-center font-label text-[0.5rem] uppercase leading-none tracking-[0.06em] text-muted"
+                className="flex h-3 items-center font-label text-[0.75rem] uppercase leading-none tracking-[0.06em] text-muted"
               >
                 {label}
               </span>
@@ -114,6 +149,22 @@ export default function StreakHeatmap({
                   <span
                     key={cell.key}
                     aria-hidden="true"
+                    /*
+                      A hover that says what the square is.
+
+                      The grid is one `role="img"` with a written summary and a
+                      day-by-day list below it, which is the right structure for
+                      assistive tech — 84 separately announced cells would be
+                      worse, not better, and children of an `img` are not exposed
+                      anyway. What was missing is the sighted reader, who has no
+                      list open and reaches for the cell itself. `title` is the
+                      one affordance that works on a decorative child.
+                    */
+                    title={
+                      cell.future
+                        ? undefined
+                        : `${longDate(cell.date)} — ${cell.count} ${cell.count === 1 ? "activity" : "activities"}`
+                    }
                     className="h-3 w-3"
                     // No entrance animation: eighty-four cells fading in
                     // reported nothing. They are simply there.
@@ -129,9 +180,9 @@ export default function StreakHeatmap({
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 font-label text-[0.55rem] uppercase tracking-[0.12em] text-muted">
+      <div className="flex items-center gap-1.5 font-label text-[0.75rem] uppercase tracking-[0.12em] text-muted">
         <span>Less</span>
-        {[0, 1, 2, 3, 4].map((lvl) => (
+        {legendLevels.map((lvl) => (
           <span
             key={lvl}
             aria-hidden="true"
@@ -146,7 +197,7 @@ export default function StreakHeatmap({
         The same per-day detail the grid encodes, as text. Screen readers and
         keyboard users get it without hovering a cell.
       */}
-      <details className="font-label text-[0.6rem] text-muted">
+      <details className="font-label text-[0.75rem] text-muted">
         <summary className="cursor-pointer rounded-none py-1 uppercase tracking-[0.14em] hover:text-fg">
           Day by day
         </summary>
@@ -156,7 +207,7 @@ export default function StreakHeatmap({
             .filter((cell) => !cell.future && cell.count > 0)
             .map((cell) => (
               <li key={cell.key}>
-                {cell.key}: {cell.count} activit{cell.count === 1 ? "y" : "ies"}
+                {longDate(cell.date)}: {cell.count} activit{cell.count === 1 ? "y" : "ies"}
               </li>
             ))}
           {total === 0 && <li>No activity recorded yet.</li>}
