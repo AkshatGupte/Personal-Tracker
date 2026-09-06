@@ -56,8 +56,12 @@ export default function LeafHistory({
             <tr key={row.id} className="border-t border-border">
               <th scope="row" className="py-2 pr-3 text-left align-middle font-normal">
                 <span className="flex min-w-0 flex-col">
+                  {/* 11px for the same reason as LeafList: this is ancestry
+                      sitting directly above the name it qualifies. The
+                      "deleted" flag below is a standalone status label, not a
+                      qualifier, so it keeps the usual 12px. */}
                   {row.path.length > 0 && (
-                    <span className="truncate font-label text-[0.75rem] uppercase tracking-[0.14em] text-muted">
+                    <span className="truncate font-label text-[0.6875rem] uppercase tracking-[0.14em] text-muted">
                       {row.path.join(" › ")}
                     </span>
                   )}

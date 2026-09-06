@@ -1,4 +1,6 @@
-import { describeTerrain, ridgePath, type Terrain } from "@/lib/terrain";
+import { describeDay, describeTerrain, ridgePath, type Terrain } from "@/lib/terrain";
+import { parseDayKey } from "@/lib/day";
+import TerrainHover from "./TerrainHover";
 import { TERRAIN_SPAN } from "@/lib/windows";
 
 const W = 720;
@@ -240,8 +242,36 @@ export default function TerrainProfile({
                 : "sv-status absolute inset-0 flex items-center justify-center px-4 text-center font-label text-[0.75rem] uppercase text-muted"
             }
           >
-            {compact ? "No elevation yet" : "No elevation yet \u00b7 working a topic raises the ground"}
+            {/*
+              Names the window, because this label belongs to the *drawing* and
+              the drawing is two weeks.
+
+              It read "No elevation yet", which was unambiguous only while the
+              headline numeral was the same windowed total. Elevation is all-time
+              now, so a track with a real total and a quiet fortnight would have
+              put "Elevation 50" directly above "No elevation yet". This is the
+              wording `describeTerrain` already uses for the same state, so the
+              drawing and its text alternative now say the same thing.
+            */}
+            {compact
+              ? `Nothing in ${TERRAIN_SPAN}`
+              : `Nothing in ${TERRAIN_SPAN} \u00b7 working a topic raises the ground`}
           </p>
+        )}
+
+        {/*
+          Read-off. Only where there is something to read: on an empty window
+          every column would report "0 activities" fourteen times, which is
+          noise wearing the costume of data.
+        */}
+        {terrain.hasData && (
+          <TerrainHover
+            points={terrain.points}
+            domainMax={terrain.domainMax}
+            rightGutter={(RIGHT_GUTTER / W) * 100}
+            focusable={!compact}
+            compact={compact}
+          />
         )}
       </div>
 
@@ -254,11 +284,16 @@ export default function TerrainProfile({
           className="mt-1.5 flex justify-between font-label text-[0.75rem] uppercase tracking-[0.12em] text-muted"
           style={{ paddingRight: `${(RIGHT_GUTTER / W) * 100}%` }}
         >
-          {/* Both axes named. The x-axis said "2 weeks" and the y-axis said
-              nothing at all, so "elevation" was a word with no unit attached to
-              it anywhere on the drawing. */}
-          <span>{TERRAIN_SPAN} · height = activities</span>
-          {terrain.next && <span className="tabular-nums">next {terrain.next}</span>}
+          {/*
+            Both axes named, and the y axis now names its *scale* as well as its
+            unit. "height = activities" said what was measured and not what
+            against — which was the whole complaint, because the height was
+            measured against the series' own total and therefore always full.
+            "0 - N elevation" says the domain out loud, and N is the milestone
+            the top of the frame sits on.
+          */}
+          <span>{TERRAIN_SPAN} · one point per day</span>
+          <span className="tabular-nums">0–{terrain.domainMax} elevation</span>
         </div>
       )}
 
@@ -270,8 +305,39 @@ export default function TerrainProfile({
       {!compact && terrain.reached.length > 0 && (
         <figcaption className="sr-only">
           {terrain.reached.map((m) => `${m.value} activities reached.`).join(" ")}
-          {terrain.next ? ` Next milestone at ${terrain.next}.` : ""}
+          {` Next milestone at ${terrain.domainMax}.`}
         </figcaption>
+      )}
+
+      {/*
+        The series as text, the same way the heatmap carries its own.
+
+        A hover is for a pointer and a chart is for eyes; this is the version
+        that survives having neither. It is a disclosure rather than a permanent
+        table because fourteen lines under every track row would bury the rows —
+        and it lists only the days that actually happened, since "0 activities"
+        repeated eleven times is not a reading of anything.
+      */}
+      {!compact && terrain.hasData && (
+        <details className="mt-2">
+          <summary className="cursor-pointer font-label text-[0.75rem] uppercase tracking-[0.12em] text-muted">
+            Day by day
+          </summary>
+          <ul className="mt-2 space-y-1 font-label text-[0.75rem] uppercase tracking-[0.1em] text-muted">
+            {terrain.points
+              .filter((point) => point.count > 0)
+              .map((point) => (
+                <li key={point.dayKey} className="tabular-nums">
+                  {parseDayKey(point.dayKey).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "long",
+                  })}
+                  {" \u2014 "}
+                  {describeDay(point)}
+                </li>
+              ))}
+          </ul>
+        </details>
       )}
     </figure>
   );

@@ -113,7 +113,7 @@ export default async function TrackPage({
                 personal best is said in the report line, as part of the same
                 outcome, rather than lighting up a second number.
               */}
-              <TrackStat label="Elevation" value={track.terrain.peak} />
+              <TrackStat label="Elevation" value={track.elevation} />
               <TrackStat
                 label="Streak"
                 value={track.currentStreak}
@@ -128,7 +128,17 @@ export default async function TrackPage({
               floating in the middle of the empty terrain, which read as stray
               text. The terrain itself stays a plain dashed baseline.
             */}
-            {!track.terrain.hasData && (
+            {/*
+              Keyed on the elevation figure, not on the terrain's window.
+
+              This read `!track.terrain.hasData`, which is "nothing in the last
+              2 weeks" — fine while the numeral above was the same windowed
+              total, and contradictory now that it is all-time. A track with 50
+              activities and a quiet fortnight would have shown "Elevation 50"
+              directly above "No elevation yet". The sentence belongs to the
+              numeral, so it asks the numeral's question.
+            */}
+            {track.elevation === 0 && (
               <p className="max-w-[34ch] text-sm leading-relaxed text-muted">
                 No elevation yet. Working a topic raises the ground.
               </p>

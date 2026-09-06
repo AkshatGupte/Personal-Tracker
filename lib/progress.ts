@@ -10,7 +10,7 @@ import {
   type PeriodDay,
   type PeriodRollup,
 } from "@/lib/rollup";
-import { buildTerrain, type DayLog } from "@/lib/terrain";
+import { buildTerrain, cumulativeElevation, type DayLog } from "@/lib/terrain";
 import { HEATMAP_DAYS, TERRAIN_DAYS } from "@/lib/windows";
 import {
   buildTree,
@@ -199,21 +199,53 @@ export async function getHomeProgress() {
       leafCount: coverage.total,
       workedToday: coverage.worked,
       coverage: coveragePercent(coverage),
-      terrain: buildTerrain(toDayLogs(own.filter((r) => r.date >= sinceTerrain))),
+      /*
+        One trajectory per track, and the baseline is what makes it a trajectory
+        rather than a fortnightly restart: the ridge begins at the elevation the
+        track already stood at, so its top equals the track's own headline
+        figure instead of counting from zero again every two weeks.
+      */
+      terrain: buildTerrain(
+        toDayLogs(own.filter((r) => r.date >= sinceTerrain)),
+        TERRAIN_DAYS,
+        new Date(),
+        cumulativeElevation(toDayLogs(own.filter((r) => r.date < sinceTerrain))),
+      ),
     };
   });
 
-  const windowLogs = toDayLogs(rows.filter((r) => r.date >= sinceTerrain));
   const allLiveLeafIds = new Set(
     tracks.flatMap((track) => leaves(trees.get(track.id) ?? []).map((l) => l.id)),
   );
+
+  /*
+    The last 7 days across every track, for the sentence under the headline.
+
+    This used to come off a combined all-tracks terrain, and that chart is gone:
+    stacking every track's activity into one curve produced a line whose height
+    answered no question anyone asks. "How much did I do this week" is a total,
+    not a shape, so what survives is the total.
+  */
+  const sinceWeek = windowStart(7);
+  const thisWeek = rows
+    .filter((r) => r.date >= sinceWeek)
+    .reduce((total, r) => total + r.count, 0);
 
   return {
     rows: trackRows,
     totalLeaves,
     workedLeaves,
     coverage: coveragePercent({ worked: workedLeaves, total: totalLeaves }),
-    terrain: buildTerrain(windowLogs),
+    /*
+      The headline numeral, and deliberately not `terrain.peak`.
+
+      `rows` is unfiltered here — every activity row, all time — while the
+      terrain below it is fed the windowed rows. That difference is the whole
+      fix: the drawing keeps its two weeks and the figure beside it stops
+      losing history to them. See `cumulativeElevation`.
+    */
+    elevation: cumulativeElevation(toDayLogs(rows)),
+    thisWeek,
     countsByDay: coverageByDay(rows.filter((r) => r.date >= sinceHeatmap), allLiveLeafIds),
     bestStreak: trackRows.reduce((best, row) => Math.max(best, row.currentStreak), 0),
   };
@@ -295,7 +327,14 @@ export async function getTrackDetail(id: string) {
     leafCount: coverage.total,
     workedToday: coverage.worked,
     coverage: coveragePercent(coverage),
-    terrain: buildTerrain(windowLogs),
+    /* All time, unwindowed — see the note in getHomeProgress. */
+    elevation: cumulativeElevation(toDayLogs(rows)),
+    terrain: buildTerrain(
+      windowLogs,
+      TERRAIN_DAYS,
+      new Date(),
+      cumulativeElevation(toDayLogs(rows.filter((r) => r.date < sinceTerrain))),
+    ),
     countsByDay: coverageByDay(rows.filter((r) => r.date >= sinceHeatmap), liveLeafIds),
   };
 }

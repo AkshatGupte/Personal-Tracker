@@ -52,9 +52,23 @@
     is doing that job well, so it is left exactly as it is and this sits beside
     it. Inputs and the activity cell take this one.
 
-    Chosen against the *worst* ground, not the flat token: 4.46:1 on `--bg`, and
-    3.39:1 against a composited ground at L=0.02, which is the ceiling the
-    atmosphere is now clipped to inside the content column. Still ink/magenta
+    Chosen against the *worst* ground, not the flat token: 4.46:1 on `--bg`.
+
+    **The second number this used to cite is gone, and the token survives it.**
+    It read "3.39:1 against a composited ground at L=0.02, which is the ceiling
+    the atmosphere is now clipped to inside the content column" — that ceiling
+    was the column veil, which was reverted the same day, so the atmosphere is
+    unclipped again and reaches L 0.72 in the worst region. Re-measured in situ
+    against the real composited ground rather than against an assumed ceiling:
+    **82-94% of sampled ground around an input clears 3:1, against 0-2% for
+    `--border`.** It holds up because it is mid-tone — as the rift light
+    brightens the ground the contrast falls, passes through 1:1 where the ground
+    matches the border's own luminance, and rises again beyond it. The worst
+    samples are exactly where a glow or a neon thread crosses behind an edge.
+
+    So this is kept on the evidence, not on the original reasoning. Anything
+    that replaces it has to be measured the same way — `--border` at 1.04:1 on
+    the page ground is not a boundary, it is a suggestion. Still ink/magenta
     tinted rather than violet, per the palette note above.
   */
   --border-interactive: #9a6a7f;

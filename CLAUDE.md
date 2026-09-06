@@ -213,6 +213,23 @@ being asked.
 
 **The terrain metaphor — unchanged, and still the product's signature:**
 - Elevation is cumulative activity summed from `TopicActivity`; it only rises.
+  **The headline numeral is all-time and has no window** (`cumulativeElevation`);
+  the terrain *drawing* keeps `TERRAIN_DAYS = 14`. These are two figures, not
+  one — wiring the numeral back to a windowed total reintroduces a fixed bug
+  where elevation fell as activity aged out. Only an undo may lower it.
+- **The trajectory is one chart per Track, never several tracks combined**, and
+  its y axis is *that track's elevation at the end of that day* — one point per
+  calendar day. A combined all-tracks curve was removed: stacking tracks gives a
+  height that answers no question.
+- **The y domain is `nextMilestone(elevation)`, never the series' own total.**
+  Self-normalising put the last point at 1.0 for every input, so two activities
+  and two hundred drew the same picture. The axis top being the next
+  `ELEVATION_MILESTONE` gives proportionality, headroom by construction, and a
+  scale the app already means. Two charts with different domains must each state
+  their own scale — see the track rows.
+- The series starts from the elevation *before* the window (`buildTerrain`'s
+  `baseline`), so the top of the ridge equals the headline numeral rather than
+  restarting at zero every fortnight.
 - Pace emerges from geometry — strata at fixed elevations bunch on a steep climb.
 - Milestones are drawn only where actually crossed, in `streak` (yellow).
 - No completions means a flat baseline and a plain statement, never a fake curve.

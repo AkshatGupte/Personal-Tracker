@@ -169,16 +169,45 @@ export default function TrackRow({ track }: { track: TrackRowData }) {
               streak
             </>
           )}
+          {/*
+            The chart's own scale, in words, and it is not decoration.
+
+            Every track's trajectory is drawn against *its own* next milestone,
+            which is what stops two activities filling the frame. The cost is
+            that two rows side by side have different y axes: at a glance
+            Spanish's ridge at 20% and DSA's at 54% look like a 2.7x difference
+            when the elevations behind them are 2 and 54. A row-sized chart has
+            no space for an axis caption, so the axis is stated here instead —
+            the same two numbers the drawing is built from, in the row's own
+            voice.
+          */}
+          {track.terrain.elevation > 0 && (
+            <>
+              {" · "}
+              <span className="text-fg">{track.terrain.elevation}</span> of{" "}
+              {track.terrain.domainMax} elevation
+            </>
+          )}
         </p>
       </div>
 
-      {/* The track's own elevation, small. Flat when nothing is completed. */}
-      <div className="hidden sm:block" aria-hidden="true">
+      {/*
+        This track's trajectory, and it is the reason the home page no longer
+        carries one big chart: a curve means something against a single subject
+        and nothing against every subject stacked together.
+
+        Raised from h-10 to h-14. At 40px the fourteen daily points sat within a
+        couple of pixels of each other vertically and there was nothing to aim
+        at; the row still reads as a row at 56px, and the shape becomes a shape.
+        `overflow-visible` so the read-off caption can stand clear of a row that
+        is shorter than the caption is tall.
+      */}
+      <div className="hidden overflow-visible sm:block">
         <TerrainProfile
           id={track.id}
           terrain={track.terrain}
           scope={track.name}
-          height="h-10"
+          height="h-14"
           compact
         />
       </div>

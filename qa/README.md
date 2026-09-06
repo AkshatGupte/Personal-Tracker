@@ -368,6 +368,32 @@ A bolt spends most of its 200ms dark, so a fixed `sleep` lands on an off-frame
 more often than an on-frame. Do not pause everything — freezing the route
 transition mid-fade dims the whole page and ruins the shot.
 
+## Checking the small-text scale
+
+```
+node qa/type-scale.mjs http://localhost:3000
+```
+
+Two assertions that pull against each other, which is why they are in one place:
+
+- **nothing in the shipped UI below 11px.** A UX audit raised every label to a
+  12px floor from six sizes scattered between 8.0 and 11.2px, and that floor is
+  worth keeping — single-weight uppercase Bangers at 8px is decoration.
+- **every ancestry label is meaningfully smaller than the name it qualifies.**
+  The leaf path sits directly above the leaf's own name, so it is the one place
+  a label and its content are compared side by side, and the floor inverted it.
+
+It reads *computed* sizes rather than source, so a Tailwind arbitrary value that
+silently fails to compile is caught instead of counted. `/lab` is excluded: it is
+a dev-only effect harness and keeps its own denser labels.
+
+**The subordination test is a ratio, and that is the point.** Written first as
+`label < name`, it passed 12px-over-14px — the exact state it exists to reject —
+because 12 really is smaller than 14. The property is *meaningful* subordination,
+so the threshold sits between the two candidates (11/14 = 0.79 passes,
+12/14 = 0.86 fails). If this check is ever extended, break it on purpose first:
+the lenient version looked healthy and asserted nothing.
+
 ## Logic tests
 
 ```
@@ -383,6 +409,8 @@ resolve the project's `@/` imports.
 |---|---|
 | `period-buckets.test.mjs` | Week and month bucketing, including leap-year February, the year boundary, and the 31st-of-the-month overflow that breaks naive month arithmetic. |
 | `streak-milestone.test.mjs` | Streak milestone crossing: the crossing itself, no replay of an earlier day's, every non-advancing write (same-day recheck, undo, restart), and several milestones crossed at once. |
+| `tree.test.mjs` | The Topic tree: shape and ordering, depth limits, move legality, and the three coverage signals. |
+| `terrain.test.mjs` | Elevation is cumulative and **cannot fall as activity ages** — the same rows read 1/7/14/30/90/365 days later are worth the same. Asserts in the same breath that the *windowed* total does fall, which is why the headline numeral cannot be `Terrain.peak`, and that the drawing's window is untouched. Also the **y-axis domain**: the scale is the next milestone rather than the series' own total, so two activities occupy a fifth of the frame and not all of it, and no elevation from 1 to 2600 reaches the top edge. Restoring the old self-normalising scale fails four assertions. |
 
 ## Using it
 

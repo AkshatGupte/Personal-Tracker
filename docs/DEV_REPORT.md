@@ -6,6 +6,167 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-06 (latest) — The progress charts are per-track, and the scale is honest
+
+**What was built:** the elevation chart used to be drawn so that it always
+filled its frame, whatever the numbers behind it. Two activities and two hundred
+produced the same picture, and a single activity on a fresh track drew a flat
+line followed by a vertical jump to the ceiling. That is fixed, and the charts
+are now one per Track instead of one chart mixing all of them together.
+
+**What the Y axis means now — the important part:**
+
+> **A track's elevation at the end of that day**: every activity ever recorded on
+> that track, counted up to and including that date.
+
+One point per calendar day, fourteen days across. Hovering any day shows the
+date, how many activities were recorded that day, and the elevation the track
+stood at. The axis is labelled on the chart itself ("0–100 elevation"), so the
+scale is never something you have to infer.
+
+**Why the scale stops where it does.** The top of the chart is the **next
+milestone** — the app's existing 10 / 50 / 100 / 250 / 500 ladder. So:
+
+| Track | Elevation | Scale tops at | Height used |
+|---|---|---|---|
+| Spanish | 2 | 10 | 20% |
+| Guitar | 14 | 50 | 28% |
+| DSA | 54 | 100 | 54% |
+
+Two activities now take up a fifth of the chart instead of all of it. There is
+always room left above the line, because you are always below the next
+milestone — the headroom is not a margin someone remembered to add, it is a
+consequence of what the scale is. And the number at the top is one the app
+already means, so "climbing toward the top of the chart" is literally true.
+
+**Two other things that were quietly wrong and are fixed with it:**
+1. The chart used to restart at zero every fortnight, so a track with 54
+   activities and a quiet two weeks drew a line along the floor while the number
+   beside it said 54. The line now starts from the elevation the track already
+   had, so the top of the chart and the headline figure are the same thing.
+2. The big chart on the home page stacked every track's activity into one curve.
+   Its height answered no question anyone asks — "how much did I do this week" is
+   a total, not a shape — so it is gone. Each track now carries its own
+   trajectory in its own row, and each row states its own scale in words
+   ("54 of 100 elevation"), because two charts side by side with different
+   scales would otherwise invite a false comparison.
+
+**What was checked:** built a realistic database — three tracks, 26 / 4 / 2
+active days, 54 / 14 / 2 activities, including the exact case in the brief of a
+track with only two activities, and one track whose history starts well before
+the visible window. All three render correctly and proportionally. Twenty new
+assertions cover the scale, including one that sweeps elevations from 1 to 2600
+and confirms the line never touches the top of the frame; putting the old
+scaling back makes four of them fail, the first reading "got 1, want 0.2".
+Everything else — text contrast, type sizes, the background checks, the tear
+effect, lint, types and a production build — still passes.
+
+**Roadmap status:** no roadmap item. This is a fix to existing charts, not the
+Phase 2 "learning trajectory view", which remains open and unstarted.
+
+---
+
+## 2026-09-06 (last) — Judging the two open audit changes: one kept, one trimmed
+
+**What this was:** the UX audit made two visual changes nobody had signed off
+on. Both were reviewed against the rendered app at desktop widths and measured
+rather than argued about. One is kept as it is; the other is kept but pulled
+back in exactly one place.
+
+**1. The dusty-rose borders on inputs and activity cells — kept, unchanged.**
+
+The old hairline colour was effectively invisible on an input: measured against
+the real background behind it, **0–2% of it reached the 3:1 that an accessibility
+guideline asks for around something you can type into.** The dusty rose reaches
+it on **82–94%.** That is a large, real difference and the visual cost is small —
+it still reads as a comic-book input, not a corporate form field, and the colour
+stays in the same ink/magenta family as the rest of the palette. Keeping it was
+not a close call.
+
+One thing was wrong and is now fixed: the *note explaining why that colour was
+picked* cited a second measurement taken against a darkened content column that
+was removed the same day. The colour still holds up, but it holds up for a
+different reason than the note claimed, so the note now records what was actually
+measured.
+
+**2. The 12px minimum text size — kept, with one label pulled back to 11px.**
+
+The floor itself is right. Before it, small labels ranged from 8 to 11.2px across
+six different sizes with no system to them, and 8px in this uppercase display
+face is decoration rather than text.
+
+But raising *everything* to one size flattened the one place where a label and
+the thing it describes sit directly on top of each other — the topic list:
+
+> DYNAMIC PROGRAMMING  ← where the topic lives (context)
+> PARTITION DP         ← the topic itself
+
+The context line went from 8.8px to 12px while the name stayed at 14px. Being
+the longer string, in an all-caps face with only one weight available, **it
+started reading as the heading with the actual topic name as a subtitle under
+it.** That is backwards. It is now 11px, which puts it back in its place without
+returning to a size the floor was raised to fix. Two elements changed. Everything
+else stays at 12px.
+
+**What was checked:** a new `qa/type-scale.mjs` asserts both halves — nothing in
+the shipped app below 11px, and every context line meaningfully smaller than the
+name it labels. Both were tested by breaking them on purpose and confirming the
+check fails; the first version of it was too lenient and silently passed the
+exact bug it existed to catch, so it was tightened. Text contrast, the background
+checks, the logic tests, lint, types and a production build all pass.
+
+**Roadmap status:** no roadmap item — closes the two open questions from the
+2026-09-06 handoff.
+
+---
+
+## 2026-09-06 (later still) — Elevation stops going down
+
+**What was built:** the big "Elevation" number on the home page and on each
+track was counting only the last two weeks, so it *fell* as older activity
+dropped out of that window — take a fortnight off and your elevation went to
+zero. It is now the all-time total. It goes up when you record activity, and the
+only thing that lowers it is undoing something.
+
+**How it works (flow):**
+1. Every activity you record is a row in the database, kept forever.
+2. The number now adds up **all** of those rows, with no cut-off date.
+3. The terrain drawing beside it is unchanged — it still shows the last two
+   weeks, on purpose. A drawing needs a short span or the line is flat for most
+   of its width with a spike stuck to the right edge.
+4. So the two are now separate figures answering separate questions: "how much
+   ground have I covered in total" and "what has the last fortnight looked
+   like". They used to be the same number doing both jobs, which is where the
+   bug came from.
+
+**Wording that had to change with it,** because it was only correct while the
+number was windowed:
+- the line under the home figure said "activities over 2 weeks" — it now says
+  "activities recorded", and still gives the last-7-days count after it
+- a track with a real total but a quiet fortnight would have shown "Elevation
+  50" directly above "No elevation yet". That sentence now appears only when the
+  total really is zero, and the empty terrain says "Nothing in 2 weeks" instead
+
+**What was checked:** a new test suite (`qa/terrain.test.mjs`) with 21 checks,
+including one that ages the same activity forward by 1, 7, 14, 30, 90 and 365
+days and asserts the number never moves. It was tested by putting the old
+behaviour back and confirming it fails — the key line reads "elevation counts
+all of it → got 4, want 20".
+
+Then in the real app, against a database built for it:
+- 9 activities dated 40 days ago plus 4 recent → headline **13**, terrain window
+  **4**. The old code would have shown 4.
+- adding 5 more today → **13 → 18** on both the home page and the track page.
+- then ageing *every* row to 200+ days ago → headline **stays 18** while the
+  two-week window drops to **0**. This is the bug, and it no longer happens.
+- with the database emptied, it correctly reads "0 activities so far" and "No
+  elevation yet."
+
+**Roadmap status:** no roadmap item — a correctness fix flagged in the handoff's
+known issues.
+
+---
+
 ## 2026-09-06 (later) — Structures that had come unthreaded are joined up again
 
 **What changed:** after the scrolling background went in, some of the wireframe

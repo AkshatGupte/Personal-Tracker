@@ -5,6 +5,198 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-06 (latest) — The trajectory is per-track, per-day, and scaled against
+the next milestone**
+
+**The metric, stated first because the whole change hangs on it.** A point is
+one calendar day; y is **the track's elevation at the end of that day** — every
+activity ever recorded on that track, up to and including that date. Not the
+day's own count, and not a windowed subtotal. The day's own count is in the
+hover and in the day-by-day list, so both readings of "activity for that day"
+are answered, but only one of them is the axis.
+
+**The scaling bug.** `y = cumulative / peak`, normalised against the series' own
+total, so the last point was 1.0 for every input that existed. Two activities
+and two hundred drew the same picture; one activity on an empty history drew a
+flat line and a full-height vertical jump. The drawing carried shape and no
+magnitude at all.
+
+**The fix: `domainMax = nextMilestone(elevation)`** — the app's own
+`ELEVATION_MILESTONES` ladder (10/50/100/250/500, continuing ×2/×2.5 above),
+which was already drawn on the terrain. Four properties follow, and the reason
+this beats a hand-picked constant is that none of them had to be arranged:
+
+- *Proportional.* 2 → 20% of frame, 14 → 28%, 54 → 54%, 840 → 84%.
+- *Headroom by construction.* Elevation is always strictly below the next
+  milestone, so the ridge cannot touch the top edge — asserted over 1 to 2600.
+- *Stable.* The domain moves only when a milestone is crossed, so the chart does
+  not rescale under the reader day to day.
+- *Meaningful.* The axis top is a number the app already means, so the top of
+  the frame *is* the next milestone.
+
+**A `baseline` argument on `buildTerrain`.** The series used to start at zero
+every fortnight, so a track with 54 activities and a quiet window drew along the
+floor while the numeral beside it read 54. It now starts from the elevation
+before the window, so the top of the ridge equals the headline figure — the
+chart and the number are finally the same measurement. This is the "baseline
+offset in `buildTerrain`" flagged in several handoffs.
+
+Consequence worth stating: a milestone crossed *before* the window is no longer
+drawn, because there is no day in frame to point at and the ground is already
+above it. `reached` now requires the crossing to happen inside the window
+(`cumulative - count < value`).
+
+**`Terrain.peak` is gone, split in two** — `elevation` (all-time, the top of the
+ridge) and `windowTotal` (inside the window, what the caption's span refers to).
+They were one number doing both jobs, which is what let the bug hide.
+
+**The combined all-tracks terrain is deleted.** Stacking every track into one
+curve produced a height that answered no question: "how much this week" is a
+total, not a shape. The home page keeps the total as a numeral and gives each
+track its own trajectory in its own row. The all-tracks *heatmap* and the
+`/progress` period strip stay — they are calendars, one square per day, with a
+clear reading; the requirement was about the chart with no interpretation, and
+they are not it.
+
+**Different tracks have different y-domains, and that had to be said out loud.**
+Three rows at 20% / 28% / 54% look like a 2.7x spread when the elevations are 2,
+14 and 54. A row-sized chart has no space for an axis caption, so each row's text
+line now carries it — "54 of 100 elevation" — in the row's own voice.
+
+**Interaction.** `TerrainHover` is a separate client component so `TerrainProfile`
+stays a server component drawing static geometry; only the part that needs state
+ships as JavaScript. Hit targets are full-height day columns rather than the
+points, because a point is a few pixels wide and asking someone to hit it is
+asking them not to bother. The row charts' columns are `tabIndex={-1}`
+deliberately: fourteen stops per track would put seventy between the top of a
+five-track list and anything worth reaching, and those rows already carry their
+figures as text and link to the track page, where the columns *are* focusable
+and a day-by-day list sits under the chart.
+
+The row caption is one line pinned inside the chart box rather than a block
+following the guide — the full-size version ran straight over Rename/Delete in a
+56px row. The guide and marker already say which day it is; the caption only has
+to say what that day was.
+
+---
+
+**2026-09-06 (latest) — The two open audit changes are settled: rose kept, 12px
+floor kept with one exception**
+
+Both were reviewed against the rendered app at 1440 and 1280, measured in situ,
+and neither was decided from the source alone.
+
+**`--border-interactive` (#9a6a7f) stays, on inputs and on the activity cell.**
+Sampled against the *real composited ground* at several scroll offsets rather
+than against a flat token: **82-94% of the ground around an input clears 3:1,
+against 0-2% for `--border` (1.04:1 on the page ground).** WCAG 1.4.11 asks 3:1
+of a UI component boundary, and the old value is not a boundary at that level, it
+is a suggestion. The design cost is small and was checked at 3x: it reads as an
+input, stays ink/magenta rather than violet, and does not turn the row into a
+form. The tier-0 activity cell reads as a well with a rim, which is what
+`CLAUDE.md` asks of it.
+
+It degrades gracefully in both directions *because* it is mid-tone — contrast
+falls as the rift light brightens the ground, passes through 1:1 where the ground
+matches the border's own luminance, and rises again beyond it. The worst samples
+are exactly where a glow or a neon thread crosses behind an edge.
+
+**The comment justifying it was stale and is rewritten.** It cited "3.39:1
+against a composited ground at L=0.02, which is the ceiling the atmosphere is now
+clipped to inside the content column" — that ceiling was the column veil, which
+was reverted the same day. The token survives losing its stated reason, but the
+reason had to be replaced with what was actually measured. Anything proposed to
+replace it has to be measured the same way.
+
+**The 12px floor stays; the leaf ancestry label drops to 11px.** The floor
+replaced six sizes scattered between 8.0 and 11.2px — 21 distinct
+(size, tracking, role) combinations across 59 elements. That was noise, not a
+scale, and 8px of single-weight uppercase Bangers is not text. Collapsing it was
+right.
+
+What it broke is one relationship, and only one: the leaf path sits *directly
+above* the leaf's own name, so it is the single place in the app where a label
+and its content are compared side by side. 8.8px → 12px against an unchanged
+14px name took the ratio from 1.59x to 1.17x, and since the ancestry is the
+longer string in a face with no lowercase and one weight, it read as the heading
+with the leaf name as its subtitle. Restored to 11px (1.27x) in `LeafList` and
+`LeafHistory` — two elements. 10px was rendered and compared too and is better
+hierarchy but back near what the floor was raised to fix; 11 is the step that
+buys the subordination without the cost. `TopicControls`' `<select>` option keeps
+12px: it is a chooser, not a qualifier.
+
+**`qa/type-scale.mjs`** asserts both halves, because they pull against each other
+and fixing one without measuring reintroduces the other. It reads *computed*
+sizes, so an arbitrary Tailwind value that fails to compile is caught rather than
+counted. `/lab` is excluded — dev-only, and it keeps its own denser labels.
+
+**Its first version was wrong in an instructive way.** The subordination
+assertion was written as `label < name`, which 12/14 satisfies — so it passed
+the exact state it exists to reject, and the negative test caught that rather
+than the code. It now asserts a ratio (≤ 0.82, between 11/14 = 0.79 and
+12/14 = 0.86). Both halves were then re-tested by breaking them deliberately: a
+flattened label reports `12px over 14px = 0.86`, and an injected 9px label
+reports `4 element(s) under 11px`.
+
+---
+
+**2026-09-06 (latest) — Elevation is all-time; the terrain keeps its window**
+
+`CLAUDE.md` says elevation is cumulative and only rises. The headline numeral
+was `Terrain.peak`, which is the total *inside the terrain window* — so with
+`TERRAIN_DAYS = 14` it fell as activity aged past a fortnight, and two weeks away
+from the app took it to zero. Flagged across several sessions, fixed now.
+
+**A separate figure, not a wider window.** The obvious fix — raise
+`TERRAIN_DAYS` — is wrong, and `lib/windows.ts` already explains why: the graph
+was 84 days and the profile was ~90% flat baseline with every point crushed into
+a near-vertical climb against the right edge. The window is short because the
+*drawing* needs it short. So the drawing keeps two weeks and the numeral has no
+window at all. They were one number wearing two hats, which is exactly the
+failure mode `lib/windows.ts` was written to prevent for the heatmap, arriving
+again in a different place.
+
+`cumulativeElevation(logs)` in `lib/terrain.ts`, **deliberately with no `days`
+parameter.** The monotonicity is then a property of the signature rather than of
+the caller: with no window there is nothing for time to push a row out of. A
+`days` argument with a large default would leave the bug one careless call away.
+
+**It sums the same rows the terrain sums, soft-deleted topics included.**
+Filtering to live leaves would make deleting a topic lower the elevation — the
+identical defect by another route. History is kept, so the ground stays raised.
+It can still fall by one on an undo, which is the undo working.
+
+**Three pieces of copy had to move with it**, because each was correct only
+while the numeral was windowed. Leaving them would have shipped a mislabelled
+figure, which is worse than the bug:
+- the home caption read "activities over 2 weeks" → "activities recorded", 7-day
+  figure retained. `TERRAIN_SPAN` is no longer imported there; the graph beside
+  it still states its own span.
+- the track page's "No elevation yet" was gated on `!terrain.hasData` ("nothing
+  in 2 weeks") → gated on `elevation === 0`. Otherwise a quiet fortnight put
+  "Elevation 50" directly above "No elevation yet".
+- `TerrainProfile`'s empty label "No elevation yet" → "Nothing in 2 weeks", and
+  `describeTerrain`'s "no elevation to show yet" → "no profile to draw yet", so
+  a screen reader no longer hears "Elevation 18" followed by "no elevation to
+  show".
+
+**`qa/terrain.test.mjs`**, 21 assertions. The load-bearing one ages fixed
+activity forward by 1/7/14/30/90/365 days and asserts the figure never moves,
+while asserting in the same breath that the *windowed* total does fall — which is
+the reason the numeral cannot be it. Validated by restoring the old behaviour and
+confirming 5 assertions go red.
+
+Verified end to end against a purpose-built database: 9 activities at 40 days old
+plus 4 recent gave headline 13 / window 4; +5 today gave 18 on both pages; ageing
+every row to 200+ days held the headline at 18 while the window went to 0; an
+empty database still reads "0 activities so far" and "No elevation yet."
+
+**`TERRAIN_DAYS` stays 14 and `Terrain.peak` keeps its meaning** — nothing that
+reads the drawing changed. `lib/windows.ts` still says lengthening the span is a
+judgement about the data, and that judgement is untouched by this.
+
+---
+
 **2026-09-06 (latest, fix) — Two ways the banded threads came apart**
 
 Reported as "some structures were disconnected from the multiverse". Two
