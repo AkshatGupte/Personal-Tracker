@@ -162,3 +162,61 @@ worked on would leave the streak it earned standing.
 Streaks remain **strict and per-track**: a missed day resets to 0, with no
 freezes and no forgiveness. `summariseStreak` in `lib/streak.ts` was not changed
 by the restructure; only what feeds it did.
+
+---
+
+## Goals (added 2026-09-08)
+
+A time-boxed target: "50 DSA problems by Sunday". **Deliberately not a Track.** A
+Track is open-ended and never finishes — that is the product's core claim — while
+a Goal has a target, a deadline and a terminal state. Modelling one as the other
+would have forced a finish line onto the thing that must not have one, so they
+are separate tables and a Goal carries its own progress rather than reading
+`TopicActivity`.
+
+```
+Goal → GoalMilestone (one row per crossing, at most one per percent)
+     → GoalProgress  (one row per write: the audit trail and the XP ledger)
+```
+
+### Goal
+
+| Column | Notes |
+|---|---|
+| `target`, `unit` | What counts as done. Float, so "30 hours" and "2.5 books" both work |
+| `currentProgress` | The live figure. Denormalised from `entries` because every card reads it |
+| `highWater` | The highest `currentProgress` has ever been. **The anti-farming mechanism** |
+| `startDate`, `deadline`, `cadence` | The window. `weekly`/`monthly` derive their own deadline |
+| `status` | `active` \| `completed` \| `archived` — and **never `expired`** |
+
+**`expired` is not a stored status, and that is load-bearing.** Expiry is a
+question about the deadline and today, answered on read in `lib/goals.ts`. A
+stored one would need something to run at midnight to set it, and with no server
+process and no cron that something does not exist — so the column would read
+"active" for a goal that expired last week. It is the same argument that keeps
+streaks off `Track`.
+
+**`highWater` is the one deliberate exception to derive-on-read.** The
+anti-farming rule is a read-then-write — compare the incoming value against the
+mark, then move it — so it has to be evaluated inside the transaction that writes
+the new progress, and cannot be recomputed afterwards.
+
+### GoalMilestone
+
+One row per crossing, `@@unique([goalId, percent])`. **That constraint is the
+whole "trigger only once" requirement**, enforced by the database rather than by
+an application flag somebody has to remember to check: a double submit, a
+decrease and re-cross, or two tabs racing all collide on it instead of paying
+twice. `xp` is banked at award time so a later retune of the XP table cannot
+silently restate what the ledger already paid.
+
+### GoalProgress
+
+Every write, including decreases and the ones that paid nothing — the brief asks
+that progress history support future analytics, and a history that kept only the
+rewarding half could not. `value` stores the resulting total so the series is
+readable without replaying every delta from zero.
+
+**A goal's XP is the sum of its rows, never a column.** A running total has no
+way to be checked and every write is a chance for it to drift.
+

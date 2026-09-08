@@ -1441,3 +1441,152 @@ body {
     transform: translate3d(var(--spark-x, 0px), var(--spark-y, 0px), 0) scale(0.25);
   }
 }
+
+/* ============================================================================
+   GOALS
+   ----------------------------------------------------------------------------
+   The reward layer. Three tiers, and the gap between them is the point: a
+   progress tick is a pulse, a milestone is a burst, a completion is the only
+   thing in the app allowed to throw particles. If every write celebrated, none
+   of them would.
+
+   All of it is transform/opacity, so it composites. Every animation here is
+   switched off wholesale by the global prefers-reduced-motion block, which
+   cancels durations rather than each rule opting out — a transient frozen at
+   its neutral pose is a permanent scribble, which is the rule the tears and the
+   lightning already follow.
+   ========================================================================== */
+
+/* The bar. Width transitions rather than animating, so a correction downward
+   slides back instead of replaying an entrance. */
+.sv-goal-bar {
+  transition: width 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tier 1 — a progress write landed. A single breath of the accent, on the card
+   edge only: the card must not move, because the number beside it is being read
+   at the same moment. */
+@keyframes sv-goal-tick {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+.sv-goal-tick {
+  animation: sv-goal-tick 620ms ease-out;
+}
+
+/* Tier 2 — a milestone. The card takes a plate offset in the opposite ink, the
+   registration error the panels already use, held briefly and released. */
+@keyframes sv-goal-milestone {
+  0% {
+    transform: translate3d(0, 0, 0);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  18% {
+    transform: translate3d(-3px, 2px, 0);
+    box-shadow: 6px -4px 0 0 var(--sv-cyan);
+  }
+  46% {
+    transform: translate3d(2px, -1px, 0);
+    box-shadow: -5px 3px 0 0 var(--sv-magenta);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.sv-goal-milestone {
+  animation: sv-goal-milestone 760ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+/* Tier 3 — completion. The card is struck, holds at a fraction over size, and
+   settles. Deliberately slower than the milestone: this is the one moment in
+   the goal system worth waiting through. */
+@keyframes sv-goal-complete {
+  0% {
+    transform: scale(1);
+  }
+  12% {
+    transform: scale(1.035);
+  }
+  30% {
+    transform: scale(0.994);
+  }
+  52% {
+    transform: scale(1.012);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.sv-goal-complete {
+  animation: sv-goal-complete 1100ms cubic-bezier(0.22, 1, 0.28, 1);
+}
+
+/* The particles. Plate-coloured squares thrown along their own angle, each with
+   its own distance and delay set inline — one keyframe, many trajectories, no
+   per-particle CSS. Square because the radius rule is universal, and confetti
+   with rounded corners is the childish version of this. */
+@keyframes sv-goal-spark {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--sx), var(--sy), 0) scale(0.3) rotate(var(--sr));
+  }
+}
+.sv-goal-spark {
+  animation: sv-goal-spark var(--sd, 900ms) cubic-bezier(0.15, 0.75, 0.3, 1) both;
+}
+
+/* The XP chip. Rises and fades from where the write happened. */
+@keyframes sv-goal-xp {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  16% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(0, -10px, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -22px, 0);
+  }
+}
+.sv-goal-xp {
+  animation: sv-goal-xp 1500ms ease-out both;
+}
+
+/* The banner that says what happened. Cut in, held, cut out — no fade in, so it
+   reads as a printed card rather than a notification sliding past. */
+@keyframes sv-goal-banner {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) skewX(-6deg);
+  }
+  10% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) skewX(0deg);
+  }
+  78% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) skewX(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) skewX(3deg);
+  }
+}
+.sv-goal-banner {
+  animation: sv-goal-banner var(--bd, 2200ms) cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}

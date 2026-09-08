@@ -277,10 +277,34 @@ rather than restoring that code, put it on the first activity of a day, **do not
 call the list `MILESTONES`**, and keep it a *description* of the streak — never a
 modal, toast or confetti.
 
-No XP, levels, points or badges. The comic theme is not a licence to add them,
-and neither is a milestone: a milestone is a *description of the streak*, not a
-reward on top of it, which is why it is derived from the streak numbers and
-nothing is stored.
+**No XP, levels, points or badges — on Tracks. This was reversed for Goals on
+2026-09-08, and the split is the whole point.**
+
+The rule still holds everywhere it was written about. A Track never finishes, a
+leaf is a recurring activity, and scoring something with no end turns "did I show
+up" into "did I score" — which is why the terrain, the streak and the heatmap
+describe behaviour and reward nothing. Do not add XP to a Track, a Topic or an
+activity; a milestone there is still a *description*, derived and unstored.
+
+A **Goal** is the opposite shape and that is why it may be scored: it has a
+target, a deadline and a terminal state, so there is something real to have
+achieved. XP is banked in a ledger (`GoalProgress.xp`, `GoalMilestone.xp`) and
+summed on read — never a running total on a row. The rules that keep it honest:
+
+- **Only new ground pays.** `Goal.highWater` is the anti-farming mechanism;
+  37 → 38 → 37 → 38 pays once. See `progressXp`.
+- **A milestone pays once, ever**, enforced by `@@unique([goalId, percent])` in
+  the schema rather than by a flag that could be forgotten.
+- **100% is the completion award**, not a fifth event on top of it.
+- The server decides every reward inside the transaction that writes the
+  progress. A client that computed its own could pay for a write the database
+  rejected.
+
+Celebration has three tiers and the gap between them carries the meaning: a
+progress tick is one pulse, a milestone is a plate offset, and completion is the
+only thing in the app allowed to throw particles. If every write celebrated, none
+of them would. Still no levels and no badges, and confetti stays on this one
+screen.
 
 **Glitch, halftone and chromatic effects — intentional, never ambient noise:**
 - `GlitchText` fires in *bursts* with dead air between them, never on a smooth

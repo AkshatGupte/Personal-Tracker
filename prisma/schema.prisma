@@ -104,3 +104,113 @@ model TopicActivity {
   @@index([topicId])
   @@index([date])
 }
+
+/// A time-boxed target: "50 DSA problems by Sunday".
+///
+/// **Deliberately not a Track.** A Track is open-ended and never finishes — that
+/// is the product's core claim, stated at the top of CLAUDE.md. A Goal is the
+/// opposite shape: it has a target, a deadline and a terminal state. Modelling
+/// one as the other would have forced a finish line onto the thing that must not
+/// have one, so they are separate and a Goal carries its own progress rather
+/// than reading TopicActivity.
+///
+/// **`expired` is not a stored status, and that is load-bearing.** Stored status
+/// is only ever `active`, `completed` or `archived`; expiry is a question about
+/// the deadline and today, answered on read in `lib/goals.ts`. A stored one
+/// would need something to run at midnight to set it, and with no server process
+/// and no cron in this project that something does not exist — so the column
+/// would read "active" for a goal that expired a week ago, which is exactly the
+/// class of bug the cached-streak columns were removed to avoid.
+model Goal {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  /// Free text, e.g. "DSA" or "Fitness". Not an enum: the categories are the
+  /// user's own vocabulary and adding one must not need a migration.
+  category    String
+
+  /// What counts as done, in `unit`. Float so "30 hours" and "2.5 books" work.
+  target Float
+  unit   String
+
+  /// The live figure. Denormalised from `entries` on purpose — every card reads
+  /// it and rebuilding a sum per card per render is the one place derive-on-read
+  /// would cost more than it is worth. `entries` remains the audit trail, and
+  /// `lib/goals.ts` reconciles the two.
+  currentProgress Float @default(0)
+
+  /// The highest `currentProgress` has ever been. **This is the anti-farming
+  /// mechanism.** Progress XP and milestones are awarded only when a write
+  /// pushes past it, so 37 → 38 → 37 → 38 pays once. Stored rather than derived
+  /// from `entries` because it must be read and compared inside the same
+  /// transaction that writes the new value.
+  highWater Float @default(0)
+
+  startDate DateTime
+  deadline  DateTime
+  /// `weekly` | `monthly` | `custom`. Kept so a restarted goal can roll its own
+  /// window forward without the user re-deriving the dates.
+  cadence   String   @default("custom")
+
+  /// `active` | `completed` | `archived`. See the note above on `expired`.
+  status String @default("active")
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  milestones GoalMilestone[]
+  entries    GoalProgress[]
+
+  @@index([status])
+  @@index([deadline])
+}
+
+/// A milestone that has actually been crossed. One row, once, ever.
+///
+/// **The `@@unique` is the whole "trigger only once" requirement**, enforced by
+/// the database rather than by an application flag somebody has to remember to
+/// check. A double submit, a decrease and re-cross, or two tabs racing all
+/// collide on the constraint instead of paying out twice.
+model GoalMilestone {
+  id     String @id @default(cuid())
+  goalId String
+
+  /// 25, 50, 75 or 100.
+  percent Int
+  /// Banked at award time. Stored because the XP table could be retuned later
+  /// and a ledger must not silently restate what it already paid.
+  xp      Int
+
+  reachedAt DateTime @default(now())
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, percent])
+  @@index([goalId])
+}
+
+/// One progress write. The audit trail, and the XP ledger.
+///
+/// Every change is a row, including decreases and the ones that paid no XP —
+/// "progress history should allow future analytics", and a history that only
+/// kept the rewarding half would be useless for that.
+model GoalProgress {
+  id     String @id @default(cuid())
+  goalId String
+
+  /// Signed. Negative for a correction downward.
+  delta Float
+  /// `currentProgress` after this write, so the series is readable without
+  /// replaying every delta from zero.
+  value Float
+  /// What this write paid. 0 for a decrease or a re-cross of ground already
+  /// covered — see `Goal.highWater`.
+  xp    Int   @default(0)
+
+  at DateTime @default(now())
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+  @@index([at])
+}

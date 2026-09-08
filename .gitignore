@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the template, which is what makes a fresh clone runnable. Without it
+# there is no DATABASE_URL and nothing starts.
+!.env.example
 
 # vercel
 .vercel

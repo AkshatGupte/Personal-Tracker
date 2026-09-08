@@ -6,6 +6,77 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-08 — Goal tracking, with rewards
+
+**What was built:** a whole new section of the app. You can now set a goal —
+"solve 50 DSA problems this week", "read 3 books this month" — give it a target,
+a unit and a deadline, and track it to completion. It has its own screen at
+**Goals** in the top navigation.
+
+**Why it is separate from Tracks, which matters more than it sounds.** A Track
+never finishes; that is the central idea of the app, and its terrain, streaks and
+heatmap all describe behaviour rather than scoring it. A goal is the opposite: it
+has a finish line. Making goals a kind of Track would have forced an ending onto
+the thing that must not have one, so they are their own thing, with their own
+table and their own screen. Nothing about Tracks changed.
+
+**How it works (flow):**
+1. You set a goal. That is worth 5 XP.
+2. The card shows progress, a percentage, an animated bar, and — the part that
+   actually matters — how you are doing **against the deadline**. If you are on
+   day 5 of 10 with 37 of 50 done, it says "ahead of schedule", because 25 was
+   what was due by now.
+3. Pressing `+1` records progress instantly. The number counts up rather than
+   jumping, the bar fills, and you get 10 XP.
+4. Crossing 25%, 50% or 75% sets off a bigger celebration and pays 25, 50 or 75.
+5. Reaching the target completes the goal on its own — no "mark as done" step —
+   and that is the loudest moment in the app: particles, a banner, 200 XP.
+6. The goal moves into a completed history that is never deleted, and every
+   figure on the dashboard updates.
+
+**The dashboard** shows total goals, completed, active, expired, completion rate,
+average progress, your goal streak, this week / this month / all time, and how
+each category is doing.
+
+**Three things that stop the rewards being meaningless:**
+- **You cannot farm XP.** Going 37 → 38 → 37 → 38 pays once. Each goal remembers
+  the highest it has ever been, and only genuinely new ground pays.
+- **A milestone fires once, ever.** That is enforced by the database itself, not
+  by a checkbox in the code that someone could forget to look at.
+- **Celebrations have three sizes, and the gap is the point.** A progress tick is
+  one small pulse; a milestone is bigger; completion is the only thing in the
+  whole app allowed to throw particles. If every click threw confetti, none of it
+  would mean anything.
+
+**A note on a rule this changes:** the project has said "no XP, points or badges"
+from the beginning, and that rule still applies to Tracks for the same reason as
+before. It has been reversed for Goals only, because a goal has something real to
+have achieved. That is written down in `CLAUDE.md` so it does not read as an
+oversight later.
+
+**Two bugs found and fixed while testing it:**
+1. New goals opened reading "critical" instead of "ahead". The date field was
+   filling in yesterday's date — a timezone conversion bug that shifts a day
+   backwards anywhere east of London, which is here.
+2. The completion celebration was being destroyed a fraction of a second after it
+   started. Completing a goal moves its card into the completed list, which
+   removed the card — and the celebration with it. The biggest moment in the
+   feature was the one guaranteed not to be seen. It now plays over the list
+   instead of on the card.
+
+**What was checked:** the entire flow was driven in a real browser on a
+production build — create, +1, jump to 13, drop to 5, climb back to 13, then
+finish at 50 — and every step verified against the database afterwards. The XP
+came to exactly 385, the four milestones were each banked once, and the two
+"pointless" writes paid nothing. Reduced motion renders no particles and leaves
+nothing running. All eight existing test suites still pass, along with 48 new
+assertions covering the reward rules and the deadline maths.
+
+**Roadmap status:** a new section in `docs/ROADMAP.md`, built ahead of the
+remaining Phase 2 item at your request. Phase 3 is still not started.
+
+---
+
 ## 2026-09-06 (bugfix) — Tears now stay where they were torn
 
 **What was wrong:** when one of the dimensional tears opened and you scrolled,

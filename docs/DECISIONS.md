@@ -5,6 +5,98 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-08 — Goals, and the XP rule reversed for them alone**
+
+Requested in full, and it contradicts a rule stated twice in `CLAUDE.md` and
+reinforced two days earlier when `STREAK_MILESTONES` was deleted: *"No XP,
+levels, points or badges."* Flagged before building and built anyway — it is the
+owner's rule to reverse. `CLAUDE.md` now records the reversal rather than sitting
+in contradiction with shipped code.
+
+**The reversal is scoped, and the scope is the argument.** A Track never
+finishes; scoring something with no end turns "did I show up" into "did I score",
+which is precisely what the original rule protected. A Goal has a target, a
+deadline and a terminal state, so there is something real to have achieved. XP on
+a Track is still forbidden; XP on a Goal is the feature.
+
+**A Goal is not a Track and must not become one.** The tempting shortcut was to
+model a goal as a Track with a target column. That forces a finish line onto the
+one thing in the product that must not have one — the top of `CLAUDE.md` is
+explicit that nothing here finishes — so goals are their own table with their own
+progress rather than reading `TopicActivity`.
+
+**Four rules carry the reward system, and each is structural rather than
+procedural:**
+
+1. **`Goal.highWater`** — XP and milestones are awarded only against a new
+   maximum, so 37 → 38 → 37 → 38 pays once. It is stored, the one deliberate
+   exception to derive-on-read in this feature, because the comparison has to
+   happen inside the transaction that writes the new value.
+2. **`@@unique([goalId, percent])`** — a milestone pays once, ever, decided by
+   the database. The insert is attempted and `P2002` is read as "someone already
+   banked this"; a check-then-insert would reintroduce the race the constraint
+   exists to close. `skipDuplicates` is unavailable on SQLite.
+3. **XP is a ledger, not a column.** Summed from `GoalProgress.xp` and
+   `GoalMilestone.xp` on read. A running total has no way to be checked and every
+   write is a chance for it to drift — the same argument that keeps streaks off
+   `Track`.
+4. **The server decides every reward**, inside the same transaction. A client
+   computing its own could pay for a write the database rejected.
+
+**`expired` is derived, never stored.** Nothing runs at midnight in this project
+— no server process, no cron — so a stored flag would read "active" for a goal
+that expired last week, and would also have to be told when a deadline moved. It
+is a question about the deadline and today, answered on read. Same reasoning as
+the cached-streak columns that were never added to `Track`.
+
+**Momentum bands were fitted to the brief's own examples, not invented.** It
+gives two: against an expected 25, actual 37 is "ahead" and actual 12 is
+"behind". The second is binding — it puts the floor of "behind" below 0.48, so
+"critical" starts at 0.4. My first pass used 0.6 and the test reported the
+brief's own worked example as critical. The on-track band spans 0.9-1.15, six
+units wide against an expected 25, so no single write can flip the reading — the
+"don't change on tiny fluctuations" requirement, expressed as a sweep in the
+tests rather than a single example.
+
+The first fifteen percent of a goal's life is exempt from judgement. Straight-line
+expectation says almost nothing is due on day one, so without the exemption every
+untouched goal would open reading "behind" and any goal with one unit would read
+"wildly ahead".
+
+**Two bugs found by driving the real flow, both mine:**
+
+- **`toISOString().slice(0, 10)` on a local midnight is a day early east of
+  Greenwich.** At UTC+5:30 the create form defaulted a goal's start to yesterday,
+  making it day 1 of 6 with 8.33 units already expected — a brand new goal opened
+  reading "critical". `dayKey` in `lib/day.ts` already formats from local
+  components and is what the rest of the app keys days by. The edit form's
+  deadline field had the same bug and would have quietly moved a deadline back a
+  day on every save.
+- **The completion celebration was unmounted by the write that triggered it.**
+  Completing a goal moves it out of the active list into the compact completed
+  history, so the card that fired the write is destroyed by the revalidation that
+  follows — taking the banner and the particle burst with it after a couple of
+  frames. The largest moment in the feature was the one guaranteed not to be
+  seen. It is hoisted to `GoalList`, which does not unmount, and clears on a
+  timer rather than an animation event because under reduced motion the burst
+  renders nothing and would never fire one.
+
+**Three celebration tiers, and the gap between them is the design.** A progress
+tick is a single box-shadow pulse on the card edge — the card must not move,
+because its number is being read at that moment. A milestone is a plate offset in
+the opposite ink, the registration error the panels already use. Completion is
+the only thing in the app that throws particles, capped at 26 squares in the four
+plate colours: past that it stops reading as ink off a press and starts reading
+as a party popper, which is the line `CLAUDE.md` draws between premium and
+childish. Squares, because the radius rule is universal.
+
+**`qa/goals.test.mjs`** — 48 assertions, weighted at the invisible half. A bar
+and a percentage fail in front of you; an XP award that pays twice, a milestone
+that re-fires on a decrease-and-re-cross, a band that flips on one unit, and an
+expiry that never arrives because nothing runs at midnight do not.
+
+---
+
 **2026-09-06 (bugfix) — `DimensionalSpots` scrolls with the environment; the
 earlier reasoning for pinning it was wrong**
 

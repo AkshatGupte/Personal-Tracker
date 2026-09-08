@@ -8,6 +8,7 @@ import { ThreadDivider } from "@/components/spiderverse/Threads";
 const BUILT = [
   { label: "Home", href: "/" },
   { label: "Progress", href: "/progress" },
+  { label: "Goals", href: "/goals" },
 ];
 
 // Shown as planned, never as a working link. See the scope rule in CLAUDE.md.

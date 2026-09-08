@@ -427,6 +427,7 @@ resolve the project's `@/` imports.
 |---|---|
 | `period-buckets.test.mjs` | Week and month bucketing, including leap-year February, the year boundary, and the 31st-of-the-month overflow that breaks naive month arithmetic. |
 | `tree.test.mjs` | The Topic tree: shape and ordering, depth limits, move legality, and the three coverage signals. |
+| `goals.test.mjs` | The Goal reward rules, weighted at the half that fails silently: the high-water anti-farming mark (37→38→37→38 pays once), milestones crossing once ever, momentum bands fitted to the brief's own worked examples and swept for single-unit flicker, expiry derived rather than stored, and the dashboard's completion-rate arithmetic. |
 | `terrain.test.mjs` | Elevation is cumulative and **cannot fall as activity ages** — the same rows read 1/7/14/30/90/365 days later are worth the same. Asserts in the same breath that the *windowed* total does fall, which is why the headline numeral cannot be `Terrain.peak`, and that the drawing's window is untouched. Also the **y-axis domain**: the scale is the next milestone rather than the series' own total, so two activities occupy a fifth of the frame and not all of it, and no elevation from 1 to 2600 reaches the top edge. Restoring the old self-normalising scale fails four assertions. |
 
 ## Using it

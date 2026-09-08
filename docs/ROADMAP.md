@@ -78,6 +78,28 @@ one is functionally complete, unless explicitly told otherwise.
       of real activity have built up, so the shape is chosen rather than
       guessed.
 
+## Goals — Goal Tracking & Rewards (added 2026-09-08, outside the phase order)
+
+Requested directly and built ahead of the remaining Phase 2 item. A Goal is a
+time-boxed target with a deadline and a terminal state — the opposite shape to a
+Track, which never finishes. See `docs/SCHEMA.md` and the XP note in `CLAUDE.md`.
+
+- [x] Goal model: title, description, category, target, unit, start, deadline,
+      weekly/monthly/custom cadence, status
+- [x] Dashboard: totals, completion rate, average progress, week/month/all-time
+      tallies, goal streak, category performance
+- [x] Goal cards: animated bar with milestone marks, momentum against the
+      deadline, escalating deadline weight, fast `+1` and set-to paths
+- [x] Milestones at 25/50/75/100, each paying once — enforced by a unique
+      constraint, not a flag
+- [x] XP ledger with an anti-farming high-water mark; three celebration tiers
+- [x] Filters (all/active/completed/expired/archived) and a completed history
+      that is never removed
+- [x] `qa/goals.test.mjs` — 48 assertions over the reward and momentum rules
+
+Not built, and deliberately: no levels, no badges, no cross-goal leaderboard.
+The XP reversal is scoped to Goals only — see `CLAUDE.md`.
+
 ## Phase 3 — Smart Coverage & Insights
 - [ ] LLM call: generate suggested curriculum on Track creation
       (structured JSON output, Claude Haiku)
