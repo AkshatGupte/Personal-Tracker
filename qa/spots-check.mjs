@@ -381,6 +381,88 @@ console.log(`\nbody order — threads ${order.threads}, voids ${order.spots} at 
 if (order.spots < 0) fail("void layer not found for the ordering check");
 else if (!(order.spots > order.threads)) fail("void layer does not paint after the threads");
 
+/* ------------- 6b: a tear is anchored to the page, not to the screen ------------- */
+
+/*
+  A spot is a *hole in the background*, and the background scrolls with the
+  document. So the hole has to scroll with it.
+
+  It did not, and nothing here noticed: the three spot layers were `fixed
+  inset-0`, left that way deliberately when the atmosphere was made scrollable
+  on the reasoning that a tear is "a transient event where you are looking".
+  That reasoning was wrong. Pinned to the viewport, the hole slides across the
+  structures it was supposedly torn out of — reported as the spot moving down
+  the page as you scroll — and the occlusion that is the whole effect stops
+  landing on anything in particular.
+
+  This opens one tear, records where it and a neighbouring wireframe structure
+  sit in *document* coordinates, then scrolls a long way in both directions and
+  requires both numbers to be unchanged. The second number is the one that
+  matters: an absolute position could in principle be right while the tear still
+  drifted relative to its surroundings, and it is the relationship that the
+  effect is made of.
+
+  Measured against the bug: re-pinning the layers moves the tear by +500, +795
+  and -200 document px across the same three offsets.
+*/
+
+/*
+  On the track page rather than home, and the difference is the size of the
+  signal: home is barely a screen and a half, so a pinned tear only has room to
+  drift ~59px before it scrolls away, while the track page gives it hundreds.
+  Both catch the bug; this one catches it with room to spare.
+*/
+await p.goto(pages[1].url);
+const anchorProbe = `(() => {
+  const spot = document.querySelector('[data-sv-spots] [data-void]');
+  const threads = [...document.body.children].find((e) =>
+    String(e.className || "").includes("text-sv-cyan"),
+  );
+  const struct = threads && threads.querySelector("svg:not([preserveAspectRatio])");
+  if (!spot || !struct) return null;
+  const docTop = (el) => Math.round(el.getBoundingClientRect().top + scrollY);
+  return { spot: docTop(spot), gap: docTop(spot) - docTop(struct) };
+})()`;
+
+await p.eval(`scrollTo(0, 200); 1`);
+await sleep(250);
+await openVoids(p);
+const anchor0 = await p.eval(anchorProbe);
+
+if (!anchor0) {
+  fail("anchoring: no void opened to measure");
+} else {
+  let worstDrift = 0;
+  let worstGap = 0;
+  let measured = 0;
+  for (const y of [640, 1100, 0]) {
+    await p.eval(`scrollTo(0, ${y}); 1`);
+    await sleep(320);
+    const now = await p.eval(anchorProbe);
+    // A tear is short-lived; if it closed mid-sweep there is nothing to compare.
+    if (!now) continue;
+    measured++;
+    worstDrift = Math.max(worstDrift, Math.abs(now.spot - anchor0.spot));
+    worstGap = Math.max(worstGap, Math.abs(now.gap - anchor0.gap));
+  }
+  /*
+    A pixel of tolerance, and no more. Sub-pixel layout rounding can move a
+    rounded rect by one; five hundred is the bug.
+  */
+  if (measured === 0) console.log("\nanchoring — void closed before the sweep, not measured");
+  else if (worstDrift > 1 || worstGap > 1)
+    fail(
+      `void drifts with the page: ${worstDrift}px of document movement, ` +
+        `${worstGap}px against the structures around it (max 1)`,
+    );
+  else
+    console.log(
+      `\nanchoring — void held its document position across ${measured} scroll offsets ` +
+        `(drift ${worstDrift}px, gap ${worstGap}px)`,
+    );
+}
+await p.eval(`scrollTo(0, 0); 1`);
+
 /* ------------------------------ 7: frame cost ------------------------------ */
 
 /*

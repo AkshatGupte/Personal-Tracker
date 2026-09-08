@@ -37,8 +37,9 @@ one is functionally complete, unless explicitly told otherwise.
       — **partly retired.** `CheckInBeat`/`CheckInReport` published from the task
       row and went with tasks. Recording activity now confirms with an optimistic
       count and a shatter, which keeps the "that landed" half; the composed beat
-      and the streak-milestone celebration are gone, and nothing calls
-      `milestoneCrossed` today
+      and the streak-milestone celebration are gone; `milestoneCrossed` and
+      `STREAK_MILESTONES` were deleted on 2026-09-06 after four handoffs with no
+      caller
 - [x] Weekly summary view (per-track activity, coverage, streak status) — `/progress`
 - [x] Monthly summary view — `/progress?period=month`. `monthBuckets` beside
       `weekBuckets`; `rollUp`, `dailyBreakdown` and `describePeriod` were
@@ -49,10 +50,12 @@ one is functionally complete, unless explicitly told otherwise.
 - [x] Milestone detection + simple celebratory UI. Shipped as **streak**
       milestones at 7/14/30/60/100 days, derived rather than stored, so a
       milestone crossed on an earlier day cannot replay
-      — **the celebration is currently not rendered.** It lived in the check-in
-      report line, which the restructure removed. `milestoneCrossed` is intact
-      and untested-against-nothing (its suite still passes); if it returns it
-      belongs on the first activity of a day. The volume milestones in
+      — **retired, and the code is gone as of 2026-09-06.** The celebration
+      lived in the check-in report line, which the restructure removed;
+      `milestoneCrossed`, `STREAK_MILESTONES` and their suite were deleted
+      rather than kept waiting for a caller. If a streak celebration returns it
+      belongs on the first activity of a day and should be written against the
+      activity model, not restored from `git log -- lib/streak.ts`. The volume milestones in
       `lib/terrain.ts` (`ELEVATION_MILESTONES`, 10/50/100/250/500 cumulative
       activities) are a separate signal and are still drawn on the terrain
 - [x] **Recursive Topic tree + contribution tracking.** Tracks hold a Topic tree

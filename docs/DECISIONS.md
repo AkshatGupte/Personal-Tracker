@@ -5,6 +5,122 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-06 (bugfix) — `DimensionalSpots` scrolls with the environment; the
+earlier reasoning for pinning it was wrong**
+
+Reported: a spot moves down the page as you scroll instead of staying where it
+opened. It does, and the decision that caused it is recorded two entries above,
+where the scrolling background was introduced:
+
+> "This one stays pinned to the viewport while the two layers above it now
+> scroll, and that is the right split: a tear is a transient event that happens
+> where you are looking, not a fixture placed in the environment."
+
+**That confused where a tear opens with what it belongs to.** A spot is a *hole
+in the background* — `CLAUDE.md` and the component's own docblock both say so,
+and the interior layer sits at `-z-10` specifically to paint over the rift glows
+and the neon structures and eat the part of the environment it covers. Pin the
+hole to the viewport while the background scrolls and the thing it was cut out
+of slides out from behind it. The occlusion is the whole effect, and it stops
+landing on anything in particular.
+
+The "spreading them over the document would fire most of them onto screens
+nobody is on" worry was real and is answered without pinning: `scrollY` is
+captured **at spawn**, so a tear still opens in the viewport the reader is
+looking at, and only then becomes a fixture of the page. Read at paint instead
+of at spawn and you get the bug back.
+
+**All three layers moved, and they had to move together** — the interior at
+`-z-10`, the torn edge at `z-30`, and the corruption burst. They are one tear
+drawn in three places; anchoring one and not the others would tear the tear in
+half. The burst's coordinate now comes off the spot's own `docY` rather than
+being re-derived from `innerHeight` at fire time, which was wrong twice over:
+viewport-relative, *and* re-read from whatever the viewport was seconds later.
+
+The off-screen guard in `fireBurst` ("corruption outside the frame is cost with
+nothing to show for it") now compares the burst's document y against the current
+scroll window. That is what it always meant; it stopped saying it the moment the
+tear left viewport space.
+
+**No check caught this, which is why the user did.** `qa/spots-check.mjs`
+*reported* the layer's `position` in its console line and never asserted it, so
+the value silently went from `fixed` to `fixed` while the world around it
+changed. It now opens a tear on the track page, records its document position
+and its distance to the nearest wireframe structure, scrolls to three offsets and
+requires both to be unchanged within 1px. The second number is the one that
+matters — an absolute position could be right while the tear still drifted
+relative to its surroundings, and the relationship is what the effect is made
+of. Verified against the bug: re-pinning gives 227px on the track page (59px on
+home, which is why the check does not use home).
+
+**Process note.** Two dead ends cost time here and neither was the app:
+`ChunkLoadError` from rebuilding `.next` under a running server — the same
+family as the `next build` hazard already in `qa/README.md`, and the fix is the
+same, stop the server, `rm -rf .next`, rebuild, start. And a stale server was
+serving one build's HTML against another build's chunks, which presents as an
+empty page and looks exactly like a React crash.
+
+---
+
+**2026-09-06 (final) — Three cleanup calls before the usage period**
+
+**`app/not-found.tsx` added.** There was none, so `notFound()` — called by
+`app/tracks/[id]` for a dead id and by `/lab` outside development — rendered
+Next's stock page *inside* the root layout: an unstyled black-on-white slab with
+the rift glows and wireframes drawing behind it. It read as a crash. The new page
+reuses `ThreadVoid`, which already meant exactly this ("a structure with nothing
+in it"), and spends no comic panel: `CLAUDE.md` allows one per screen for the
+level that should dominate, and a 404 outranking a Track would be wrong.
+
+**The check-in outcome cluster deleted from `lib/streak.ts`.** `CheckInKind`,
+`CheckInOutcome`, `STREAK_MILESTONES`, `milestoneCrossed` and `describeCheckIn`,
+plus `qa/streak-milestone.test.mjs`. Verified dead before removal, and the shape
+of the deadness is the point: the *only* production import from `lib/streak` is
+`EMPTY_STREAK, summariseStreak` in `lib/progress.ts`. `milestoneCrossed` did have
+a caller — `describeCheckIn` — and `describeCheckIn`'s only caller was the suite
+testing it. A closed loop of code proving code nothing runs, kept across four
+handoffs in case the celebration returned.
+
+It describes what a *check-in* did to a streak, and the check-in stopped existing
+in the topic-tree restructure. A function nothing can call is not a feature
+waiting to happen; it is a claim about the app that stopped being true. A note at
+the foot of the file records what went and says to rewrite rather than restore,
+because it was written against a model that is gone. **The naming rule survives
+the removal**: `ELEVATION_MILESTONES` is still not called `MILESTONES`, precisely
+because there was once a second list on a second signal.
+
+**`qa/column-contrast.mjs` deleted; `qa/ground-stability.mjs` written.** The old
+check failed by design for weeks behind a README warning block, which is the
+worst state a check can be in — it trains people to stop reading failures.
+
+Two independent reasons it was obsolete, and the second one had not been noticed:
+its threshold (`MAX_GROUND_L = 0.02`) asserted the reverted column veil; **and
+its stated rationale — "the atmosphere layers are `position: fixed`, so they are
+locked to the viewport while the page scrolls past them" — stopped being true
+when the atmosphere started spanning the document.** The defect it guarded can no
+longer occur. Measured to confirm rather than assumed: the same row's ground is
+byte-identical at scrollY 0/150/300/450, spread 0.0000.
+
+So the replacement asserts the invariant that now holds — the ground under a row
+does not change as you scroll — which is a genuine, current, load-bearing
+property and a one-word change away from being broken (`absolute` → `fixed` on
+any atmosphere layer). Calibrated in both states: clean 0.0009-0.0012 everywhere;
+re-pinned 0.0028 on the short home page and 0.006-0.020 on routes with room to
+scroll. `MAX_DRIFT = 0.0025` sits between, chosen so the regression is caught even
+on the page with least travel — the first threshold, 0.004, let the home page
+pass while pinned. Verified by re-pinning the layer and watching all six go red.
+
+**Its first version was wrong in the same family of way as the type check's.**
+The baseline was keyed by element text; `/progress` renders "activities this
+week" three times, so it compared one period card's ground against another's and
+reported a confident 0.0109 drift that was two different places on the page.
+Three other strings there are duplicated too. Elements are stamped with a
+`data-gs` id before any scrolling now. **That is twice in two sessions that a new
+check's first version asserted something other than what it claimed** — the
+lesson is that a check is not finished until it has been made to fail on purpose.
+
+---
+
 **2026-09-06 (latest) — The trajectory is per-track, per-day, and scaled against
 the next milestone**
 

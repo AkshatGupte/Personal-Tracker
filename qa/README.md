@@ -137,55 +137,55 @@ clear with it, worst 6.41:1.**
 PNG is decoded in the script from `node:zlib` rather than adding a dependency —
 the rest is a scanline unfilter, and this directory stays dependency-free.
 
-## Checking the reading column against the atmosphere
-
-`qa/column-contrast.mjs` guards one invariant: **no text in the content column
-ever sits on a bright ground, at any scroll offset.**
-
-> **This check currently FAILS, by decision.** The fix it was written for — a
-> mask holding the atmosphere back from the reading column — was reverted on
-> 2026-09-06 because of how it looked: a flat rectangle down the middle of a
-> wide page, with the effect surviving only in the margins. See
-> `docs/DECISIONS.md`. Expect 14 failures, worst region ground L 0.72.
->
-> Glyph legibility is *not* what is failing here — `qa/contrast-check.mjs` is
-> still all clear, because the ink halo puts every letter on its own `--bg`
-> ground. This check measures the region, gaps between words included. Keep the
-> two apart when reading a result.
+## Checking that the ground does not move under the text
 
 ```
-node qa/column-contrast.mjs http://localhost:3488 /tracks/<id>
+node qa/ground-stability.mjs http://localhost:3489
 ```
 
-The defect it exists to prevent is not "some text is low contrast" — it is that
-the *same* text passed or failed depending on where the page happened to be
-scrolled to, because the atmosphere layers are `position: fixed` while the page
-is about 1950px tall. Measured before the fix on one topic row: 3.50:1 at
-scrollY 0, 5.71:1 at 260, 7.05:1 at 520.
+**This replaced `qa/column-contrast.mjs`, which was deleted on 2026-09-06.**
+That check asserted no text in the reading column ever sat on a ground brighter
+than L = 0.02 — a ceiling that only made sense while the atmosphere was masked
+out of the column. The mask was reverted the day after it shipped, and the check
+then spent several sessions failing by design with a warning block here telling
+everyone to ignore it. **A check that always fails teaches people to stop reading
+failures**, so it went.
 
-It sweeps two widths, three routes and four scroll offsets, hides the text,
-photographs the frame and reads the real composited ground behind every text
-region. Two assertions: nothing brighter than L 0.02 behind text, and nothing
-under 4.5:1.
+What survives is the defect it was written for, which was never "some text is
+low contrast": it was that the *same* text passed or failed depending on where
+the page happened to be scrolled to, because the atmosphere was `position:
+fixed` and pinned to the viewport while the page slid past it. Measured on one
+topic row at the time: 3.50:1 at scrollY 0, 5.71:1 at 260, 7.05:1 at 520.
 
-**Three ways an earlier version of it lied, all now handled in the file:**
+That is structurally impossible now — the atmosphere spans the document and
+scrolls with the content, so a row and its ground move together — and this
+asserts it stays that way. It samples one element's ground at four scroll
+offsets on three routes at two widths and requires the variation to stay
+negligible.
 
-- `GlitchText` paints two offset duplicates of every heading. Hiding only the
-  base string leaves a cyan copy of the word where the word was, and a cyan
-  label then measures 1.00:1 against a "ground" of L 0.86 — it is reading itself.
-  `.sv-glitch-layer` is hidden with the text.
-- Text on a solid surface — a comic panel, a yellow button, a filled activity
-  cell — is not on the atmosphere at all, and `visibility: hidden` takes the
-  surface away with the text. Those are excluded.
-- The heatmap's day-by-day list lives in a closed `<details>`, which Chrome hides
-  with `content-visibility` rather than `display: none`. Its rows still report a
-  laid-out rect, so unpainted rows were measured — and their stale rects landed
-  on a table two panels away. `checkVisibility()` catches it.
+**The failure it catches is a one-word change**: making any atmosphere layer
+`position: fixed` again. That looks harmless and costs nothing at scroll 0. The
+speed lines *are* still fixed, deliberately, for a measured repaint reason — they
+are a uniform 4%-opacity hairline field with no located feature, and the
+threshold is set from what they actually contribute.
 
-And one trap worth repeating from the README's own list: a `\d` written inside a
-`page.eval` template literal becomes a literal `d`. That silently disabled the
-"skip text on a solid surface" rule and the check confidently reported 1.03:1 on
-ink-on-yellow buttons.
+**Calibrated in both states rather than guessed.** Clean it reads 0.0009-0.0012
+on every page and width; with the atmosphere re-pinned it reads 0.0028 on the
+short home page and 0.006-0.020 on the routes long enough to scroll properly.
+`MAX_DRIFT = 0.0025` sits between those bands, so the regression is caught even
+on the page with the least room to move — verified by re-pinning the layer and
+watching all six checks go red.
+
+**One way it lied first, worth not repeating.** The baseline was keyed by the
+element's text, and `/progress` renders "activities this week" three times, once
+per period card — so it compared one card's ground against another's and reported
+a confident 0.0109 drift that was really two different places on the page. Three
+other strings on that route are duplicated too. Elements are stamped with a
+`data-gs` id before any scrolling now, so identity comes from the element.
+
+Not a contrast check. `qa/contrast-check.mjs` measures glyph contrast against the
+ink halo and is the thing that says text is *readable*; this says the answer does
+not depend on scroll position. Keep the two apart when reading a result.
 
 ## Checking the scrolling multiverse
 
@@ -257,6 +257,24 @@ Frame cost is reported against a no-voids baseline on the same page, because
 `cdp.mjs` launches with `--disable-gpu`: every pixel including `backdrop-filter`
 is composited on the CPU, so an absolute number means little and only a
 *regression* against baseline is meaningful.
+
+**Anchoring — added 2026-09-06 after a bug reached the user.** A spot is a hole
+in the background and the background scrolls, so the hole has to scroll with it.
+The three spot layers were left `fixed inset-0` when the atmosphere was made
+scrollable, and the tear drifted down the page as you scrolled — the occlusion
+stopped landing on anything. The suite now opens a tear on the track page,
+records its **document** position and its distance to the nearest wireframe
+structure, scrolls to three offsets and requires both unchanged within 1px.
+
+The distance is the load-bearing half: an absolute position could be right while
+the tear still drifted against its surroundings, and the relationship is what the
+effect is made of. Verified against the bug — re-pinning the layers gives 227px
+of drift on the track page. It uses the track page rather than home because home
+is barely a screen and a half, where the same bug only shows 59px.
+
+**Why nothing caught it before:** the check *reported* the layer's `position` in
+its console line and never asserted it, so the value stayed `fixed` while the
+world around it changed. A reported value is not a checked value.
 
 ## The effect lab
 
@@ -408,7 +426,6 @@ resolve the project's `@/` imports.
 | Suite | Covers |
 |---|---|
 | `period-buckets.test.mjs` | Week and month bucketing, including leap-year February, the year boundary, and the 31st-of-the-month overflow that breaks naive month arithmetic. |
-| `streak-milestone.test.mjs` | Streak milestone crossing: the crossing itself, no replay of an earlier day's, every non-advancing write (same-day recheck, undo, restart), and several milestones crossed at once. |
 | `tree.test.mjs` | The Topic tree: shape and ordering, depth limits, move legality, and the three coverage signals. |
 | `terrain.test.mjs` | Elevation is cumulative and **cannot fall as activity ages** — the same rows read 1/7/14/30/90/365 days later are worth the same. Asserts in the same breath that the *windowed* total does fall, which is why the headline numeral cannot be `Terrain.peak`, and that the drawing's window is untouched. Also the **y-axis domain**: the scale is the next milestone rather than the series' own total, so two activities occupy a fifth of the frame and not all of it, and no elevation from 1 to 2600 reaches the top edge. Restoring the old self-normalising scale fails four assertions. |
 

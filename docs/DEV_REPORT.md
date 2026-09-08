@@ -6,6 +6,89 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-06 (bugfix) — Tears now stay where they were torn
+
+**What was wrong:** when one of the dimensional tears opened and you scrolled,
+it slid down the page with you instead of staying put. Reported by the user.
+
+**Why it mattered more than it looked.** A tear is a *hole in the background* —
+its whole job is to eat the piece of the multiverse it covers, so you see
+through to the dark behind. When the background was made scrollable, the tears
+were deliberately left pinned to the screen, on the reasoning that a tear is a
+passing event that happens wherever you are looking. That reasoning was wrong,
+and it was mine. Pin the hole and the background slides out from behind it: the
+tear stops lining up with anything, and the effect it exists to create quietly
+stops working.
+
+**The fix:** a tear now records where it is *on the page* at the moment it opens,
+and keeps that position for the rest of its life. It still opens where you are
+looking — nothing about when or where tears appear has changed — but once open it
+belongs to that spot in the document and travels with the structures and threads
+around it. All three parts of a tear moved together: the hole itself, the torn
+edge drawn over the interface, and the corruption burst.
+
+**Nothing else changed.** No change to the animation, the appearance, the timing,
+the archetypes, the corruption effects or the visual design.
+
+**What was checked:** a tear was opened at a known place and the page scrolled a
+long way in both directions. Its position on the page and its distance from the
+nearest wireframe structure both stayed **exactly** the same (0px of movement,
+0px of drift against its surroundings). Putting the bug back makes it move 227px.
+That check is now part of the tear test suite, so this cannot come back
+unnoticed — no existing check caught it, which is why it reached the user.
+
+**Roadmap status:** no roadmap item — a fix to the scrolling background work.
+
+---
+
+## 2026-09-06 (final) — Three loose ends closed before the usage period
+
+**What was built:** housekeeping, no new features. Three things that had been
+listed as "known issues" across four handoffs are now dealt with.
+
+**1. Rendred has its own 404.** A mistyped address, or an old link to a track you
+deleted, used to land on Next's stock page — white background, system font,
+"404 | This page could not be found" — sitting inside the app's own dark
+atmosphere, which read as a crash rather than as a page that is not there. There
+is now a proper one: the masthead, "Nothing here", and the same empty-state
+device the rest of the app uses (one wireframe shape with nothing inside it),
+with a sentence explaining that a deleted track keeps its history but loses its
+page, and two ways back. Nothing new was invented for it — every piece is
+already on another screen.
+
+**2. Dead streak-milestone code removed.** The app used to celebrate hitting a
+7/14/30/60/100-day streak, as part of the "check-in" moment. Check-ins stopped
+existing months ago when activity became a per-day count, and the celebration
+went with them — but the code behind it stayed, along with a test suite that was
+the only thing using it. A closed loop: code proving code that nothing calls. It
+has been deleted. If a streak celebration is ever wanted again it should be
+written fresh against how the app works now, and the old version is in the
+history if anyone wants to read it.
+
+**3. A permanently-failing check replaced with one that means something.** One
+QA script had been failing on purpose for weeks, with a warning note telling
+everyone to ignore it, because the feature it tested was deliberately removed. A
+check that always fails trains people to stop reading failures, so it is gone.
+
+What replaced it is more useful. The original worry was real: text used to become
+harder or easier to read *depending on where you had scrolled to*, because the
+glowing background was pinned to the screen while the page slid past it. That
+cannot happen now — the background scrolls with the page — and the new check
+proves it stays that way, by photographing the same row at four scroll positions
+and confirming what is behind it does not change. It was verified by
+deliberately re-pinning the background and watching all six checks go red.
+
+**Also fixed:** the new check lied on its first run, reporting a confident
+failure on the progress page. It was matching rows by their text, and that page
+prints "activities this week" three times — so it was comparing one card against
+a different card. It now tracks elements by identity.
+
+**Roadmap status:** no roadmap item. The one open Phase 2 item — the learning
+momentum view — is deliberately untouched and stays blocked until there is real
+activity data to choose its shape against. Phase 3 is not started.
+
+---
+
 ## 2026-09-06 (latest) — The progress charts are per-track, and the scale is honest
 
 **What was built:** the elevation chart used to be drawn so that it always

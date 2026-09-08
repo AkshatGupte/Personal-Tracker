@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { buildShards, type Shard } from "./GlitchShatter";
 import { r1, rng } from "./rng";
 import { useReducedMotion } from "./useReducedMotion";
+import { useDocumentBands } from "./useDocumentBands";
 
 /**
  * Dimensional tears — holes that rip open in the interface, show the dark
@@ -1606,9 +1607,32 @@ type Piece = {
 type Spot = {
   id: number;
   kind: Archetype;
-  /** Viewport percentages, so a resize mid-life does not strand a void. */
+  /**
+   * Horizontal placement, as a percentage of the viewport width. Still a
+   * percentage because there is no horizontal scroll: document x and viewport
+   * x are the same number, and a percentage survives a resize.
+   */
   x: number;
+  /**
+   * Vertical placement *at the moment it opened*, as a viewport percentage.
+   *
+   * Kept because the chaining and the burst pose maths are written in this
+   * space, and because it is what a resize would want. It is **not** what the
+   * tear is drawn at — see `docY`.
+   */
   y: number;
+  /**
+   * Where the tear sits in the *document*, in px from the top of the page.
+   *
+   * **This is the fix for a tear that slid over the multiverse as you
+   * scrolled.** A spot is a hole in the background, and the background scrolls
+   * with the document now; a hole pinned to the viewport stops being a hole in
+   * anything, because the thing it was cut out of moves out from behind it. It
+   * opens where you are looking — `scrollY` is captured at spawn — and from
+   * then on it belongs to that place in the page and travels with the
+   * structures and threads around it.
+   */
+  docY: number;
   ink: number;
   lifeMs: number;
   pieces: Piece[];
@@ -1639,7 +1663,9 @@ type Spark = {
 
 type Burst = {
   id: number;
+  /** Viewport x — the same as document x, there being no horizontal scroll. */
   cx: number;
+  /** Document y, inherited from the tear's own anchor so the two stay welded. */
   cy: number;
   size: number;
   /** The void's own scale when it fired. The whole burst is drawn at this, so
@@ -1882,6 +1908,13 @@ function placement(): { x: number; y: number } {
 export default function DimensionalSpots() {
   const reduced = useReducedMotion();
   const [spots, setSpots] = useState<Spot[]>([]);
+  /*
+    The same measurement the atmosphere and the threads are sized from, so all
+    three layers cover exactly the same page and a tear cannot be clipped at a
+    height the structures behind it carry on past.
+  */
+  const { height, measured } = useDocumentBands();
+  const documentHeight = measured ? `${height}px` : "100vh";
   const [bursts, setBursts] = useState<Burst[]>([]);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const nextId = useRef(0);
@@ -1915,8 +1948,22 @@ export default function DimensionalSpots() {
     ) => {
       const now = Date.now();
       if (now - lastBurst.current < BURST_GAP_MS) return;
-      // Corruption outside the frame is cost with nothing to show for it.
-      if (cx < -size || cy < -size || cx > window.innerWidth + size || cy > window.innerHeight + size)
+      /*
+        Corruption outside the frame is cost with nothing to show for it.
+
+        `cy` is a document coordinate now, so "the frame" is the part of the
+        document currently on screen — which is what this always meant, and what
+        it stopped saying once the tear anchored to the page instead of to the
+        viewport. A tear that has scrolled away does not spend a backdrop-filter
+        on a burst nobody can see.
+      */
+      const viewTop = window.scrollY;
+      if (
+        cx < -size ||
+        cx > window.innerWidth + size ||
+        cy < viewTop - size ||
+        cy > viewTop + window.innerHeight + size
+      )
         return;
       lastBurst.current = now;
 
@@ -2028,10 +2075,19 @@ export default function DimensionalSpots() {
       });
 
       live.current += 1;
+      /*
+        The document coordinate, fixed once, here.
+
+        Read at spawn rather than at paint: the tear opens where the reader is
+        looking, and then stays where it opened. Reading `scrollY` later would
+        put it wherever they had scrolled to by then, which is the bug this
+        replaced — the hole drifting across the structures it was torn out of.
+      */
+      const docY = window.scrollY + (y / 100) * vh;
       positions.set(id, { px: (x / 100) * vw, py: (y / 100) * vh, ink });
       setSpots((current) => [
         ...current,
-        { id, kind, x, y, ink, lifeMs: script.lifeMs, pieces, css },
+        { id, kind, x, y, docY, ink, lifeMs: script.lifeMs, pieces, css },
       ]);
 
       /*
@@ -2062,7 +2118,14 @@ export default function DimensionalSpots() {
           const step = Math.round(open * (script.stepCount - 1));
           fireBurst(
             (x / 100) * window.innerWidth + pose.x,
-            (y / 100) * window.innerHeight + pose.y,
+            /*
+              Document space, off the tear's own anchor — not
+              `(y / 100) * innerHeight`, which was both viewport-relative and
+              re-derived from whatever the viewport happened to be at the moment
+              the burst fired. The corruption has to break out of the opening,
+              so it has to share the opening's coordinate exactly.
+            */
+            docY + pose.y,
             /*
               Exactly the piece's box, and it must stay exactly that.
 
@@ -2212,14 +2275,15 @@ export default function DimensionalSpots() {
       <div
         aria-hidden="true"
         data-sv-spots=""
-        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 overflow-hidden"
+        style={{ height: documentHeight }}
       >
         {spots.map((spot) => (
           <div
             key={spot.id}
             data-void={spot.kind}
             className="absolute"
-            style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
+            style={{ left: `${spot.x}%`, top: spot.docY }}
           >
             {spot.pieces.map((piece) => (
               <div
@@ -2303,13 +2367,14 @@ export default function DimensionalSpots() {
       <div
         aria-hidden="true"
         data-sv-tear=""
-        className="pointer-events-none fixed inset-0 z-30 overflow-hidden"
+        className="pointer-events-none absolute inset-x-0 top-0 z-30 overflow-hidden"
+        style={{ height: documentHeight }}
       >
         {spots.map((spot) => (
           <div
             key={spot.id}
             className="absolute"
-            style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
+            style={{ left: `${spot.x}%`, top: spot.docY }}
           >
             {spot.pieces.map((piece, pieceIndex) => (
               <div
@@ -2528,7 +2593,8 @@ export default function DimensionalSpots() {
         <div
           aria-hidden="true"
           data-sv-corrupt=""
-          className="pointer-events-none fixed inset-0 z-30 overflow-hidden"
+          className="pointer-events-none absolute inset-x-0 top-0 z-30 overflow-hidden"
+          style={{ height: documentHeight }}
         >
           {bursts.map((burst) => (
             <div

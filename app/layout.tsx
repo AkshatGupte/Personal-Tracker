@@ -82,13 +82,19 @@ export default function RootLayout({
             interface. That occlusion is the whole effect: these are holes in
             the background, not shapes on top of it. See DimensionalSpots.
 
-            This one stays pinned to the viewport while the two layers above it
-            now scroll, and that is the right split: a tear is a transient event
-            that happens where you are looking, not a fixture placed in the
-            environment. Spreading them over the document would fire most of
-            them onto screens nobody is on. The occlusion still works — same
-            depth, later in the DOM, so it paints over whatever band of
-            background has scrolled under it. */}
+            **This scrolls with the two layers above it, and getting that
+            wrong was a real bug.** It was left pinned to the viewport when the
+            atmosphere was made scrollable, on the reasoning that a tear is a
+            transient event that happens where you are looking. That reasoning
+            confused *where a tear opens* with *what it belongs to*. A spot is a
+            hole in the background; pin the hole and the background slides out
+            from behind it, so the tear drifts down the page as you scroll and
+            stops eating anything in particular — which is the entire effect.
+
+            It still opens where the reader is looking: `scrollY` is captured at
+            spawn, once, and from then on the tear belongs to that place in the
+            document and travels with the structures and threads around it.
+            `qa/spots-check.mjs` asserts it. */}
         <DimensionalSpots />
         {/* Filter definitions for true chromatic aberration, defined once and
             referenced by url() from GlitchText and the page transition. */}

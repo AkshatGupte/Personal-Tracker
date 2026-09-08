@@ -204,12 +204,19 @@ being asked.
   that used to leave the frame vertically retarget to the nearest solid in the
   neighbouring band, so a boundary has structure running through it; only at the
   document's top and bottom do they still run off the edge.
-- **Two layers stay pinned to the viewport, both deliberately.** The speed lines,
-  because `sv-speedline-pan` animates `background-position-x` and that is a full
-  repaint every frame — measured at 66.7ms/frame against a 16.7ms floor when it
-  scrolls, and the only layer that costs anything; they are also a uniform field
-  with no position to scroll to. And `DimensionalSpots`, because a tear is a
-  transient event where you are looking, not a fixture in the environment.
+- **The speed lines are the only layer pinned to the viewport.**
+  `sv-speedline-pan` animates `background-position-x`, which is a full repaint
+  every frame — measured at 66.7ms/frame against a 16.7ms floor when it scrolls,
+  and the only layer that costs anything. They are also a uniform field with no
+  position to scroll *to*, so nothing is lost.
+- **Everything else in the environment scrolls together, `DimensionalSpots`
+  included.** A spot was left `fixed` at first, on the reasoning that a tear is a
+  transient event where you are looking — and that was wrong and shipped as a
+  bug. A spot is a *hole in the background*: pin the hole and the background
+  slides out from behind it. It captures `scrollY` at spawn so it still opens
+  where the reader is looking, then holds that document position for life.
+  Structures, threads, spots, the torn edge and the corruption burst must all
+  keep their spatial relationships; `qa/spots-check.mjs` asserts it.
 
 **The terrain metaphor — unchanged, and still the product's signature:**
 - Elevation is cumulative activity summed from `TopicActivity`; it only rises.
@@ -251,18 +258,24 @@ Nothing here finishes: a leaf is a recurring activity and has no terminal state.
 Any ratio reads "how much of this was worked today" — coverage — never "how many
 are finished".
 
-**Milestones exist on two of these signals and must not be crossed over.**
-`STREAK_MILESTONES` (7/14/30/60/100 consecutive days) belongs to consistency and
-is yellow; `ELEVATION_MILESTONES` (10/50/100/250/500 cumulative activities)
-belongs to volume and is drawn on the terrain. Neither is called plain
-`MILESTONES`, precisely so they cannot be reached for interchangeably.
+**There is one milestone list, and its name is deliberate.**
+`ELEVATION_MILESTONES` (10/50/100/250/500 cumulative activities) belongs to
+volume, is drawn on the terrain, and is now also the trajectory chart's y-axis
+ceiling. It is **not** called plain `MILESTONES`, and that matters even though
+it is currently alone: there used to be a second list on a second signal, and
+the specific name is what stopped the two being reached for interchangeably.
 
-A crossed streak milestone **is currently not celebrated at all.** It used to
-restyle the check-in report line and throw the streak numeral's misregistration
-harder; both belonged to the check-in beat, which the restructure removed with
-tasks. `milestoneCrossed` still exists in `lib/streak.ts` and nothing calls it.
-If it is brought back, it belongs on the first activity of a day — and it is
-still a *description* of the streak, never a modal, toast or confetti.
+**Streak milestones were removed on 2026-09-06.** `STREAK_MILESTONES`,
+`milestoneCrossed` and the whole check-in outcome cluster are gone from
+`lib/streak.ts` — see the note at the foot of that file. They described what a
+*check-in* did to a streak, and the check-in stopped existing in the topic-tree
+restructure; nothing had called them since, and they were reachable only from
+their own tests. `git log -- lib/streak.ts` has them.
+
+If a streak celebration is ever built, write it against the activity model
+rather than restoring that code, put it on the first activity of a day, **do not
+call the list `MILESTONES`**, and keep it a *description* of the streak — never a
+modal, toast or confetti.
 
 No XP, levels, points or badges. The comic theme is not a licence to add them,
 and neither is a milestone: a milestone is a *description of the streak*, not a
@@ -339,8 +352,9 @@ the shatter.
   tick, the report line and one emphasised numeral into a single moment. They
   published from the task row, and the restructure removed tasks; a provider
   nothing can fire is worse than none, so they went with it. The streak-milestone
-  celebration went too — `STREAK_MILESTONES` still exists in `lib/streak.ts` and
-  nothing renders it.
+  celebration went too, and on 2026-09-06 so did the code behind it —
+  `STREAK_MILESTONES` and `milestoneCrossed` were deleted rather than kept
+  waiting for a caller that four handoffs had not produced.
 - The route transition (`app/template.tsx`) is a 180ms transform+opacity cut.
   Fast enough to read as a cut, never as loading.
 - Always `prefers-reduced-motion` aware. Reduced motion must keep the theme's
