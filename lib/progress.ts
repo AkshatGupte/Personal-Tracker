@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { addDays, dayKey, startOfDay } from "@/lib/day";
-import { EMPTY_STREAK, summariseStreak } from "@/lib/streak";
+import { backdateWindow } from "@/lib/backdate";
+import { EMPTY_STREAK, streakState, summariseStreak, type StreakState } from "@/lib/streak";
 import {
   dailyBreakdown,
   monthBuckets,
@@ -146,6 +147,22 @@ function streakOf(days: Date[]) {
   return days.length === 0 ? EMPTY_STREAK : summariseStreak(days);
 }
 
+/**
+ * One track's current streak, on its own.
+ *
+ * Exists for the backdating path in `lib/actions/activity.ts`, which has to say
+ * what a write did to the streak and therefore has to read it twice around the
+ * write. **It reuses `activeDays(rows, liveLeafIds)` rather than deriving its
+ * own** — leaf-ness and "a day is active when a *current* leaf was worked" are
+ * the rules every other streak on every other screen is computed by, and a
+ * second derivation here would eventually disagree with all of them.
+ */
+export async function getTrackStreak(trackId: string): Promise<number> {
+  const [rows, trees] = await Promise.all([readActivity({ trackId }), readTrees([trackId])]);
+  const liveLeafIds = new Set(leaves(trees.get(trackId) ?? []).map((leaf) => leaf.id));
+  return streakOf(activeDays(rows, liveLeafIds)).current;
+}
+
 /** The live tree for a set of tracks, keyed by track id. */
 async function readTrees(trackIds?: string[]) {
   const rows = await prisma.topic.findMany({
@@ -161,6 +178,19 @@ async function readTrees(trackIds?: string[]) {
   }
   for (const [trackId, list] of grouped) byTrack.set(trackId, buildTree(list));
   return byTrack;
+}
+
+/**
+ * Every live topic, flattened in tree order, keyed by track.
+ *
+ * For the goal link picker. It goes through `readTrees` and `flatten` rather
+ * than querying topics directly so the picker lists them in the same order the
+ * track page does — ordering is `position` then name, decided in `buildTree`,
+ * and a second query would sort by whatever the database felt like.
+ */
+export async function readTopicTrees(): Promise<Map<string, TreeNode[]>> {
+  const byTrack = await readTrees();
+  return new Map([...byTrack].map(([trackId, roots]) => [trackId, flatten(roots)]));
 }
 
 /* ------------------------------------------------------------------ home -- */
@@ -191,10 +221,26 @@ export async function getHomeProgress() {
     totalLeaves += coverage.total;
     workedLeaves += coverage.worked;
 
+    /*
+      One streak summary, two figures off it.
+
+      `streakState` has to be fed the *same* `activeDays` that produced the
+      number beside it — days on which a currently live leaf was worked. Derived
+      here rather than in the screen that wants it, because that array is already
+      in hand and a second derivation elsewhere would eventually disagree with
+      every streak the app shows.
+    */
+    const days = activeDays(own, liveLeafIds);
+    const streak = streakOf(days);
+
     return {
       id: track.id,
       name: track.name,
-      currentStreak: streakOf(activeDays(own, liveLeafIds)).current,
+      currentStreak: streak.current,
+      longestStreak: streak.longest,
+      lastActivity: streak.lastActivity,
+      streakState: streakState(streak) as StreakState,
+      activeDayCount: days.length,
       topicCount: all.length,
       leafCount: coverage.total,
       workedToday: coverage.worked,
@@ -262,6 +308,16 @@ export type TrackNode = {
   path: string[];
   /** Leaves only: today's clicks, uncapped. */
   count: number;
+  /**
+   * Leaves in the flat view only: day key → clicks, over the backdating window.
+   *
+   * Optional, and that is the type saying something true rather than being
+   * lax. Only the flat list can record onto a past day; the tree view's figures
+   * are parent coverage, which is a *today* signal (cyan means worked today),
+   * and making it time-travel would mean re-deriving coverage per day for every
+   * node in the tree. So the tree's nodes carry no window and cannot pretend to.
+   */
+  counts?: Record<string, number>;
   /** Parents only: direct children worked today, over how many there are. */
   worked: number;
   total: number;
@@ -303,11 +359,35 @@ export async function getTrackDetail(id: string) {
   const coverage = trackCoverage(roots, todayCounts);
   const windowLogs = toDayLogs(rows.filter((r) => r.date >= sinceTerrain));
 
+  /*
+    Clicks per leaf per day over the backdating window, so the flat list can
+    show the count for whichever day it is recording onto rather than always
+    today's. Built from the rows already in hand — this costs a pass over a few
+    hundred rows, not a second query.
+  */
+  const backdateKeys = new Set(backdateWindow().map((choice) => choice.key));
+  const windowCounts = new Map<string, Record<string, number>>();
+  for (const row of rows) {
+    const key = dayKey(row.date);
+    if (!backdateKeys.has(key)) continue;
+    const bucket = windowCounts.get(row.topicId) ?? {};
+    bucket[key] = (bucket[key] ?? 0) + row.count;
+    windowCounts.set(row.topicId, bucket);
+  }
+
   return {
     id: track.id,
     name: track.name,
     createdAt: track.createdAt,
     tree: roots.map((root) => decorate(root, todayCounts)),
+    /*
+      The days the flat list may record onto, derived here rather than in the
+      browser. The chips and the per-leaf counts above have to come from the
+      same window — a chip whose day was never bucketed would silently read
+      zero — and deriving both on the server is what makes that structural
+      rather than a thing to remember.
+    */
+    backdateDays: backdateWindow(),
     /** The flat view's content: every actionable leaf, in tree order. */
     leaves: leafNodes.map((leaf) => ({
       id: leaf.id,
@@ -317,6 +397,7 @@ export async function getTrackDetail(id: string) {
       isLeaf: true as const,
       path: leaf.path,
       count: todayCounts.get(leaf.id) ?? 0,
+      counts: windowCounts.get(leaf.id) ?? {},
       worked: 0,
       total: 0,
       children: [] as TrackNode[],
@@ -432,6 +513,13 @@ export async function getPeriodProgress(period: Period = "week", now: Date = new
     currentDays,
     tracks: trackPeriods,
     hasAnyHistory: rows.length > 0,
+    /*
+      The buckets themselves, so a caller can name the *same* window this series
+      was built on rather than deriving a second one. The weekly review prints
+      its window, and two definitions of "this week" on one screen is exactly the
+      confusion it exists to remove.
+    */
+    buckets,
   };
 }
 

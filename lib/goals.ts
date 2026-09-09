@@ -12,6 +12,8 @@
  */
 
 import { addDays, dayKey, startOfDay } from "@/lib/day";
+import type { GoalSource } from "@/lib/goalLink";
+import type { SeriesRun } from "@/lib/goalSeries";
 import { summariseStreak } from "@/lib/streak";
 
 /** The four crossings, ascending. `milestonesCrossed` relies on the order. */
@@ -207,6 +209,20 @@ export type GoalRow = GoalShape & {
   highWater: number;
   milestones: number[];
   xp: number;
+  /**
+   * What this goal watches, if anything. **At most one is set** — the database
+   * enforces it with a CHECK constraint, see `docs/SCHEMA.md`.
+   */
+  trackId: string | null;
+  topicId: string | null;
+  /** The same link resolved to names, for the badge. Null when manual. */
+  source: GoalSource | null;
+  /** Set when this goal is one period of a recurring series. */
+  seriesId: string | null;
+  /** Which period this is within its series, 1-based. Null for a one-off. */
+  period: number | null;
+  /** How the series has gone overall. Null for a one-off. */
+  series: SeriesRun | null;
 };
 
 export type WindowTally = { completed: number; total: number };
@@ -237,12 +253,31 @@ export type GoalStats = {
  * question "how did this week go" is about what was due this week. Keying on
  * completion would let a goal due in March, finished today, flatter this week.
  */
-function tally(goals: GoalRow[], from: Date | null, now: Date): WindowTally {
-  const inWindow = goals.filter((g) => {
+/**
+ * Goals whose deadline falls in `[from, until)`, archived ones excluded.
+ *
+ * Extracted from `tally` so the weekly review can list the *rows* behind a
+ * tally without writing a second version of the same predicate. `until` is
+ * exclusive and `from` may be null for "everything up to `until`".
+ *
+ * Keyed on the **deadline**, because "how did this week go" is about what was
+ * due this week. Keying on completion would let a goal due in March, finished
+ * today, flatter this week.
+ */
+export function dueInWindow(
+  goals: GoalRow[],
+  from: Date | null,
+  until: Date,
+): GoalRow[] {
+  return goals.filter((g) => {
     if (g.status === "archived") return false;
     if (from && g.deadline < from) return false;
-    return g.deadline <= addDays(startOfDay(now), 1);
+    return g.deadline < until;
   });
+}
+
+function tally(goals: GoalRow[], from: Date | null, now: Date): WindowTally {
+  const inWindow = dueInWindow(goals, from, addDays(startOfDay(now), 2));
   return {
     completed: inWindow.filter((g) => g.status === "completed").length,
     total: inWindow.length,

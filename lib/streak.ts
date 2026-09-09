@@ -52,6 +52,44 @@ export function summariseStreak(activeDays: Date[], now: Date = new Date()): Str
   return { current, longest, lastActivity: parseDayKey(keys[keys.length - 1]) };
 }
 
+/**
+ * Whether a streak is renewed, alive-but-unrenewed, lapsed, or absent.
+ *
+ * **A description of an existing streak, computed beside it — never a change to
+ * it.** Strict means strict: `summariseStreak` above is untouched, and nothing
+ * here extends, protects or forgives a run. "At risk" is the observation that a
+ * streak whose last activity was yesterday is still running and will end tonight
+ * if nothing is recorded; it is the strongest honest pull the app can exert
+ * precisely because it invents nothing.
+ *
+ * **It must be fed the same `activeDays` that produced `summary`** — days on
+ * which a *currently live* leaf was worked. `getHomeProgress` computes both from
+ * one array for that reason: a second derivation would eventually disagree with
+ * the streak number shown on every other screen.
+ *
+ * `atRisk` requires `current > 0` as well as yesterday's activity. The two can
+ * come apart: a node worked yesterday that has since gained children or been
+ * deleted leaves `lastActivity` set while contributing nothing to the run, and
+ * calling that "at risk" would offer to renew a streak that does not exist.
+ */
+export type StreakState = "held" | "atRisk" | "lapsed" | "none";
+
+export function streakState(summary: StreakSummary, now: Date = new Date()): StreakState {
+  if (!summary.lastActivity) return "none";
+  const gap = daysBetween(summary.lastActivity, now);
+  if (gap <= 0) return "held";
+  if (gap === 1 && summary.current > 0) return "atRisk";
+  return "lapsed";
+}
+
+/** What each state says, in words. Nothing here is carried by colour alone. */
+export const STREAK_STATE_COPY: Record<StreakState, string> = {
+  held: "Renewed today",
+  atRisk: "Alive, not yet renewed today",
+  lapsed: "Lapsed",
+  none: "Not started",
+};
+
 /*
   Removed 2026-09-06: the whole check-in outcome cluster.
 

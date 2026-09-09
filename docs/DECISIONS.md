@@ -5,6 +5,332 @@ don't re-litigate them. Append new entries at the top with a date.
 
 ---
 
+**2026-09-09 — Weekly review and Today: one feature, one read, one ranked list**
+
+Built as one thing rather than two screens over the same data, on the owner's
+instruction. The split between them is a *question*, not a data set: `/review`
+asks what happened, `/today` asks what to do now.
+
+**`getReview()` composes the three existing reads and adds no statistic.**
+`getHomeProgress` owns the per-track current facts, `getPeriodProgress("week")`
+owns the week's buckets and series, `getGoalBoard` owns the goals. It costs three
+reads where a bespoke query would cost one, and that is the deliberate trade: the
+alternative is a fourth derivation of streaks and coverage that could disagree
+with the three screens already shipped. For one local user the whole history is a
+few hundred rows.
+
+**`buildFocus` is the only shared business logic, and it is shared on purpose.**
+Review's "focus next" and Today's "do next" are the same ranked list — Review
+shows all of it, Today the top five. Two screens with two opinions about what
+matters would be worse than one screen. Ranked by what expires soonest rather
+than by size: a streak ending tonight is the only item with a deadline in hours.
+
+**The blocking ambiguity, resolved: this project has two definitions of "this
+week".** `weekBuckets` uses Monday-start calendar weeks (what `/progress` means);
+`summariseGoals`'s `thisWeek` tally uses a rolling seven days keyed on deadline.
+Both are right for what they answer, and putting activity from one beside goals
+from the other under one heading is exactly the reconciliation the feature exists
+to remove. The review takes the **calendar week**, from the same bucket the
+activity series is built on, filters goal periods by that same window rather than
+reusing the rolling tally, and **prints the window** so nothing is implicit.
+`stats.thisWeek` is shipped and tested and was left alone.
+
+To avoid a second copy of the filter, `tally`'s private predicate was extracted
+as `dueInWindow(goals, from, until)` and both callers use it.
+
+**`streakState` is a description, never a change to a streak.** Added beside
+`summariseStreak` without touching it: strict stays strict, and "at risk" is the
+observation that a run whose last activity was yesterday will end tonight. It is
+computed *inside* `getHomeProgress`, from the same `activeDays(own, liveLeafIds)`
+that produce the streak number, so it cannot disagree with the streak shown on
+every other screen. `atRisk` additionally requires `current > 0`: a node worked
+yesterday that has since gained children leaves `lastActivity` set while
+contributing nothing to the run, and offering to renew that streak would be
+offering to renew nothing.
+
+**A partial week may not claim a decline.** Three days against a full seven always
+looks like a fall, so a naive comparison reports "down" every Monday of a good
+week — an artefact of when you looked, not a signal. A direction is claimed only
+when the week is complete or already ahead; otherwise both figures are stated and
+nothing is inferred. Same discipline the terrain follows.
+
+**Never red, and nothing grades.** At-risk is `streak` yellow (consistency), goals
+in trouble are `accent` magenta (volume and active state), renewed-today is
+`positive` cyan. Red would make "not done yet" an error state. Headlines are
+sentences rather than scores — a percentage or a letter here would be a grade, and
+Tracks are described, never graded.
+
+**Recurring goals are not special-cased anywhere in D**, which is what B's model
+bought. A period *is* a Goal row with its own deadline, so a series contributes
+whichever period fell in the window; met stay met, missed read as expired, and
+the series figures on each row come from the rows themselves. Verified with a
+series whose middle period was missed: it correctly did *not* appear in this
+week's list, because its deadline belongs to last week.
+
+**A reading screen does not reuse `GoalCard`.** The card owns the write path, the
+optimistic count and the celebration; putting it on Review or Today would have
+been a second `+1` in the app for the same number. Rows link to the goal or, for
+a linked goal, to the track that advances it.
+
+**`lib/review.ts` was split from `lib/reviewReads.ts` because the suite refused
+to start.** It was first written as one module mixing synthesis with the reads,
+and `qa/*.test.mjs` runs pure functions under plain `node`, which cannot resolve
+the generated Prisma client. The project's own rule — pure logic in `lib/`,
+fetching in its own module, as `goals.ts`/`goalReads.ts` already are — turned out
+to be load-bearing rather than stylistic.
+
+**Two QA notes, both the same recurring failure mode.** The tie-break assertion
+for at-risk ordering passed with the weight flattened to a constant, because the
+track names happened to sort correctly alphabetically; it was rewritten with the
+longer streak on the alphabetically *later* name. And the "expired goals are never
+actions" assertion passed with the status guard deleted, because its fixtures fell
+through every branch anyway; it was rewritten with fixtures that would otherwise
+produce items. A third check found a real bug in shipped copy — "1 papers to go" —
+that no assertion covered, and the phrasing was changed to one that is grammatical
+for any user-supplied unit.
+
+---
+
+**2026-09-09 — Recurring goals: a period is a row, and every missed period is created**
+
+**A period is a row, never a reset.** Rolling over creates a new `Goal` for the
+next window, linked by `seriesId`. Resetting `currentProgress` on the existing
+row is the obvious implementation and it destroys what the dashboard is built
+on: the completed history, the XP ledger, and every statistic that counts goals.
+A goal that resets has no completion record, so `completionRate` silently stops
+meaning anything. With a row per period `summariseGoals` needed **no changes at
+all** — each period is met or missed on its own terms.
+
+**Every missed period is materialised, not skipped — the owner's decision.**
+Three weeks away from a weekly goal leaves three rows that expire unmet, and the
+dashboard then reports one met of four. Verified against the database: one stale
+period became four, and the DSA category read 20% (1 of 5). The alternative —
+jump to the current window — would have quietly deleted three misses and
+flattered every figure on the screen. Honest history was chosen over a kind one.
+
+**Nothing runs at midnight, so the roll happens on read.** Same reasoning that
+keeps goal expiry derived and streaks off `Track`. It makes `getGoalBoard` a read
+that writes, which is unusual and is the only option available with no cron.
+
+**`@@unique([seriesId, startDate])` is what makes that safe.** A roll on read is
+a read-then-write, and two concurrent renders of `/goals` can both find the next
+period missing. They collide on the index instead of duplicating a period, and
+P2002 is absorbed as "somebody else already made it" — the same pattern as
+`@@unique([goalId, percent])`. Without it a series could grow two rows for one
+window, and Feature A would advance both from the same activity. Proved by
+removing the index and watching the constraint suite go red. One-off goals keep
+`NULL` and SQLite treats NULLs as distinct, so they are unaffected.
+
+**Periods abut exactly: the next starts the day after the last ended, with the
+same span.** No overlap and no gap, asserted as a property over 60 consecutive
+periods rather than on one example. The no-overlap half is load-bearing for
+Feature A — two overlapping periods of one series would both match a recorded
+day. One rule for all three cadences rather than a branch each, so a `custom`
+goal repeats at whatever length it was actually given.
+
+**The activity path rolls the series too, not only `/goals`.** Rolling only on
+the goals screen left a silent hole in exactly the case A and B were built for: a
+recurring linked goal worked daily by somebody who never opens the goals page.
+Three weeks of real activity would have advanced nothing, because the newest
+period's window had closed and its successors did not exist — and nothing would
+have said so. Rolled to *today* rather than to the recorded day, so a backdated
+write does not leave the series short; `advancesOn` then picks the period whose
+window contains that day.
+
+**A rolled period pays no XP, and writes no ledger row.** `createGoal` banks
+`GOAL_XP.create` because setting a goal is a deliberate act. A period that
+appeared on its own is not one, and paying for it would mean a weekly goal left
+untouched for a year quietly banked 260 create awards for nothing — farming by
+absence. Its `highWater` also starts at 0, so the new period's first unit is new
+ground in its own right and the previous period's mark cannot suppress it.
+
+**Archiving the newest period stops the series, and that is the whole off
+switch.** No new column, no flag to remember: `status` already says it and the
+card already offers the button. Restoring resumes. A boolean `repeating` column
+would have been a second source of truth about the same fact.
+
+**`MAX_ROLL_FORWARD = 260` is a guard, not a product rule.** The loop is driven
+by date arithmetic and runs inside a request; a sign error or zero span would
+otherwise spin while writing rows. An ancient series finishes on the next read,
+so the cap costs a page refresh and loses no history.
+
+**The series run counts back from the most recent *finished* period.** The
+current one is usually still in flight, and treating "not completed yet" as a
+break would report a healthy run as zero on six days out of seven. `archived`
+breaks a run like a miss does — otherwise archiving a bad week would repair it.
+
+**One QA note worth recording, because it is the failure mode this project keeps
+hitting.** The order-independence assertion in `qa/goal-series.test.mjs` passed
+with the sort deliberately removed: the input chosen happened to give the same
+answer either way, so it asserted nothing. It was rewritten with an input where
+dropping the sort really changes the result (2 versus 1) and then confirmed to
+fail. A check is not finished until it has been made to fail on purpose.
+
+---
+
+**2026-09-09 — Goals linked to a Track, and why the reward path was moved rather than copied**
+
+Requested directly, with two decisions taken by the owner from stated options: a
+goal watches **either a whole Track or one Topic subtree**, and **nothing is
+backfilled** — a linked goal starts at zero.
+
+**It does not violate the axis, and that is worth being explicit about.** "A
+Track never finishes. A Goal does." A linked Goal is a *window with a deadline
+over a slice of a Track's activity*; the Track still never finishes, still has no
+XP, still is not scored, and deleting the Goal leaves it untouched. What changed
+is where the Goal's number comes from, not what a Track is.
+
+**`recordGoalProgress`'s body moved to `lib/goalWrites.ts`; it was not copied.**
+Prisma has no nested interactive transactions, so a function that opens its own
+cannot be called from inside `recordActivity`'s. The choice was: let the activity
+write and the goal advance be two transactions, or extract the body so both
+callers share one implementation inside one transaction. The second, because
+`Goal.highWater`, `@@unique([goalId, percent])` and the XP ledger *are* the
+anti-farming story, and a second implementation of them would be a second set of
+rules to keep in step. `recordGoalProgress` is now a thin wrapper with an
+unchanged signature, so `GoalCard` did not have to know. It lives in `lib/` and
+not `lib/actions/` because every export of a `"use server"` module is a server
+action and a transaction client is not serialisable across that boundary.
+
+**Both the activity row and every goal it advances are written in one
+transaction.** The alternative would let a failure record the work in the tracker
+with the goal it feeds unmoved, and the two would disagree until somebody
+noticed.
+
+**At most one of `trackId` / `topicId`, enforced by a CHECK constraint.** A row
+carrying both — a track, and a topic belonging to a *different* track — would
+advance from one while its card named the other, and nothing rendered would show
+it. SQLite cannot `ALTER TABLE ADD CONSTRAINT`, so the migration rebuilds the
+table; that cost was accepted because the alternative is a rule to remember at
+every write, and this project's best invariants are the ones the database holds.
+**Known trade-off:** `schema.prisma` cannot express a CHECK, so `prisma migrate
+dev` may report drift on `Goal`. Do not resolve that by dropping the constraint.
+
+**Subtree membership is the leaf's ancestor chain, tested by the query itself.**
+`OR: [{ trackId }, { topicId: { in: chain } }]`, where the chain is the leaf and
+its ancestors — at most `MAX_DEPTH` = 5 ids. So "is this leaf under that node" is
+answered by the same query that finds the goals, and there is no second
+definition in application code to disagree with it. The chain walk is bounded
+rather than `while (cursor)`: a corrupted `parentId` cycle should be impossible,
+but this runs inside a transaction where a spin holds a write lock.
+
+**The window is tested against the day recorded, not today.** This is what makes
+it consistent with backdating, which shipped the same day: filling in Sunday pays
+into a goal whose week included Sunday and not into one that started Monday.
+Verified both directions against the database.
+
+**`completed` goals keep listening; `archived` ones do not.** If a completed goal
+stopped, then recording the activity that completed it and undoing that activity
+would leave it at a figure its own activity no longer supports. Overshoot is
+already allowed and honest, and completion only ever moves forward, so nothing is
+un-completed by a correction. Archiving means "I am not doing this after all",
+so it stops at once.
+
+**Every matching goal advances, not just one.** "50 this week" and "200 this
+month" over the same track are two genuine measurements of the same work, and
+each has its own `highWater`, so each unit still pays once per goal. Raised with
+the owner as a call about paying XP twice for one press; they took it.
+
+**A linked goal loses `+1` *and* "Set to…".** Two ways to advance one number is
+how they drift apart. Corrections are made by undoing the activity, which is
+where the fact lives. The link is also **set at creation and not editable** —
+changing what a goal watches mid-flight leaves banked progress that came from
+somewhere else, and the bar would then describe two things at once.
+
+**No goal celebration on the track page.** The reward is decided and banked by
+the server inside the transaction, but the three celebration tiers and the
+confetti stay on `/goals` — `CLAUDE.md` is explicit that confetti lives on that
+one screen, and the track half of the app describes behaviour rather than scoring
+it. So the track page gets one factual line per advanced goal, in the same
+register as the backdating streak note, with no XP figure in it. An undo produces
+no line at all: a negative change is corrected, not announced, which matches the
+shatter rule on the row beside it.
+
+**"Linked" is derived from the two columns, never a flag.** So a goal whose track
+is hard-deleted becomes manual again on its own — `SetNull` empties the column
+and the buttons return with nothing to reset. A *soft-deleted* watched topic is
+the one case that needs saying out loud: the link is intact but the node is gone,
+so nothing will ever advance the goal again, and the card says so rather than
+leaving a bar that quietly stopped moving.
+
+---
+
+**2026-09-09 — Backdated activity, limited to seven days**
+
+The owner asked for it explicitly, which matters because
+`docs/handoffs/PROMPT_2026-09-09_quick-log-and-today.md` had ruled it out of
+scope pending exactly that decision: it "sits in real tension with the
+strict-streak rule, so it is the owner's call to make explicitly". The call was
+made, with the limit chosen from stated options.
+
+**The tension is real and is resolved in favour of describing behaviour.**
+Streaks are derived, so a backdated entry retroactively revives a streak that
+read as broken. That is correct — the streak should describe what actually
+happened, not what was typed in when — but unlimited backdating turns the streak
+into a statement about data-entry diligence rather than about behaviour. Seven
+days is the compromise: it covers "I forgot for a few days" and nothing else.
+
+`summariseStreak` is untouched, and deliberately. Strict is still strict: nothing
+here is a freeze, a grace period or a forgiveness. The rule did not change; the
+*record of what happened* got a way to be corrected, and the streak then says
+what it always said about the corrected record.
+
+**Seven means today and six before it**, matching `windowStart(7)` in
+`lib/progress.ts` ("the last 7 days across every track"). The alternative —
+today plus seven — would have made "the last 7 days" mean two different spans in
+one codebase, which is precisely the fault `lib/windows.ts` exists to prevent.
+
+**The consequence is stated, in both directions.** A backdated record can revive
+a run and a backdated undo can end one, and a derived number that jumps with no
+explanation is a number nobody trusts. `describeStreakChange` covers both in one
+function so the wording cannot drift apart. It is a *description* — no shatter,
+no banner, no XP. Tracks are described and never scored; that rule is unchanged
+and this is the reason the note is one grey-yellow sentence rather than a moment.
+
+**The wire format is a day key, not a `Date`.** `HANDOFF_2026-09-09-features.md`
+sketched `recordActivity(topicId, on?: Date)`. A `Date` crossing the server
+boundary is an instant that then has to be re-resolved into a day, and that
+re-resolution is exactly the step that made `toISOString().slice(0, 10)` a day
+early east of Greenwich on 2026-09-08. A `yyyy-mm-dd` key is what `dayKey`
+already produces and what every activity figure is grouped by, and it has nothing
+left to re-interpret.
+
+**The server re-checks the day.** The seven chips are a courtesy; `canLogOn` in
+the action is the rule — same pattern as the depth limit, and for the same
+reason: a rendered page describes a window that may since have rolled over. Proved
+rather than asserted: the chip strip was temporarily widened to fourteen days in
+an isolated copy, an out-of-window day was clicked, and the server refused it with
+no row written.
+
+**One day selector for the whole list, not a picker per row.** The real shape of
+backdating is "I missed Sunday and am filling several leaves in" — one chip then N
+presses, rather than N pickers. That makes it a mode, and a mode you forget you
+are in is the entire risk, so it is loud, it names its day in words as well as in
+colour, and it is client state that dies on reload rather than a URL parameter
+that outlives the visit.
+
+**Magenta for the mode, not yellow.** `CLAUDE.md` keeps magenta for volume *and*
+active state, and a mode being on is an active state. Yellow already does double
+duty (consistency, and the primary button fill) and was flagged as a cost when
+that was decided; making it also mean "a mode is on" would be a third job for one
+plate.
+
+**Backdating is a flat-list feature only, and the tree view is unchanged.** The
+tree's parent-coverage figures are *today* signals — cyan means worked today — and
+making them time-travel would mean re-deriving coverage per day for every node.
+`docs/SCHEMA.md` keeps leaf intensity, parent coverage and track coverage
+deliberately distinct; a per-day tree would have blurred the second of those into
+a historical figure. The flat list is "what can I work on right now", which is
+where logging happens anyway.
+
+**No schema change, and that is the point.** `TopicActivity` has been keyed
+`@@unique([topicId, date])` since the topic-tree restructure, so the data model
+always supported backdating; the only thing missing was a way to say which day.
+No new table, no new column, no stored flag, and nothing that has to run at
+midnight.
+
+---
+
 **2026-09-08 — Goals, and the XP rule reversed for them alone**
 
 Requested in full, and it contradicts a rule stated twice in `CLAUDE.md` and

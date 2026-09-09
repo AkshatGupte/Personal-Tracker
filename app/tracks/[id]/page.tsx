@@ -207,7 +207,12 @@ export default async function TrackPage({
               {isTree ? (
                 <TopicTree roots={track.tree} trackId={track.id} all={allNodes} />
               ) : (
-                <LeafList leaves={track.leaves} trackId={track.id} all={allNodes} />
+                <LeafList
+                  leaves={track.leaves}
+                  trackId={track.id}
+                  all={allNodes}
+                  days={track.backdateDays}
+                />
               )}
             </div>
           </Panel>

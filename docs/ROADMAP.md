@@ -67,6 +67,36 @@ one is functionally complete, unless explicitly told otherwise.
       and stay in history. Green (`--activity-1..5`) is the one new colour and
       means only intensity
 
+- [x] **Backdated and faster activity entry** (2026-09-09). Activity can be
+      recorded for any of the last 7 days — today and the six before it — from a
+      day strip above the flat leaf list, with counts and undo following the
+      chosen day. The window is `BACKDATE_DAYS` in `lib/windows.ts`, the rules
+      are pure functions in `lib/backdate.ts`, and the server re-checks the day
+      on every write rather than trusting the chips. Backdating retroactively
+      moves the streak, because streaks are derived; that is stated in words on
+      the row, in both directions, as a description and never a celebration.
+      `summariseStreak` is untouched — strict is still strict. Keyboard roving
+      (up/down, j/k, Home/End, Enter, U) on the same list. **No schema change**:
+      `TopicActivity` was already keyed per topic per day. Deliberately not
+      extended to the tree view, whose coverage figures are today-signals.
+
+      Built ahead of the trajectory view below because that item is blocked on
+      accumulated activity rather than on effort, and being unable to log a day
+      you missed is one of the reasons there is so little of it.
+
+- [x] **Weekly review + Today, as one feature** (2026-09-09). `/review` answers
+      what happened this week — how much, across which tracks, what slipped, which
+      goal periods were met or missed — and `/today` turns it into action, leading
+      with the ranked list of what needs doing now. **One read (`getReview`)
+      composes the three that already existed and adds no statistic**, and
+      `buildFocus` is the single ranked list both screens render, so they cannot
+      form two opinions. `streakState` was added beside `summariseStreak` without
+      altering it — strict stays strict and "at risk" is a description. The review
+      names its window explicitly, because the project has two different spans
+      both called "this week". A partial week may not claim a decline. Recurring
+      goal periods appear as themselves, with no special-case statistics.
+      `qa/review.test.mjs`.
+
 - [ ] Learning trajectory view — consistency and momentum over time, not a
       point-in-time count. Should answer: am I consistent, is my momentum
       improving, is progress trending up or declining, and is it sustained
@@ -96,6 +126,31 @@ Track, which never finishes. See `docs/SCHEMA.md` and the XP note in `CLAUDE.md`
 - [x] Filters (all/active/completed/expired/archived) and a completed history
       that is never removed
 - [x] `qa/goals.test.mjs` — 48 assertions over the reward and momentum rules
+- [x] **Goals linked to a Track** (2026-09-09). A goal can read its progress from
+      a whole Track or from one Topic subtree instead of being typed in, so the
+      work is recorded once — in the tracker — rather than twice. `recordActivity`
+      advances every watching goal **inside the same transaction**, routed through
+      the existing reward path (`applyGoalProgress`, extracted to
+      `lib/goalWrites.ts`) rather than a second one. At most one of
+      `Goal.trackId` / `Goal.topicId` is set, enforced by a **CHECK constraint**;
+      both are `SetNull`, so deleting a Track leaves its goals with their progress
+      and makes them manual again. Nothing is backfilled; a linked goal starts at
+      zero. Backdated activity pays only into windows that were open on that day.
+      A linked card loses `+1` and "Set to…". No celebration on the track page —
+      the confetti stays on `/goals`. `qa/goal-link.test.mjs` and
+      `qa/goal-constraint.mjs`.
+- [x] **Recurring goals** (2026-09-09). "Repeats" on the create form gives a goal
+      a `seriesId`; when a period's window closes the next one is created — **as
+      a new row, never a reset of the old one**, so the completed history and the
+      XP ledger survive and `summariseGoals` needed no changes. Rolled forward
+      **on read** (there is no cron), on `/goals` *and* on the activity path, so a
+      recurring linked goal still counts for somebody who never opens the goals
+      screen. **Every missed period is materialised**, so three weeks away leaves
+      three honest misses rather than a flattered completion rate. One row per
+      period is enforced by `@@unique([seriesId, startDate])`, which is what makes
+      rolling on read safe against concurrent renders. A rolled period pays no XP.
+      Archiving the newest period stops the series — no new flag.
+      `qa/goal-series.test.mjs`.
 
 Not built, and deliberately: no levels, no badges, no cross-goal leaderboard.
 The XP reversal is scoped to Goals only — see `CLAUDE.md`.

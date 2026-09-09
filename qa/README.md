@@ -412,6 +412,29 @@ so the threshold sits between the two candidates (11/14 = 0.79 passes,
 12/14 = 0.86 fails). If this check is ever extended, break it on purpose first:
 the lenient version looked healthy and asserted nothing.
 
+## Checking the Goal link constraint
+
+```
+node qa/goal-constraint.mjs
+```
+
+Not a `.test.mjs`: it asserts a property of *SQLite*, which cannot be tested any
+other way than by asking SQLite. It replays every migration into a throwaway
+database — never touching `prisma/dev.db`, and needing no server — then proves
+that `CHECK (trackId IS NULL OR topicId IS NULL)` refuses a goal watching both a
+track and a topic, on `INSERT` and on `UPDATE`, while accepting the three legal
+shapes; that `@@unique([seriesId, startDate])` refuses a second row for one period
+of a recurring series while leaving one-off goals (NULL `seriesId`) free to share
+a start date; and that `SetNull` leaves a goal alive with its progress when its
+track is deleted.
+
+It uses `better-sqlite3`, already a project dependency through the Prisma
+adapter. That is the one exception to this directory being dependency-free and it
+is unavoidable: a database constraint has no pure-function form.
+
+Negative-tested by removing the CHECK from the migration (3 assertions fail) and
+by switching the foreign key to `Cascade` (4 fail).
+
 ## Logic tests
 
 ```
@@ -428,6 +451,10 @@ resolve the project's `@/` imports.
 | `period-buckets.test.mjs` | Week and month bucketing, including leap-year February, the year boundary, and the 31st-of-the-month overflow that breaks naive month arithmetic. |
 | `tree.test.mjs` | The Topic tree: shape and ordering, depth limits, move legality, and the three coverage signals. |
 | `goals.test.mjs` | The Goal reward rules, weighted at the half that fails silently: the high-water anti-farming mark (37→38→37→38 pays once), milestones crossing once ever, momentum bands fitted to the brief's own worked examples and swept for single-unit flicker, expiry derived rather than stored, and the dashboard's completion-rate arithmetic. |
+| `backdate.test.mjs` | The backdating window and its edges: seven days meaning today plus six, the off-by-one at the far edge (6 days back accepted, 7 refused), the future refused, malformed keys refused, and every chip the strip offers being a day the server accepts. Every key is round-tripped through `dayKey` at a **late-evening local `now`**, which is what makes a `toISOString().slice(0, 10)` regression go red rather than pass — that formatting is a day early east of Greenwich and shipped as a bug on 2026-09-08. Also the streak wording in both directions, and that none of it celebrates. Negative-tested against eight reintroduced bugs. |
+| `goal-link.test.mjs` | Goals linked to a Track: the ancestor chain that turns a subtree test into an `IN` (a goal on `graphs` matches a leaf five levels beneath it and **not** a leaf in a sibling branch), the chain stopping at a soft-deleted ancestor, a bounded walk that terminates on a corrupted parent cycle, the window tested against **the day recorded rather than today**, inclusive edges, `archived` refused while `completed` still listens, a form value that can never produce a goal watching two things, and a track-page note carrying no XP. Negative-tested against eight reintroduced bugs. Link *coverage* itself is a database query with no second copy, so it is proved by driving the real flow instead. |
+| `goal-series.test.mjs` | Recurring goals: periods that abut with no overlap and no gap (asserted over 60 consecutive periods, because an overlap would let one activity advance two members of one series), **every missed period materialised rather than skipped**, month/year boundaries, the bounded loop that stops a bad span spinning inside a request, and the series run counting back from the most recent *finished* period. Negative-tested against seven reintroduced bugs — one of which exposed that the order-independence assertion asserted nothing, and it was rewritten until it failed. |
+| `review.test.mjs` | The weekly review and Today: `streakState`'s four states and their boundaries (today *and* yesterday worked is `held`, not `atRisk`; yesterday's activity with a dead run is `lapsed`), the refusal to call a **partial** week a decline, the focus ranking (a streak dying tonight above a goal due today; a track listed once, not twice), goal periods windowed by the week the screen *names* rather than the rolling tally, and copy that stays grammatical for any user-supplied unit. Negative-tested against ten reintroduced bugs — two of which exposed assertions of mine that proved nothing, both rewritten until they failed. |
 | `terrain.test.mjs` | Elevation is cumulative and **cannot fall as activity ages** — the same rows read 1/7/14/30/90/365 days later are worth the same. Asserts in the same breath that the *windowed* total does fall, which is why the headline numeral cannot be `Terrain.peak`, and that the drawing's window is untouched. Also the **y-axis domain**: the scale is the next milestone rather than the series' own total, so two activities occupy a fifth of the frame and not all of it, and no elevation from 1 to 2600 reaches the top edge. Restoring the old self-normalising scale fails four assertions. |
 
 ## Using it

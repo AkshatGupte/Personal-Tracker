@@ -30,6 +30,8 @@ model Track {
   createdAt DateTime @default(now())
 
   topics Topic[]
+  /// Goals watching this whole track. `SetNull` on delete — see Goal.trackId.
+  goals  Goal[]
 }
 
 /// A node in a Track's topic tree.
@@ -66,6 +68,8 @@ model Topic {
   parent   Topic?          @relation("TopicChildren", fields: [parentId], references: [id], onDelete: Cascade)
   children Topic[]         @relation("TopicChildren")
   activity TopicActivity[]
+  /// Goals watching this node's subtree. `SetNull` on delete — see Goal.topicId.
+  goals    Goal[]
 
   @@index([trackId])
   @@index([parentId])
@@ -158,11 +162,57 @@ model Goal {
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 
+  /// When set, progress is advanced by activity anywhere on this track rather
+  /// than typed in by hand.
+  ///
+  /// `SetNull`, never `Cascade`: deleting a Track must not silently delete the
+  /// goals that watched it, and a goal that loses its track should fall back to
+  /// manual rather than vanish. Its `currentProgress` stays, which is the honest
+  /// outcome — the work really was done.
+  trackId String?
+  /// When set, progress is advanced by activity on this node's subtree only.
+  ///
+  /// **At most one of `trackId` and `topicId` is ever set**, and that is
+  /// enforced by a CHECK constraint in the migration rather than here — Prisma
+  /// cannot model one. A row carrying both would advance from one track while
+  /// claiming to watch the other, and nothing in a rendered page would show it.
+  /// Both null means the goal's progress is typed in, which is how every goal
+  /// worked before this existed.
+  topicId String?
+
+  /// Goals in one recurring series share this. Null for a one-off.
+  ///
+  /// **A period is a row.** Rolling a recurring goal over creates a *new* Goal
+  /// for the next window rather than resetting `currentProgress` on this one —
+  /// a goal that reset would leave no completion record, so the dashboard's
+  /// completion rate would silently stop meaning anything, and the XP ledger
+  /// would be overwritten by its own successor. With a row per period every
+  /// statistic works unchanged: each period is met or missed on its own terms.
+  ///
+  /// Nothing rolls a series over on a schedule — there is no cron here. It
+  /// happens on read, in `rollSeriesForward`, the same way expiry is derived.
+  seriesId String?
+
+  track      Track?          @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  topic      Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
   milestones GoalMilestone[]
   entries    GoalProgress[]
 
+  /// One row per period per series. **This is what makes rolling forward on
+  /// read safe**: the roll is a read-then-write, two concurrent renders of
+  /// `/goals` can both decide the next period is missing, and without this they
+  /// would both create it. They collide here instead and the loser is absorbed.
+  /// Enforced by the database rather than by a check in application code, like
+  /// `@@unique([topicId, date])` and `@@unique([goalId, percent])` before it.
+  ///
+  /// One-off goals are unaffected: SQLite treats NULLs as distinct in a unique
+  /// index, so any number of them may share a start date.
+  @@unique([seriesId, startDate])
   @@index([status])
   @@index([deadline])
+  @@index([trackId])
+  @@index([topicId])
+  @@index([seriesId])
 }
 
 /// A milestone that has actually been crossed. One row, once, ever.

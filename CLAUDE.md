@@ -24,6 +24,22 @@ and undo takes the most recent one back. This reverses the earlier rule that a
 Task was "checked in once per day" — that model, and the Task/TaskCheckIn/
 CompletionLog tables behind it, were removed outright rather than migrated.
 
+**Activity may be recorded for the last 7 days, not only for today** (added
+2026-09-09). `TopicActivity` was always keyed `@@unique([topicId, date])`, so
+backdating needed no schema change — only a way to say which day. The window is
+`BACKDATE_DAYS` in `lib/windows.ts` and means *today and the six before it*, the
+same sense `windowStart(7)` already carries. The rules are pure functions in
+`lib/backdate.ts` and **the server re-checks the day on every write**; the day
+chips in the flat list are a courtesy, exactly as the depth limit's UI hiding is.
+
+Because streaks are derived, a backdated write retroactively moves one — a record
+can revive a run and an undo can end one. That is correct and is **stated in
+words on the row, in both directions**. `summariseStreak` is untouched: strict is
+still strict, and this is not a freeze, a grace period or forgiveness. It is a
+description, so no shatter, no banner, no XP. Backdating is deliberately confined
+to the flat leaf list; the tree view's parent coverage is a *today* signal and
+must not time-travel.
+
 Nothing here ever finishes: a leaf is a recurring activity and has no terminal
 state. Working a leaf is the product's core loop and is meant to feel worth
 repeating.
@@ -249,6 +265,30 @@ stats and heatmap all lean on — and the user chose it anyway after being told.
 Do not "fix" it back to magenta without asking. Magenta remains volume and
 active state; it is no longer the button fill.
 
+**`/review` and `/today` are one feature (2026-09-09), not two screens.** Review
+answers what happened this week; Today turns it into action. Both come from a
+single read, `getReview`, which **composes the three existing reads and adds no
+statistic of its own**, and both render the same `buildFocus` list — Review all of
+it, Today the top five — so the two cannot form two opinions about what matters.
+Do not give either its own query or its own figures.
+
+- **The review names its window.** `weekBuckets` (Monday-start calendar weeks)
+  and `summariseGoals`'s `thisWeek` (rolling 7 days on deadline) are **two
+  different spans both called "this week"**. Review uses the calendar week, from
+  the same bucket the activity series is built on, and prints the dates.
+- **A partial week may never claim a decline.** Three days against a full seven
+  always reads as a fall. Claim a direction only when the week is complete or
+  already ahead.
+- **`streakState` is a description, not a change.** It sits beside
+  `summariseStreak`, which is untouched: strict is strict, no grace, no freeze.
+  It must be fed the same `activeDays` that produce the streak — it is computed
+  inside `getHomeProgress` for exactly that reason.
+- **Never red on these screens**, and no grades. At-risk is `streak` yellow,
+  goals in trouble `accent` magenta, renewed-today `positive` cyan. "Not done
+  yet" is not an error state. Every row states its status in words too.
+- **Reading screens do not reuse `GoalCard`** — it owns the write path and the
+  celebration, and a second `+1` for one number is how two numbers drift apart.
+
 **Three separate progress signals — do not conflate them:**
 1. Volume — terrain elevation, `accent` (magenta)
 2. Consistency — streak count and heatmap, `streak` (yellow)
@@ -299,6 +339,31 @@ summed on read — never a running total on a row. The rules that keep it honest
 - The server decides every reward inside the transaction that writes the
   progress. A client that computed its own could pay for a write the database
   rejected.
+
+**A Goal may read its progress from a Track (2026-09-09), and this does not blur
+the two.** A linked Goal is a *window with a deadline over a slice of a Track's
+activity*: the Track still never finishes, is still never scored, and deleting
+the Goal leaves it untouched. What changed is where the Goal's number comes from.
+`recordActivity` advances every watching goal **inside its own transaction**,
+through the same `applyGoalProgress` the card uses — never a second reward path,
+and `currentProgress` is still stored rather than derived on read, because the
+reward needs a write to attach to. A linked goal loses `+1` and "Set to…"; two
+ways to advance one number is how they drift apart. **No goal celebration on the
+track page** — the reward is banked but the three tiers and the confetti stay on
+`/goals`, so the track page gets one factual line with no XP in it.
+
+**A Goal may repeat (2026-09-09), and a period is a row — never a reset.**
+Rolling over creates a new `Goal` for the next window, linked by `seriesId`.
+Resetting `currentProgress` would destroy the completion history the dashboard is
+built on, so it is banned; with a row per period every statistic works unchanged.
+There is no cron, so the roll happens **on read** — from `getGoalBoard` and from
+the activity path, because a recurring linked goal must keep counting for someone
+who never opens `/goals`. **Every missed period is materialised**, so three weeks
+away leaves three honest misses rather than a flattered rate. `@@unique([seriesId,
+startDate])` is what makes rolling on read safe. A rolled period pays no XP —
+otherwise a goal left alone for a year would bank a year of create awards — and
+**archiving the newest period is the off switch**, so there is no `repeating`
+flag to forget.
 
 Celebration has three tiers and the gap between them carries the meaning: a
 progress tick is one pulse, a milestone is a plate offset, and completion is the

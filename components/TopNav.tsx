@@ -7,6 +7,11 @@ import { ThreadDivider } from "@/components/spiderverse/Threads";
 
 const BUILT = [
   { label: "Home", href: "/" },
+  /* Today and Review are one feature in two halves — understand the week, then
+     act on it. Today comes first because it is the daily one; Review is the
+     Sunday one. Both sit before Progress, which is the raw figures they read. */
+  { label: "Today", href: "/today" },
+  { label: "Review", href: "/review" },
   { label: "Progress", href: "/progress" },
   { label: "Goals", href: "/goals" },
 ];

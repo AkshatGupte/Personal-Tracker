@@ -6,6 +6,323 @@ Code follows when adding to this file.
 
 ---
 
+## 2026-09-09 — Weekly review and Today, as one feature
+
+**What was built:** two new screens that are really one thing. **Review** (`/review`)
+answers what happened this week; **Today** (`/today`) turns that into what to do
+right now. They are built on the same read and the same judgements, so the two
+never show you two different versions of your own week.
+
+The five questions Review answers, in order down the page:
+
+1. *How much progress did I make?* — this week's activity count against last
+   week's, with the exact dates printed.
+2. *What did I accomplish?* — per track, how much and across how many days.
+3. *What did I miss?* — tracks with nothing recorded this week, and goal periods
+   that expired unmet.
+4. *Which goals are doing well or slipping?* — each goal period due this week,
+   met, missed or still open.
+5. *What should I focus on next?* — a short ranked list, which is the hand-off
+   into Today.
+
+**How it works (flow):**
+
+1. Both screens call one function, `getReview()`. It does **no new database
+   queries and invents no new statistics** — it calls the three reads that
+   already existed (the home page's per-track figures, the weekly summary's
+   buckets, and the goals board) and joins them.
+2. It then applies the judgements: is each streak renewed, at risk, or lapsed;
+   which goal periods fell in this week; and what to do next.
+3. The "what to do next" list is built once and rendered by both screens — Review
+   shows all of it, Today shows the top five. That is deliberate: two screens
+   with two opinions about what matters would be worse than one screen.
+4. Today puts that list *first*, above the numbers. Review puts it *last*, after
+   the retrospective. Same list, opposite ends, because one screen is for acting
+   and the other for understanding.
+
+**The ranking is by what expires soonest, not by size:** a streak that ends
+tonight, then a goal due today, then a goal in real trouble, then one merely
+behind, then a track untouched this week, then a lapsed streak, then a track
+never worked. A streak dying tonight is the only thing on the list with a
+deadline measured in hours, so it goes first.
+
+**Two honesty rules built into it:**
+
+- **A part-finished week is never called a decline.** Three days measured against
+  a full seven always looks like a fall, so a naive comparison would tell you off
+  every Monday. It claims a direction only when the week is complete, or when
+  you have already passed last week's total — otherwise it states both numbers
+  and draws no conclusion.
+- **"At risk" changes nothing about streaks.** It is purely a description of a
+  streak that already exists: last worked yesterday, still alive, ends tonight if
+  nothing is recorded. Strict streaks stay strict — no grace, no freeze, no
+  forgiveness — and the code that calculates them was not touched.
+
+**Recurring goals need no special handling here, which was the point of building
+them as one goal row per period.** A repeating weekly goal simply contributes
+whichever period fell in the week being reviewed. Met periods stay met, missed
+ones stay missed, and each row also shows its place in the series — "period 3 ·
+met 1 of 3". Nothing reaches behind the periods to compute a separate figure.
+
+**Colour:** cyan for renewed today, yellow for a streak not yet renewed, grey for
+everything else — the three signals the app already uses. **Deliberately never
+red:** "you have not done this yet" is not an error. Every row also says its
+status in words, so nothing depends on colour.
+
+**Empty screens still say something useful.** With nothing recorded, Review says
+"Nothing recorded this week. It starts whenever you do." and Today still offers a
+first action. No zeroed charts anywhere — the rule the elevation graph already
+follows.
+
+**Technical concepts used:**
+
+- **Composing existing reads instead of writing a new query** — costs three reads
+  where one would do, and buys the guarantee that these screens cannot disagree
+  with the three that already shipped.
+- **Pure functions separated from database access** — the judgements live in
+  `lib/review.ts` with no database code in them, so they can be tested by running
+  plain Node with no server and no database. The database part is a separate file.
+- **One shared ranked list** rather than two similar lists, so there is one
+  definition of "what matters most" in the app.
+- **Automated checks** — `qa/review.test.mjs`, proved by reintroducing ten real
+  bugs. Two of those exposed checks of mine that asserted nothing, and both were
+  rewritten until they failed properly.
+
+**Roadmap status:** a new item under Phase 2 of docs/ROADMAP.md.
+
+---
+
+## 2026-09-09 — Recurring goals
+
+**What was built:** a goal can now repeat. Tick "Repeats" when you set it, and
+when the window closes the next one starts on its own — no cron job, no reminder,
+nothing to press. "50 DSA problems a week" is now one thing you set once instead
+of something you re-enter every Monday.
+
+**The important part is what it does *not* do.** It never resets the goal you
+already had. Each period is a **brand new goal row**, tied to its predecessors by
+a shared series id. That matters because resetting the old row would wipe out its
+completion record and its XP history — and the dashboard's completion rate is
+built on exactly those records. A goal that resets leaves no evidence it was ever
+met, so "you complete 80% of your goals" would quietly stop meaning anything.
+With a row per period, every statistic on the dashboard keeps working with no
+changes at all: each week is met or missed on its own terms.
+
+**How it works (flow):**
+
+1. You tick "Repeats" when setting the goal. It gets a series id; one-off goals
+   don't.
+2. **Nothing happens at midnight, because nothing in this app runs at midnight** —
+   there is no scheduled job anywhere in the project. Instead, the next time
+   something *looks* at your goals, the app notices the newest period has ended
+   and creates the ones that should exist. Same trick the app already uses to
+   work out that a goal has expired.
+3. **Every missed period is created, not skipped** — your decision. Away for
+   three weeks from a weekly goal, and you come back to three periods that
+   expired unmet, plus this week's. The dashboard then honestly says you met one
+   of four. Jumping straight to this week would have quietly deleted three misses
+   and flattered every number on the screen.
+4. Each new period inherits everything — title, target, unit, and which track it
+   reads its progress from — so a recurring linked goal keeps counting itself
+   from the tracker without being set up again.
+5. The card says which period it is and how the series has gone: "Repeats weekly
+   · period 5 · met 1 of 5", and "3 in a row" when there is a run.
+
+**To stop it: archive the current period.** That is the off switch, and it is
+deliberately not a new setting — "Archive" is already on every card, and a switch
+somebody has to remember to turn off is a switch that gets left on. Restoring the
+period resumes the series.
+
+**Two things that would have gone wrong silently, and don't:**
+
+- **A rolled-over period pays no XP.** Setting a goal awards a small amount
+  because it is a deliberate act; a period that appeared on its own is not one. If
+  it paid, a weekly goal left alone for a year would quietly bank a year's worth
+  of awards for doing nothing at all.
+- **Working the track also rolls the series.** Rolling only on the goals screen
+  left a hole in exactly the case these features were built for: someone who
+  works their track every day and never opens the goals page. Three weeks of real
+  activity would have counted toward nothing, with no error to say so.
+
+**Technical concepts used:**
+
+- **A unique index on (series, start date)** — a rule the database enforces:
+  one row per period, ever. This is what makes creating periods during a page
+  load safe. Two browser tabs loading the goals page at the same moment can both
+  notice a period is missing and both try to create it; they collide on the index
+  and the loser is simply ignored, instead of the series growing two rows for one
+  week.
+- **A bounded loop** — the period creation is driven by date arithmetic, so it is
+  capped at 260 periods per pass. Not a product rule: purely a guard so that a
+  mistake in the arithmetic cannot spin forever writing rows while a page waits.
+  A truly ancient series finishes catching up on the next page load.
+- **A hand-written migration** — the previous feature added a database rule that
+  Prisma cannot describe in its own schema file, and an auto-generated migration
+  might have rebuilt the table and silently dropped it. Adding the column and the
+  index by hand avoids touching the table definition at all.
+- **Automated checks** — `qa/goal-series.test.mjs` covers the period arithmetic,
+  proved by reintroducing seven real bugs. One of those runs found that a check
+  of my own was asserting nothing, and it was rewritten until it failed properly.
+
+**Roadmap status:** a new item under the Goals section of docs/ROADMAP.md.
+
+---
+
+## 2026-09-09 — Goals that count themselves from the tracker
+
+**What was built:** a goal can now be pointed at a track — or at one branch of a
+track — and it counts itself. Before this you did the work, clicked the topic in
+the tracker, and then went to the Goals page and pressed "+1": the same fact
+recorded twice, in two places, which is how the two numbers end up disagreeing.
+Now "Solve 50 DSA problems this week" is a window over work you are already
+logging.
+
+**How it works (flow):**
+
+1. When you create a goal there is a new "Progress from" choice: typed in by
+   hand (the default, exactly as before), a whole track, or any single topic
+   inside one. Picking a topic means "this topic and everything under it".
+2. You work a topic in the tracker as usual.
+3. In the *same* database transaction that records the activity, the app asks
+   which goals were watching that topic — a goal on the whole track, or a goal on
+   any topic between this one and the top of the tree — and advances each of them
+   by one.
+4. It reuses the exact same reward machinery the "+1" button always used, rather
+   than a second copy. That matters because the rules that stop you gaming it —
+   only new ground pays, each milestone pays once ever — live inside that
+   machinery, and two copies would be two sets of rules to keep in step.
+5. The track page then says plainly what happened: "Solve 50 DSA problems —
+   25% reached, 12/50 problems." No XP figure and no celebration on that screen;
+   the reward is real and was recorded, but the celebrating happens on the Goals
+   page, which is the half of the app that scores things.
+6. Undoing the activity takes the goal back down again, symmetrically.
+
+**Why "one transaction" keeps coming up:** a transaction is an all-or-nothing
+unit of work. Without one, a failure could record the activity in your tracker
+while leaving the goal it feeds unmoved, and the two would silently disagree
+until you happened to notice.
+
+**Things it deliberately will not do:**
+
+- **A linked goal has no "+1" and no "Set to…" box.** Two ways to change one
+  number is exactly how they drift apart. If you need to correct it, undo the
+  activity — that is where the fact actually lives.
+- **Nothing before the goal existed is counted.** A new linked goal starts at
+  zero. Counting your back-catalogue would mean handing out milestone awards for
+  moments that happened before anyone was watching.
+- **Backdated activity counts only into the windows that were actually open on
+  that day.** Filling in Sunday advances a goal whose week included Sunday, and
+  does nothing to one that started on Monday.
+- **Deleting a track does not delete the goals that watched it.** They keep their
+  progress — the work really was done — and quietly go back to being typed in by
+  hand.
+
+**Technical concepts used:**
+
+- **A database CHECK constraint** — a rule the database itself refuses to break.
+  A goal may watch a whole track, or one branch, or nothing, but never two things
+  at once; a goal carrying both could advance from one track while its card
+  claimed the other, and nothing on screen would reveal it. Enforcing this in
+  code would be a rule to remember at every write. In the database it simply
+  cannot happen.
+- **The "ancestor chain"** — to decide whether a topic sits inside a watched
+  branch, the app walks from that topic up to the top of the tree, collecting at
+  most five ids (the tree is capped at five levels), and asks the database
+  whether any goal is watching one of them. That is a single question rather than
+  loading whole branches.
+- **`SetNull` foreign keys** — when a track is deleted, the link on the goal is
+  emptied rather than the goal being deleted with it.
+- **Automated checks** — `qa/goal-link.test.mjs` covers the matching and window
+  rules and was proved by deliberately reintroducing eight real bugs;
+  `qa/goal-constraint.mjs` builds a throwaway database from the migrations and
+  proves the CHECK constraint actually refuses the bad row, because a constraint
+  that has never been made to fail is not known to exist.
+
+**Verified against the database, not just the screen:** a goal linked to the
+whole DSA track advanced from a DP topic; a goal linked only to "graphs" ignored
+that same DP topic and advanced only from a graphs topic. Pressing undo and redo
+four times over ground already covered paid no further XP and banked no further
+milestones.
+
+**Roadmap status:** a new item under the Goals section of docs/ROADMAP.md.
+
+---
+
+## 2026-09-09 — Logging a day you missed, and a faster way to log
+
+**What was built:** you can now record activity for a day that has already
+passed, up to a week back, and get around the leaf list without touching the
+mouse. Before this, if you did the work on Sunday and forgot to press the button,
+there was no honest way to say so — and because streaks are strict, that missed
+day was simply gone. A row of day buttons sits above the list of topics: press
+"Sun 6" and every count and undo on the page below is now about Sunday, until you
+press "Back to today". The app tells you in words what filling that day in did to
+your streak.
+
+**How it works (flow):**
+
+1. The track page works out which seven days you are allowed to log — today and
+   the six before it — and sends that list to the page along with, for each
+   topic, how many times it was worked on each of those days.
+2. You press a day button. The list switches to that day: every number you see is
+   that day's number, and the page says loudly, in words and in magenta, which day
+   it is recording to.
+3. You press a topic's button. The count moves immediately, and the request goes
+   to the server saying "this topic, this day".
+4. **The server checks the day again rather than trusting the page.** A page you
+   opened yesterday is describing a window that has since moved on, so the seven
+   buttons are a convenience and the server's check is the actual rule. It refuses
+   anything in the future, anything more than seven days old, and anything that
+   isn't a real date.
+5. If the day was a past one, the server works out your streak before the write
+   and again after it, and sends back a plain sentence — "Streak restored — 4
+   days." or "Streak lost — was 4 days." — which appears under the day band.
+6. Everything else on the site (the elevation figure, the streak, the heatmap, the
+   graphs) recalculates by itself, because none of those numbers are stored
+   anywhere — they are all worked out fresh from the same activity records.
+
+**Why there is a seven-day limit:** because streaks are worked out from the
+records rather than stored, filling in a past day genuinely changes your streak,
+which is correct — the streak should describe what you actually did. But with no
+limit at all it would stop describing your behaviour and start describing how
+diligent you were at typing things in later. Seven days covers "I forgot for a few
+days and am catching up" and not much else. The owner chose this figure.
+
+**The keyboard part:** on the flat list, up/down (or j/k) jump between topic
+buttons, Home and End go to the ends, Enter records and U undoes. Previously,
+reaching the next topic meant six presses of Tab, on the one screen in the app
+meant for repetition. Typing is protected — renaming a topic and typing a "u" no
+longer triggers an undo.
+
+**Technical concepts used:**
+
+- **A pure function file (`lib/backdate.ts`)** — the rules about which days are
+  allowed live in one place with no database and no screen code in them, so the
+  same rules run in the buttons, on the server, and in the tests. Nothing has to
+  be kept in step by hand.
+- **Day keys ("2026-09-06") rather than timestamps** — a timestamp has a moment
+  attached that can be re-interpreted into the wrong day when it crosses between
+  the browser and the server. This project has already shipped that exact bug
+  once. A plain day key has nothing to re-interpret.
+- **Server actions (code that runs on the server when you click)** — the existing
+  record and undo actions each grew one optional extra piece of information, the
+  day, which defaults to today. Every place that already called them is unchanged.
+- **Derived figures** — no new table, no new column, no new stored flag. The
+  activity records were already stored one row per topic per day, so backdating
+  was something the data could always express; the only thing missing was a way
+  to say which day.
+- **Automated checks (`qa/backdate.test.mjs`)** — 60-odd assertions about the
+  window, its edges, refusing the future, and the streak wording. Each one was
+  then proved to work by deliberately breaking the code it guards and confirming
+  it went red.
+
+**Roadmap status:** a new item under Phase 2, not an existing checkbox. It was
+built ahead of the remaining trajectory-view item because that item is blocked on
+having real accumulated activity to look at, not on effort — and being unable to
+log a day you missed is one of the reasons there is so little of it.
+
+---
+
 ## 2026-09-08 — Goal tracking, with rewards
 
 **What was built:** a whole new section of the app. You can now set a goal —

@@ -60,3 +60,34 @@ export const TERRAIN_SPAN = spanLabel(TERRAIN_DAYS);
 
 /** "12 weeks" — the heatmap's span. */
 export const HEATMAP_SPAN = spanLabel(HEATMAP_DAYS);
+
+/**
+ * How far back activity may be recorded: today and the six days before it.
+ *
+ * **Counted the way `windowStart(7)` in `lib/progress.ts` already counts** —
+ * today is one of the seven, not an extra one on top. The two would drift apart
+ * the first time anyone compared "this week's activity" against "the days I am
+ * allowed to fill in", and there is no reason for them to disagree.
+ *
+ * The limit exists because streaks are derived, so a backdated entry can revive
+ * a streak that read as broken. That is correct — the streak should describe
+ * what actually happened — but with no limit at all the streak would stop being
+ * a statement about behaviour and become one about how thorough somebody was at
+ * typing it in. Seven days covers the real case (you forgot to log for a few
+ * days and are catching up) and not much else.
+ *
+ * Enforced in `lib/backdate.ts` and applied by the server actions. The day
+ * chips in the interface are a courtesy; the server check is the rule, exactly
+ * as it is for the depth limit.
+ */
+export const BACKDATE_DAYS = 7;
+
+/*
+  No `BACKDATE_SPAN` beside the other two, on purpose.
+
+  `spanLabel(7)` is "1 week", which is correct and reads badly in the one place
+  this window is captioned ("a day in the last 1 week"). More to the point, the
+  server's refusal says "the last 7 days" — so a caption in weeks would describe
+  the same rule in different units to the same person. The days are named
+  directly at both call sites instead.
+*/

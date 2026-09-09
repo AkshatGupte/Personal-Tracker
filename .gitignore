@@ -48,3 +48,11 @@ next-env.d.ts
 # local sqlite database
 *.db
 *.db-journal
+
+# Safety copies taken before a migration is applied to dev.db.
+*.db.backup-*
+
+# Session handoffs and build briefs — scaffolding, not product.
+docs/handoffs/HANDOFF_2026-09-08.md
+docs/handoffs/HANDOFF_2026-09-09-features.md
+docs/handoffs/PROMPT_2026-09-09_quick-log-and-today.md

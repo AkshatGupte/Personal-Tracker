@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { dayKey } from "@/lib/day";
+import { describeLink, isLinked } from "@/lib/goalLink";
+import { describeCadence } from "@/lib/goalSeries";
 import {
   GOAL_MILESTONES,
   MOMENTUM_COPY,
@@ -77,6 +79,20 @@ export default function GoalCard({
   const urgency = deadlineUrgency(shown);
   const tone = MOMENTUM_TONE[momentum] ?? "var(--muted)";
 
+  /*
+    "Linked" is derived from the two columns, never a flag. So a goal whose track
+    was deleted becomes manual again on its own — `SetNull` clears the column and
+    the buttons come back with nothing to remember to reset.
+
+    `sourceLive` is separately false for a *soft-deleted* watched topic: the link
+    is intact but the node it names is gone, so nothing will ever advance the
+    goal again. That has to be said rather than left as a bar that quietly
+    stopped moving.
+  */
+  const linked = isLinked(goal);
+  const sourceLabel = describeLink(goal.source);
+  const sourceLive = goal.source?.live ?? false;
+
   const write = (value: number, kind: "set" | "add") => {
     setError(null);
     const next = Math.max(0, kind === "add" ? shown.currentProgress + value : value);
@@ -142,6 +158,46 @@ export default function GoalCard({
             {goal.category}
           </span>
         </div>
+
+        {/* Where the number comes from. Cyan is wrong here (it means worked
+            today) and yellow is spoken for, so a live link is plain `muted` with
+            the source name at `fg` — emphasis by contrast, since a bold class
+            emphasises nothing in a single-weight face. A broken link is the one
+            case that earns the warning plate. */}
+        {linked && (
+          <p className="mt-1 font-label text-[0.6875rem] uppercase tracking-[0.12em] text-muted">
+            {sourceLive ? (
+              <>
+                Advances from <span className="text-fg">{sourceLabel}</span>
+              </>
+            ) : (
+              <span className="text-sv-red">
+                {sourceLabel} was deleted — this goal can no longer advance
+              </span>
+            )}
+          </p>
+        )}
+
+        {/* Recurring: which period this is, and how the series has actually
+            gone. A run of met periods is the payoff of storing a row per period
+            — it is a query, not a counter. Muted throughout: this describes
+            history and is not a third progress signal. */}
+        {goal.seriesId && (
+          <p className="mt-1 font-label text-[0.6875rem] uppercase tracking-[0.12em] text-muted">
+            {describeCadence(goal.cadence, goal)} · period{" "}
+            <span className="text-fg tabular-nums">{goal.period}</span>
+            {goal.series && goal.series.total > 1 && (
+              <>
+                {" · met "}
+                <span className="text-fg tabular-nums">{goal.series.met}</span>
+                {` of ${goal.series.total}`}
+                {goal.series.streak > 1 && (
+                  <span className="text-streak">{` · ${goal.series.streak} in a row`}</span>
+                )}
+              </>
+            )}
+          </p>
+        )}
 
         {goal.description && (
           <p className="mt-1 max-w-[52ch] text-sm leading-relaxed text-muted">{goal.description}</p>
@@ -230,7 +286,19 @@ export default function GoalCard({
             from it rather than in its way. */}
         {mode === "idle" && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {status !== "completed" && status !== "archived" && (
+            {/*
+              **A linked goal has no `+1` and no "Set to…".** Two ways to advance
+              one number is how they drift apart — the point of linking is that
+              the activity is recorded once, in the tracker, and this reads it.
+              Corrections are made by undoing the activity, which is where the
+              fact actually lives.
+            */}
+            {linked && status !== "completed" && status !== "archived" && (
+              <p className="text-sm text-muted">
+                Worked in the tracker, not typed here.
+              </p>
+            )}
+            {!linked && status !== "completed" && status !== "archived" && (
               <>
                 <button
                   type="button"

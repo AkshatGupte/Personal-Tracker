@@ -3,7 +3,7 @@ import GoalList from "@/components/goals/GoalList";
 import GoalStatsPanel from "@/components/goals/GoalStats";
 import TopNav from "@/components/TopNav";
 import { ThreadDivider } from "@/components/spiderverse/Threads";
-import { getGoalBoard } from "@/lib/goalReads";
+import { getGoalBoard, getLinkTargets } from "@/lib/goalReads";
 
 /**
  * The Goal Tracker.
@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Goals · Rendred" };
 
 export default async function GoalsPage() {
-  const { goals, stats } = await getGoalBoard();
+  const [{ goals, stats }, linkTargets] = await Promise.all([getGoalBoard(), getLinkTargets()]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
@@ -40,7 +40,7 @@ export default async function GoalsPage() {
           A goal has a target and a deadline. Tracks are for the work that never
           finishes; this is for the things that do.
         </p>
-        <GoalCreateForm />
+        <GoalCreateForm targets={linkTargets} />
       </div>
 
       <GoalList goals={goals} />

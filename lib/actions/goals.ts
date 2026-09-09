@@ -1,28 +1,24 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { addDays, startOfDay } from "@/lib/day";
-import { GOAL_XP, milestonesCrossed, progressXp } from "@/lib/goals";
+import { GOAL_XP } from "@/lib/goals";
+import { parseLinkChoice } from "@/lib/goalLink";
+import { applyGoalProgress, type ProgressReward } from "@/lib/goalWrites";
 
 export type GoalActionResult = { error?: string };
 
-/**
- * What a write paid, handed back to the client so the celebration can fire.
- *
- * The server decides this, not the browser. A client that worked out its own
- * rewards could pay itself twice for one write, or pay for a write the database
- * rejected — and the whole anti-farming rule lives behind the same transaction
- * that decides them, so it is the only place that can answer honestly.
- */
-export type ProgressReward = {
-  error?: string;
-  from?: number;
-  to?: number;
-  xp?: number;
-  milestones?: number[];
-  completed?: boolean;
-};
+/*
+  `ProgressReward` is re-exported so the card keeps importing it from here.
+
+  The reward *decision* moved to `lib/goalWrites.ts` when activity on a linked
+  Track became a second caller — Prisma has no nested interactive transactions,
+  so a function that opens its own could not be called from inside
+  `recordActivity`'s. Nothing about the rules changed; only where the body lives.
+*/
+export type { ProgressReward };
 
 const MAX_TITLE = 90;
 const MAX_DESC = 400;
@@ -66,6 +62,28 @@ export async function createGoal(
   if (!deadline) return { error: "Pick a deadline." };
   if (deadline < startDate) return { error: "The deadline is before the start date." };
 
+  /*
+    Where progress comes from. `parseLinkChoice` cannot return both fields set,
+    whatever it is handed, so the database's CHECK constraint is unreachable
+    from here — a malformed post produces a manual goal rather than an error the
+    user has to read.
+
+    **Nothing is backfilled.** A linked goal starts at zero and counts only
+    activity recorded from now on. Summing the history at creation would mean
+    either awarding milestones for crossings that happened before anyone was
+    watching, or skipping them and leaving the ledger disagreeing with the bar.
+  */
+  const link = parseLinkChoice(formData.get("source"));
+
+  /*
+    A recurring goal is a *series of rows*, and this is its first period.
+
+    `seriesId` is a fresh id rather than the goal's own, because Prisma assigns
+    the id at insert and the series has to be named before then. Nothing reads it
+    as anything but an opaque grouping key.
+  */
+  const repeats = formData.get("repeats") === "on";
+
   await prisma.goal.create({
     data: {
       title,
@@ -76,6 +94,9 @@ export async function createGoal(
       cadence,
       startDate,
       deadline,
+      trackId: link.trackId,
+      topicId: link.topicId,
+      seriesId: repeats ? randomUUID() : null,
       /*
         Creating pays its 5 XP through the ledger like everything else, as a
         zero-delta entry. A goal's XP is the sum of its rows, so an award that
@@ -90,103 +111,26 @@ export async function createGoal(
 }
 
 /**
- * The one write that matters, and the only place rewards are decided.
+ * Advance a goal from the interface, and report what it paid.
  *
- * `mode` is `set` or `add` so the fast path (+1 on the card) and the considered
- * path (type a new figure) share every rule between them rather than growing
- * two copies of the milestone logic.
+ * A thin wrapper now: it opens the transaction and `applyGoalProgress` decides
+ * everything inside it. **The body moved to `lib/goalWrites.ts` rather than
+ * being copied** when activity on a linked Track became a second way to advance
+ * a goal — `Goal.highWater`, the milestone constraint and the XP ledger are the
+ * whole anti-farming story, and two implementations of them would be two sets of
+ * rules to keep in step.
  *
- * Everything happens in one interactive transaction because the anti-farming
- * rule is a read-then-write: it compares the incoming value against the goal's
- * high-water mark and then moves that mark. Two clicks landing together outside
- * a transaction would both read the old mark and both pay.
+ * The transaction is still what makes the anti-farming rule safe: it is a
+ * read-then-write against the high-water mark, and two clicks landing together
+ * outside one would both read the old mark and both pay.
  */
 export async function recordGoalProgress(
   id: string,
   value: number,
   mode: "set" | "add" = "set",
 ): Promise<ProgressReward> {
-  if (!Number.isFinite(value)) return { error: "That is not a number." };
-
   try {
-    return await prisma.$transaction(async (tx) => {
-      const goal = await tx.goal.findUnique({
-        where: { id },
-        include: { milestones: { select: { percent: true } } },
-      });
-      if (!goal) return { error: "That goal no longer exists." };
-      if (goal.status === "archived") return { error: "This goal is archived." };
-
-      const from = goal.currentProgress;
-      /*
-        Clamped at zero and left uncapped above the target. Overshooting is
-        real — fifty-two problems against a target of fifty is a true fact about
-        the week — and the bar and percentage cap themselves for display.
-      */
-      const to = Math.max(0, mode === "add" ? from + value : value);
-      if (to === from) return { from, to, xp: 0, milestones: [], completed: false };
-
-      const crossed = milestonesCrossed(
-        goal.target,
-        goal.highWater,
-        to,
-        goal.milestones.map((m) => m.percent),
-      );
-      const xp = progressXp(goal.highWater, to);
-      const nowComplete = goal.target > 0 && to >= goal.target;
-
-      await tx.goalProgress.create({ data: { goalId: id, delta: to - from, value: to, xp } });
-
-      const banked: number[] = [];
-      for (const percent of crossed) {
-        /*
-          Insert and let the unique constraint arbitrate.
-
-          `skipDuplicates` is not available on SQLite, and a check-then-insert
-          would reintroduce exactly the race the constraint exists to close. So
-          the write is attempted and P2002 — unique violation — is read as "some
-          other write already banked this one", which is a success from here.
-          Anything else is a real failure and is rethrown.
-
-          `banked` rather than `crossed` is what the caller is told about, so the
-          celebration fires for milestones this write actually paid for.
-        */
-        try {
-          await tx.goalMilestone.create({
-            data: { goalId: id, percent, xp: GOAL_XP.milestone[percent] ?? 0 },
-          });
-          banked.push(percent);
-        } catch (error) {
-          const code = (error as { code?: string })?.code;
-          if (code !== "P2002") throw error;
-        }
-      }
-
-      await tx.goal.update({
-        where: { id },
-        data: {
-          currentProgress: to,
-          highWater: Math.max(goal.highWater, to),
-          /*
-            Completion is a consequence of the number, never a separate button
-            the user has to remember. Reaching the target completes the goal;
-            the status only moves forward here, so a later correction downward
-            does not un-complete something that was genuinely finished.
-          */
-          ...(nowComplete && goal.status === "active"
-            ? { status: "completed", completedAt: new Date() }
-            : {}),
-        },
-      });
-
-      return {
-        from,
-        to,
-        xp: xp + banked.reduce((sum, p) => sum + (GOAL_XP.milestone[p] ?? 0), 0),
-        milestones: banked,
-        completed: nowComplete && goal.status === "active",
-      };
-    });
+    return await prisma.$transaction((tx) => applyGoalProgress(tx, id, value, mode));
   } finally {
     revalidatePath("/goals");
   }
